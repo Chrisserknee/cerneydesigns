@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CerneyDesigns - Professional Web Design Services</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand">
+                <img src="images/logo2.png" alt="CerneyDesigns" class="logo" id="logo-img" onerror="this.style.display='none'; document.getElementById('logo-text').style.display='block';">
+                <h1 id="logo-text" style="display: none;">CerneyDesigns</h1>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="#home">Home</a></li>
+                <li><a href="#request">Request Design</a></li>
+                <li><a href="#contact">Contact</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="home" class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <img src="images/logo1.png" alt="CerneyDesigns" class="hero-logo">
+                <h1 class="hero-title">Where Clean Design Meets Big Vision</h1>
+                <p class="hero-subtitle">Premium Web Design</p>
+                <a href="#request" class="btn btn-primary">Get Started</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Design Request Form Section -->
+    <section id="request" class="request-section">
+        <div class="container">
+            <h2 class="section-title">Request Your Design</h2>
+            
+            <form id="designRequestForm" class="design-form">
+                <div class="form-group">
+                    <label for="clientName">Your Name *</label>
+                    <input type="text" id="clientName" name="clientName" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email Address *</label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="projectType">Project Type *</label>
+                    <select id="projectType" name="projectType" required>
+                        <option value="">Select a project type</option>
+                        <option value="website">New Website</option>
+                        <option value="redesign">Website Redesign</option>
+                        <option value="landing">Landing Page</option>
+                        <option value="ecommerce">E-commerce Site</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="timeline">Timeline *</label>
+                    <select id="timeline" name="timeline" required>
+                        <option value="">Select timeline</option>
+                        <option value="asap">ASAP</option>
+                        <option value="1month">Within 1 Month</option>
+                        <option value="2-3months">2-3 Months</option>
+                        <option value="flexible">Flexible</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="budget">Budget Range *</label>
+                    <select id="budget" name="budget" required>
+                        <option value="">Select budget range</option>
+                        <option value="200-500">$200 - $500</option>
+                        <option value="500-1000">$500 - $1,000</option>
+                        <option value="1000-2500">$1,000 - $2,500</option>
+                        <option value="2500-5000">$2,500 - $5,000</option>
+                        <option value="5000+">$5,000+</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="designDescription">Project Description *</label>
+                    <textarea id="designDescription" name="designDescription" rows="5" required placeholder="Tell us about your project, what you want your website to look like, key features you need, color preferences, style preferences, etc..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="referenceWebsites">Reference Websites</label>
+                    <textarea id="referenceWebsites" name="referenceWebsites" rows="4" placeholder="List any websites whose designs you like. Include URLs separated by commas or new lines."></textarea>
+                    <small class="form-help">Share links to websites whose designs inspire you or match your vision</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="colorPreferences">Color Preferences</label>
+                    <input type="text" id="colorPreferences" name="colorPreferences" placeholder="e.g., Blue and white, Dark theme, etc.">
+                </div>
+
+                <div class="form-group">
+                    <label for="stylePreferences">Style Preferences</label>
+                    <input type="text" id="stylePreferences" name="stylePreferences" placeholder="e.g., Modern, Minimalist, Bold, Professional, etc.">
+                </div>
+
+                <div class="form-group">
+                    <label for="keyFeatures">Key Features Needed</label>
+                    <textarea id="keyFeatures" name="keyFeatures" rows="4" placeholder="List important features: Contact form, Blog, E-commerce, Gallery, Booking system, etc."></textarea>
+                </div>
+
+                <div class="form-group checkbox-group">
+                    <label>
+                        <input type="checkbox" id="agreeTerms" name="agreeTerms" required>
+                        I agree to the terms and conditions *
+                    </label>
+                </div>
+
+                <div id="formMessage" class="form-message"></div>
+
+                <button type="submit" class="btn btn-primary btn-large">Submit Request</button>
+            </form>
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section id="contact" class="contact">
+        <div class="container">
+            <h2 class="section-title">Contact</h2>
+            <p class="contact-email">chrisserknee@gmail.com</p>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2024 CerneyDesigns. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
+

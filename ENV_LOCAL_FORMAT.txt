@@ -1,0 +1,15 @@
+# .env.local File Format
+# Create a file named .env.local in the project root with the following format:
+
+SUPABASE_URL=https://your-project-id.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
+SUPABASE_STORAGE_BUCKET_NAME=design-requests
+PORT=3000
+
+# Instructions:
+# 1. Get your Supabase URL and Service Role Key from:
+#    https://app.supabase.com/project/_/settings/api
+# 2. Create a storage bucket named "design-requests" (or change the name above)
+# 3. Make sure the bucket is set to public if you want public access to PDFs
+# 4. Never commit .env.local to git - it contains sensitive credentials
+
