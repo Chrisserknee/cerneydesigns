@@ -38,6 +38,14 @@ document.getElementById('designRequestForm').addEventListener('submit', async (e
             body: JSON.stringify(data),
         });
         
+        // Check if response is actually JSON
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            const text = await response.text();
+            console.error('Non-JSON response received:', text.substring(0, 200));
+            throw new Error('Server returned an invalid response. Please check if the server is running.');
+        }
+        
         const result = await response.json();
         
         if (response.ok) {
