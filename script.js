@@ -30,7 +30,10 @@ document.getElementById('designRequestForm').addEventListener('submit', async (e
     messageDiv.textContent = '';
     
     try {
-        const response = await fetch('/api/submit-request', {
+        // Use absolute URL if needed, or relative URL if server is running
+        const apiUrl = window.location.origin + '/api/submit-request';
+        
+        const response = await fetch(apiUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -43,7 +46,7 @@ document.getElementById('designRequestForm').addEventListener('submit', async (e
         if (!contentType || !contentType.includes('application/json')) {
             const text = await response.text();
             console.error('Non-JSON response received:', text.substring(0, 200));
-            throw new Error('Server returned an invalid response. Please check if the server is running.');
+            throw new Error('Server returned an invalid response. Please make sure the server is running on port 3000.');
         }
         
         const result = await response.json();
