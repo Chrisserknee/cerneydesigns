@@ -1,3 +1,8 @@
+// Import and initialize Vercel Analytics
+import { inject } from '@vercel/analytics';
+
+inject();
+
 // Handle form submission
 document.getElementById('designRequestForm').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -11,6 +16,7 @@ document.getElementById('designRequestForm').addEventListener('submit', async (e
     // Trim whitespace from text fields
     if (data.clientName) data.clientName = data.clientName.trim();
     if (data.email) data.email = data.email.trim();
+    if (data.phoneNumber) data.phoneNumber = data.phoneNumber.trim();
     if (data.projectType) data.projectType = data.projectType.trim();
     if (data.timeline) data.timeline = data.timeline.trim();
     if (data.budget) data.budget = data.budget.trim();
@@ -33,20 +39,27 @@ document.getElementById('designRequestForm').addEventListener('submit', async (e
         // Use absolute URL if needed, or relative URL if server is running
         const apiUrl = window.location.origin + '/api/submit-request';
         
+        // Add timeout to prevent hanging requests
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+        
         const response = await fetch(apiUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify(data),
+            signal: controller.signal,
         });
+        
+        clearTimeout(timeoutId);
         
         // Check if response is actually JSON
         const contentType = response.headers.get('content-type');
         if (!contentType || !contentType.includes('application/json')) {
             const text = await response.text();
-            console.error('Non-JSON response received:', text.substring(0, 200));
-            throw new Error('Server returned an invalid response. Please make sure the server is running on port 3000.');
+            console.error('Non-JSON response received');
+            throw new Error('Server returned an invalid response. Please try again.');
         }
         
         const result = await response.json();
@@ -61,11 +74,19 @@ document.getElementById('designRequestForm').addEventListener('submit', async (e
             // Scroll to message
             messageDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         } else {
+            // Handle validation errors
+            if (result.details && Array.isArray(result.details)) {
+                throw new Error(result.details.join(', '));
+            }
             throw new Error(result.error || 'Failed to submit request');
         }
     } catch (error) {
         messageDiv.className = 'form-message error';
-        messageDiv.textContent = error.message || 'An error occurred. Please try again.';
+        if (error.name === 'AbortError') {
+            messageDiv.textContent = 'Request timed out. Please check your connection and try again.';
+        } else {
+            messageDiv.textContent = error.message || 'An error occurred. Please try again.';
+        }
     } finally {
         submitButton.disabled = false;
         submitButton.textContent = originalText;

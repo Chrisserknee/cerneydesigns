@@ -42,3 +42,4 @@ You can view requests in:
 - **Supabase Dashboard** → Table Editor → `design_requests`
 - **Supabase Dashboard** → Storage → `design-requests` bucket (for PDFs)
 
+

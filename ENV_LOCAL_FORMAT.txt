@@ -6,10 +6,20 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
 SUPABASE_STORAGE_BUCKET_NAME=design-requests
 PORT=3000
 
+# Optional: Admin API Key (for accessing /api/requests endpoint)
+# Generate a secure key using: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+ADMIN_API_KEY=your-secure-random-api-key-here
+
+# Optional: Allowed CORS Origins (comma-separated, for production)
+# Example: ALLOWED_ORIGINS=https://cerneydesigns.com,https://www.cerneydesigns.com
+ALLOWED_ORIGINS=http://localhost:3000,https://cerneydesigns.com,https://*.vercel.app
+
 # Instructions:
 # 1. Get your Supabase URL and Service Role Key from:
 #    https://app.supabase.com/project/_/settings/api
 # 2. Create a storage bucket named "design-requests" (or change the name above)
 # 3. Make sure the bucket is set to public if you want public access to PDFs
-# 4. Never commit .env.local to git - it contains sensitive credentials
+# 4. Generate a secure ADMIN_API_KEY for protecting admin endpoints
+# 5. Never commit .env.local to git - it contains sensitive credentials
+
 

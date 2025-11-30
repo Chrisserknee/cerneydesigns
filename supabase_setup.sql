@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS design_requests (
     id TEXT PRIMARY KEY,
     client_name TEXT NOT NULL,
     email TEXT NOT NULL,
+    phone_number TEXT,
     project_type TEXT NOT NULL,
     timeline TEXT NOT NULL,
     budget TEXT NOT NULL,
@@ -60,4 +61,5 @@ CREATE POLICY "Service role can do everything"
 --     ON design_requests
 --     FOR SELECT
 --     USING (auth.uid()::text = id OR auth.email() = email);
+
 
