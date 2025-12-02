@@ -453,7 +453,16 @@ section {
     border-top: 1px solid var(--border-color);
 }
 
-.contact-email {
+.contact-info {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 2rem;
+    flex-wrap: wrap;
+}
+
+.contact-email,
+.contact-phone {
     font-size: 1.25rem;
     color: var(--text-dark);
     font-weight: 500;
