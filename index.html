@@ -27,11 +27,23 @@
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
 </head>
 <body>
+    <!-- Film Grain Overlay -->
+    <div class="film-grain" aria-hidden="true"></div>
+
+    <!-- Scroll Progress Bar -->
+    <div class="scroll-progress" id="scrollProgress" aria-hidden="true"></div>
+
+    <!-- Cursor Glow -->
+    <div class="cursor-glow" id="cursorGlow" aria-hidden="true"></div>
+
     <!-- Navigation -->
     <nav class="navbar" id="navbar">
         <div class="container">
             <div class="nav-brand">
-                <a href="#home" class="brand-link">Chris Cerney</a>
+                <a href="#home" class="brand-link">
+                    <span class="brand-first">Chris</span>
+                    <span class="brand-last">Cerney</span>
+                </a>
             </div>
             <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation">
                 <span></span>
@@ -50,28 +62,44 @@
 
     <!-- Hero Section -->
     <section id="home" class="hero">
+        <div class="hero-bg-lines" aria-hidden="true">
+            <span></span><span></span><span></span><span></span><span></span>
+        </div>
         <div class="hero-overlay"></div>
+        <div class="hero-vignette" aria-hidden="true"></div>
         <div class="container">
             <div class="hero-content">
-                <h1 class="hero-title">Chris Cerney</h1>
-                <p class="hero-subtitle">Filmmaker & Video Producer</p>
-                <div class="hero-divider"></div>
-                <p class="hero-tagline">Crafting cinematic stories through video production, advertisements, and short films.</p>
-                <a href="#portfolio" class="btn btn-primary">View Portfolio</a>
+                <p class="hero-eyebrow reveal-text">filmmaker &bull; storyteller &bull; producer</p>
+                <h1 class="hero-title">
+                    <span class="title-line reveal-text" style="--delay: 0.2s">Chris</span>
+                    <span class="title-line reveal-text" style="--delay: 0.4s">Cerney</span>
+                </h1>
+                <div class="hero-divider reveal-text" style="--delay: 0.6s"></div>
+                <p class="hero-tagline reveal-text" style="--delay: 0.7s">Crafting cinematic stories through video production, advertisements, and short films.</p>
+                <a href="#portfolio" class="btn btn-primary magnetic reveal-text" style="--delay: 0.9s">
+                    <span>View Portfolio</span>
+                </a>
             </div>
+        </div>
+        <div class="scroll-indicator" aria-hidden="true">
+            <span class="scroll-text">Scroll</span>
+            <span class="scroll-line"></span>
         </div>
     </section>
 
     <!-- Portfolio Section -->
     <section id="portfolio" class="portfolio-section">
         <div class="container">
-            <h2 class="section-title">Portfolio</h2>
-            <div class="section-divider"></div>
+            <div class="section-header reveal-section">
+                <span class="section-label">Selected Work</span>
+                <h2 class="section-title">Portfolio</h2>
+                <div class="section-divider"></div>
+            </div>
 
-            <div class="portfolio-grid">
-
-                <!-- Video 1 -->
-                <div class="portfolio-item" data-aos="fade-up">
+            <!-- Featured Video -->
+            <div class="portfolio-featured reveal-section">
+                <div class="portfolio-item featured">
+                    <span class="portfolio-number">01</span>
                     <div class="video-wrapper">
                         <iframe 
                             src="https://www.youtube.com/embed/IG3PF0REBps" 
@@ -83,14 +111,23 @@
                         </iframe>
                     </div>
                     <div class="portfolio-info">
+                        <span class="portfolio-year">2023</span>
                         <h3>"Lighthouse Cinema is Back"</h3>
                         <p>This is the first advertisement I made for Lighthouse Cinema in 2023.</p>
-                        <a href="https://www.youtube.com/watch?v=IG3PF0REBps" target="_blank" rel="noopener noreferrer" class="watch-link">Watch on YouTube &rarr;</a>
+                        <a href="https://www.youtube.com/watch?v=IG3PF0REBps" target="_blank" rel="noopener noreferrer" class="watch-link">
+                            <span>Watch on YouTube</span>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                        </a>
                     </div>
                 </div>
+            </div>
+
+            <!-- Portfolio Grid -->
+            <div class="portfolio-grid">
 
                 <!-- Video 2 -->
-                <div class="portfolio-item" data-aos="fade-up">
+                <div class="portfolio-item reveal-section">
+                    <span class="portfolio-number">02</span>
                     <div class="video-wrapper">
                         <iframe 
                             src="https://www.youtube.com/embed/RkJYL-ZsmOc" 
@@ -102,14 +139,19 @@
                         </iframe>
                     </div>
                     <div class="portfolio-info">
+                        <span class="portfolio-year">2024</span>
                         <h3>"Grindhouse Datenight at Lighthouse Cinema"</h3>
                         <p>As if plucked straight from a vintage 1970s movie theater, Chris Cerney and David Diaz premiered their advertisement at Lighthouse Cinema in early 2024.</p>
-                        <a href="https://www.youtube.com/watch?v=RkJYL-ZsmOc&feature=youtu.be" target="_blank" rel="noopener noreferrer" class="watch-link">Watch on YouTube &rarr;</a>
+                        <a href="https://www.youtube.com/watch?v=RkJYL-ZsmOc&feature=youtu.be" target="_blank" rel="noopener noreferrer" class="watch-link">
+                            <span>Watch on YouTube</span>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                        </a>
                     </div>
                 </div>
 
                 <!-- Video 3 -->
-                <div class="portfolio-item" data-aos="fade-up">
+                <div class="portfolio-item reveal-section">
+                    <span class="portfolio-number">03</span>
                     <div class="video-wrapper">
                         <iframe 
                             src="https://www.youtube.com/embed/PLOmmmfiQKk" 
@@ -121,14 +163,19 @@
                         </iframe>
                     </div>
                     <div class="portfolio-info">
+                        <span class="portfolio-year">2024</span>
                         <h3>"Lights, Camera, Terror!"</h3>
                         <p>This is a special Halloween-themed short film filled with old movie nostalgia, made entirely from scratch with no budget.</p>
-                        <a href="https://www.youtube.com/watch?v=PLOmmmfiQKk" target="_blank" rel="noopener noreferrer" class="watch-link">Watch on YouTube &rarr;</a>
+                        <a href="https://www.youtube.com/watch?v=PLOmmmfiQKk" target="_blank" rel="noopener noreferrer" class="watch-link">
+                            <span>Watch on YouTube</span>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                        </a>
                     </div>
                 </div>
 
                 <!-- Video 4 -->
-                <div class="portfolio-item" data-aos="fade-up">
+                <div class="portfolio-item reveal-section">
+                    <span class="portfolio-number">04</span>
                     <div class="video-wrapper">
                         <iframe 
                             src="https://www.youtube.com/embed/32YF-7toxcQ" 
@@ -140,14 +187,19 @@
                         </iframe>
                     </div>
                     <div class="portfolio-info">
+                        <span class="portfolio-year">2024</span>
                         <h3>"Pre-Summer Pool Party"</h3>
                         <p>I was tasked with creating an engaging music video-style short with local rappers and friends.</p>
-                        <a href="https://www.youtube.com/watch?v=32YF-7toxcQ" target="_blank" rel="noopener noreferrer" class="watch-link">Watch on YouTube &rarr;</a>
+                        <a href="https://www.youtube.com/watch?v=32YF-7toxcQ" target="_blank" rel="noopener noreferrer" class="watch-link">
+                            <span>Watch on YouTube</span>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                        </a>
                     </div>
                 </div>
 
                 <!-- Video 5 -->
-                <div class="portfolio-item" data-aos="fade-up">
+                <div class="portfolio-item reveal-section">
+                    <span class="portfolio-number">05</span>
                     <div class="video-wrapper">
                         <iframe 
                             src="https://www.youtube.com/embed/70drCPzd5oo" 
@@ -159,14 +211,19 @@
                         </iframe>
                     </div>
                     <div class="portfolio-info">
+                        <span class="portfolio-year">2023</span>
                         <h3>"Back To The Future & DMC Delorian at Lighthouse Cinema"</h3>
                         <p>I was asked to create a fun, original video in 2023 as a promotion for our special screening of "Back to the Future." We even had a local car touring company loan us their DMC Delorian for the event.</p>
-                        <a href="https://www.youtube.com/watch?v=70drCPzd5oo" target="_blank" rel="noopener noreferrer" class="watch-link">Watch on YouTube &rarr;</a>
+                        <a href="https://www.youtube.com/watch?v=70drCPzd5oo" target="_blank" rel="noopener noreferrer" class="watch-link">
+                            <span>Watch on YouTube</span>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                        </a>
                     </div>
                 </div>
 
                 <!-- Video 6 -->
-                <div class="portfolio-item" data-aos="fade-up">
+                <div class="portfolio-item reveal-section">
+                    <span class="portfolio-number">06</span>
                     <div class="video-wrapper">
                         <iframe 
                             src="https://www.youtube.com/embed/eDzJfvrDAWM" 
@@ -178,9 +235,13 @@
                         </iframe>
                     </div>
                     <div class="portfolio-info">
+                        <span class="portfolio-year">2024</span>
                         <h3>"The Shop" Promo Reel</h3>
                         <p>This is a promo reel I made for a local "Artists Hub."</p>
-                        <a href="https://www.youtube.com/watch?v=eDzJfvrDAWM" target="_blank" rel="noopener noreferrer" class="watch-link">Watch on YouTube &rarr;</a>
+                        <a href="https://www.youtube.com/watch?v=eDzJfvrDAWM" target="_blank" rel="noopener noreferrer" class="watch-link">
+                            <span>Watch on YouTube</span>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                        </a>
                     </div>
                 </div>
 
@@ -188,14 +249,60 @@
         </div>
     </section>
 
+    <!-- Marquee Divider -->
+    <div class="marquee-strip" aria-hidden="true">
+        <div class="marquee-track">
+            <span>Cinematography</span>
+            <span>&bull;</span>
+            <span>Advertising</span>
+            <span>&bull;</span>
+            <span>Short Films</span>
+            <span>&bull;</span>
+            <span>Music Videos</span>
+            <span>&bull;</span>
+            <span>Promo Reels</span>
+            <span>&bull;</span>
+            <span>Cinematography</span>
+            <span>&bull;</span>
+            <span>Advertising</span>
+            <span>&bull;</span>
+            <span>Short Films</span>
+            <span>&bull;</span>
+            <span>Music Videos</span>
+            <span>&bull;</span>
+            <span>Promo Reels</span>
+            <span>&bull;</span>
+        </div>
+    </div>
+
     <!-- About Section -->
     <section id="about" class="about-section">
         <div class="container">
-            <h2 class="section-title">About Me</h2>
-            <div class="section-divider"></div>
-            <div class="about-content">
-                <p>I'm Chris Cerney, a filmmaker and video producer passionate about telling compelling stories through the lens. From cinema advertisements to short films, I bring creative vision and cinematic quality to every project.</p>
-                <a href="#blog" class="btn btn-outline">Read My Story</a>
+            <div class="section-header reveal-section">
+                <span class="section-label">Who I Am</span>
+                <h2 class="section-title">About Me</h2>
+                <div class="section-divider"></div>
+            </div>
+            <div class="about-content reveal-section">
+                <div class="about-text">
+                    <p class="about-lead">I'm Chris Cerney, a filmmaker and video producer passionate about telling compelling stories through the lens.</p>
+                    <p>From cinema advertisements to short films, I bring creative vision and cinematic quality to every project. Whether it's capturing the nostalgia of a vintage movie theater or producing high-energy music video content, my goal is always the same &mdash; to create something that moves people.</p>
+                </div>
+                <div class="about-stats">
+                    <div class="stat">
+                        <span class="stat-number" data-count="6">0</span>
+                        <span class="stat-label">Projects</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-number" data-count="2">0</span>
+                        <span class="stat-label">Years</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-number" data-count="3">0</span>
+                        <span class="stat-label">Clients</span>
+                    </div>
+                </div>
+                <a href="#blog" class="btn btn-outline magnetic"><span>Read My Story</span></a>
             </div>
         </div>
     </section>
@@ -203,11 +310,14 @@
     <!-- Blog Section -->
     <section id="blog" class="blog-section">
         <div class="container">
-            <h2 class="section-title">Blog</h2>
-            <div class="section-divider"></div>
-            <div class="blog-content">
+            <div class="section-header reveal-section">
+                <span class="section-label">Behind the Scenes</span>
+                <h2 class="section-title">Blog</h2>
+                <div class="section-divider"></div>
+            </div>
+            <div class="blog-content reveal-section">
                 <p>Read about my journey, behind-the-scenes stories, and thoughts on filmmaking.</p>
-                <a href="#" class="btn btn-primary">Read the Blog</a>
+                <a href="#" class="btn btn-primary magnetic"><span>Read the Blog</span></a>
             </div>
         </div>
     </section>
@@ -215,13 +325,19 @@
     <!-- Newsletter Section -->
     <section id="newsletter" class="newsletter-section">
         <div class="container">
-            <h2 class="section-title">Newsletter</h2>
-            <div class="section-divider"></div>
-            <div class="newsletter-content">
+            <div class="section-header reveal-section">
+                <span class="section-label">Stay Connected</span>
+                <h2 class="section-title">Newsletter</h2>
+                <div class="section-divider"></div>
+            </div>
+            <div class="newsletter-content reveal-section">
                 <p>Stay up to date with my latest projects, behind-the-scenes content, and upcoming releases.</p>
                 <form id="newsletterForm" class="newsletter-form">
-                    <input type="email" placeholder="Enter your email" required aria-label="Email address">
-                    <button type="submit" class="btn btn-primary">Subscribe</button>
+                    <div class="form-group">
+                        <input type="email" id="emailInput" placeholder=" " required aria-label="Email address">
+                        <label for="emailInput">Your email address</label>
+                    </div>
+                    <button type="submit" class="btn btn-primary magnetic"><span>Subscribe</span></button>
                 </form>
             </div>
         </div>
@@ -230,11 +346,14 @@
     <!-- Donate Section -->
     <section id="donate" class="donate-section">
         <div class="container">
-            <h2 class="section-title">Support My Work</h2>
-            <div class="section-divider"></div>
-            <div class="donate-content">
+            <div class="section-header reveal-section">
+                <span class="section-label">Help Create</span>
+                <h2 class="section-title">Support My Work</h2>
+                <div class="section-divider"></div>
+            </div>
+            <div class="donate-content reveal-section">
                 <p>If you enjoy my work and want to support future projects, consider making a donation. Every contribution helps fund new creative endeavors.</p>
-                <a href="#" class="btn btn-primary">Donate</a>
+                <a href="#" class="btn btn-primary magnetic"><span>Donate</span></a>
             </div>
         </div>
     </section>
@@ -242,10 +361,15 @@
     <!-- Contact Section -->
     <section id="contact" class="contact-section">
         <div class="container">
-            <h2 class="section-title">Contact</h2>
-            <div class="section-divider"></div>
-            <div class="contact-info">
-                <a href="mailto:chrisserknee@gmail.com" class="contact-link">chrisserknee@gmail.com</a>
+            <div class="section-header reveal-section">
+                <span class="section-label">Get in Touch</span>
+                <h2 class="section-title">Contact</h2>
+                <div class="section-divider"></div>
+            </div>
+            <div class="contact-info reveal-section">
+                <a href="mailto:chrisserknee@gmail.com" class="contact-link magnetic">
+                    <span>chrisserknee@gmail.com</span>
+                </a>
             </div>
         </div>
     </section>
@@ -253,8 +377,10 @@
     <!-- Footer -->
     <footer class="footer">
         <div class="container">
-            <p>&copy; 2026 Chris Cerney. All rights reserved.</p>
-            <p class="footer-domain">chriscerney.org</p>
+            <div class="footer-inner">
+                <p>&copy; 2026 Chris Cerney. All rights reserved.</p>
+                <p class="footer-domain">chriscerney.org</p>
+            </div>
         </div>
     </footer>
 
