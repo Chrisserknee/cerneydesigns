@@ -1068,3 +1068,25 @@ section {
         transform: none;
     }
 }
+
+/* ==================== DIRECTOR REEL ==================== */
+.director-reel-section {
+    padding: 4rem 0;
+    background: var(--bg-dark);
+}
+
+.director-reel {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.director-reel-gif {
+    display: block;
+    max-width: 100%;
+    width: 800px;
+    height: auto;
+    border-radius: 8px;
+    box-shadow: var(--shadow-lg);
+    border: 1px solid var(--border-color);
+}
