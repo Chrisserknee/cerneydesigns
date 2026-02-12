@@ -249,16 +249,22 @@ body {
 
 .hero-title {
     font-family: 'Cormorant Garamond', serif;
-    font-size: clamp(3rem, 8vw, 6rem);
+    font-size: clamp(3.5rem, 10vw, 7.5rem);
     font-weight: 300;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.15em;
     color: var(--text-primary);
-    margin-bottom: 0.5rem;
-    line-height: 1.1;
+    margin-bottom: 0.75rem;
+    line-height: 1.05;
+    text-transform: uppercase;
 }
 
 .title-line {
     display: block;
+}
+
+.title-line:last-child {
+    color: var(--accent);
+    font-weight: 400;
 }
 
 .hero-subtitle {
@@ -432,14 +438,15 @@ section {
 .portfolio-item {
     background: var(--bg-card);
     border: 1px solid var(--border-color);
+    border-radius: 6px;
     overflow: hidden;
-    transition: opacity 0.6s ease, transform 0.6s ease, border-color var(--transition), box-shadow var(--transition);
+    transition: opacity 0.6s ease, transform 0.6s ease, border-color 0.4s ease, box-shadow 0.4s ease;
 }
 
 .portfolio-item:hover {
-    border-color: var(--border-light);
-    box-shadow: var(--shadow);
-    transform: translateY(-4px);
+    border-color: rgba(201, 169, 110, 0.3);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(201, 169, 110, 0.1);
+    transform: translateY(-6px);
 }
 
 .video-wrapper {
@@ -447,6 +454,7 @@ section {
     width: 100%;
     padding-bottom: 56.25%; /* 16:9 aspect ratio */
     background: #000;
+    border-bottom: 1px solid var(--border-color);
 }
 
 .video-wrapper iframe {
@@ -506,20 +514,24 @@ section {
     gap: 0.5rem;
     color: var(--accent);
     text-decoration: none;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     font-weight: 500;
-    letter-spacing: 0.04em;
-    transition: color var(--transition);
-    border-bottom: 1px solid transparent;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    transition: all var(--transition);
+    padding: 0.4rem 0;
+    border-bottom: 1px solid rgba(201, 169, 110, 0.2);
 }
 
 .watch-link:hover {
     color: var(--accent-hover);
     border-bottom-color: var(--accent-hover);
+    gap: 0.75rem;
 }
 
 .portfolio-featured .portfolio-item {
     border: 1px solid var(--accent);
+    border-radius: 6px;
 }
 
 .portfolio-featured .portfolio-number {
@@ -819,7 +831,7 @@ section {
     }
 
     .hero-title {
-        font-size: clamp(2.5rem, 10vw, 4rem);
+        font-size: clamp(2.5rem, 12vw, 4.5rem);
     }
 
     section {
