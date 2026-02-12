@@ -240,22 +240,21 @@ body {
 
 .hero-eyebrow {
     text-transform: uppercase;
-    font-size: 0.8rem;
-    letter-spacing: 0.25em;
-    color: var(--accent);
-    font-weight: 600;
-    margin-bottom: 1.25rem;
+    font-size: 0.75rem;
+    letter-spacing: 0.3em;
+    color: var(--text-secondary);
+    font-weight: 400;
+    margin-bottom: 1.5rem;
 }
 
 .hero-title {
     font-family: 'Cormorant Garamond', serif;
     font-size: clamp(3.5rem, 10vw, 7.5rem);
     font-weight: 300;
-    letter-spacing: 0.15em;
+    letter-spacing: 0.08em;
     color: var(--text-primary);
     margin-bottom: 0.75rem;
-    line-height: 1.05;
-    text-transform: uppercase;
+    line-height: 1.15;
 }
 
 .title-line {
@@ -264,7 +263,7 @@ body {
 
 .title-line:last-child {
     color: var(--accent);
-    font-weight: 400;
+    font-style: italic;
 }
 
 .hero-subtitle {
@@ -278,10 +277,10 @@ body {
 }
 
 .hero-divider {
-    width: 60px;
-    height: 1px;
+    width: 1px;
+    height: 50px;
     background: var(--accent);
-    margin: 0 auto 1.5rem;
+    margin: 1.5rem auto;
 }
 
 .hero-tagline {
@@ -831,7 +830,7 @@ section {
     }
 
     .hero-title {
-        font-size: clamp(2.5rem, 12vw, 4.5rem);
+        font-size: clamp(2.5rem, 10vw, 4.5rem);
     }
 
     section {
