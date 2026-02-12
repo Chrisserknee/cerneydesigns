@@ -435,17 +435,20 @@ section {
 }
 
 .portfolio-item {
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
     overflow: hidden;
-    transition: opacity 0.6s ease, transform 0.6s ease, border-color 0.4s ease, box-shadow 0.4s ease;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    transition: opacity 0.6s ease, transform 0.6s ease, border-color 0.4s ease, box-shadow 0.4s ease, background 0.4s ease;
 }
 
 .portfolio-item:hover {
-    border-color: rgba(201, 169, 110, 0.3);
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(201, 169, 110, 0.1);
-    transform: translateY(-6px);
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(201, 169, 110, 0.2);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+    transform: translateY(-5px);
 }
 
 .video-wrapper {
@@ -453,7 +456,7 @@ section {
     width: 100%;
     padding-bottom: 56.25%; /* 16:9 aspect ratio */
     background: #000;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .video-wrapper iframe {
@@ -476,14 +479,15 @@ section {
 
 .portfolio-year {
     display: inline-block;
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     text-transform: uppercase;
     letter-spacing: 0.15em;
     color: var(--accent);
     font-weight: 600;
-    border: 1px solid var(--accent);
-    padding: 0.15rem 0.5rem;
+    border: 1px solid rgba(201, 169, 110, 0.3);
+    padding: 0.2rem 0.6rem;
     margin-bottom: 0.5rem;
+    border-radius: 3px;
 }
 
 .portfolio-info {
@@ -529,8 +533,8 @@ section {
 }
 
 .portfolio-featured .portfolio-item {
-    border: 1px solid var(--accent);
-    border-radius: 6px;
+    border: 1px solid rgba(201, 169, 110, 0.2);
+    background: rgba(201, 169, 110, 0.03);
 }
 
 .portfolio-featured .portfolio-number {
