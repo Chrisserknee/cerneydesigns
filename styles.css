@@ -279,7 +279,7 @@ body {
 .hero-divider {
     width: 1px;
     height: 50px;
-    background: var(--accent);
+    background: linear-gradient(to bottom, transparent, var(--accent) 30%, var(--accent) 70%, transparent);
     margin: 1.5rem auto;
 }
 
