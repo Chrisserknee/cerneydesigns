@@ -447,6 +447,59 @@ section {
     background: var(--bg-dark);
 }
 
+.portfolio-tabs {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-bottom: 3rem;
+    flex-wrap: wrap;
+}
+
+.portfolio-tab {
+    padding: 0.6rem 1.5rem;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 50px;
+    color: var(--text-secondary);
+    font-family: 'Lora', serif;
+    font-size: 0.85rem;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.portfolio-tab:hover {
+    border-color: rgba(201, 169, 110, 0.3);
+    color: var(--text-primary);
+}
+
+.portfolio-tab.active {
+    background: rgba(201, 169, 110, 0.12);
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.portfolio-category {
+    margin-bottom: 4rem;
+    transition: opacity 0.4s ease, max-height 0.5s ease;
+}
+
+.portfolio-category.hidden {
+    display: none;
+}
+
+.category-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.5rem;
+    font-weight: 400;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid rgba(201, 169, 110, 0.15);
+}
+
 .portfolio-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));

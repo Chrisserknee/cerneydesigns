@@ -264,6 +264,29 @@
         }
     }, { passive: true });
 
+    // ==================== PORTFOLIO TABS ====================
+    const portfolioTabs = document.querySelectorAll('.portfolio-tab');
+    const portfolioCategories = document.querySelectorAll('.portfolio-category');
+
+    portfolioTabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            const filter = tab.dataset.filter;
+
+            portfolioTabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+
+            portfolioCategories.forEach(cat => {
+                if (filter === 'all') {
+                    cat.classList.remove('hidden');
+                } else if (cat.dataset.category === filter) {
+                    cat.classList.remove('hidden');
+                } else {
+                    cat.classList.add('hidden');
+                }
+            });
+        });
+    });
+
     // Initial calls
     updateScrollProgress();
     handleNavScroll();
