@@ -1,4 +1,4 @@
-﻿/* ==================== RESET & VARIABLES ==================== */
+/* ==================== RESET & VARIABLES ==================== */
 * {
     margin: 0;
     padding: 0;
@@ -236,6 +236,37 @@ body {
     position: relative;
     z-index: 1;
     padding: 2rem;
+}
+
+.hero-instagram {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 0.8rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    font-weight: 400;
+    margin-bottom: 1.25rem;
+    padding: 0.4rem 1rem;
+    border: 1px solid rgba(201, 169, 110, 0.15);
+    border-radius: 50px;
+    transition: all 0.4s ease;
+    background: rgba(201, 169, 110, 0.03);
+}
+
+.hero-instagram:hover {
+    color: var(--accent);
+    border-color: rgba(201, 169, 110, 0.4);
+    background: rgba(201, 169, 110, 0.08);
+    transform: translateY(-1px);
+}
+
+.instagram-icon {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
 }
 
 .hero-eyebrow {
