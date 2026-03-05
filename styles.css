@@ -892,22 +892,6 @@ section {
 }
 
 /* ==================== DIRECTOR REEL ==================== */
-.director-reel-section {
-    background: var(--bg-dark);
-    padding: 4rem 0;
-}
-
-.director-reel {
-    text-align: center;
-}
-
-.director-reel-gif {
-    max-width: 600px;
-    width: 100%;
-    height: auto;
-    border: 1px solid var(--border-color);
-}
-
 /* ==================== FOOTER ==================== */
 .footer {
     background: var(--bg-dark);
@@ -1029,9 +1013,5 @@ section {
 
     .stat-number {
         font-size: 2rem;
-    }
-
-    .director-reel-gif {
-        max-width: 100%;
     }
 }
