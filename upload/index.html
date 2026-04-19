@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#0a0a0a">
+    <title>Send a Tip &mdash; Chris Cerney</title>
+    <meta name="description" content="Submit photos, videos, or news tips directly to Chris Cerney.">
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="icon" type="image/svg+xml" href="/images/favicon.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <main class="page">
+        <header class="header">
+            <a href="/" class="back-link" aria-label="Back to main site">&larr; chriscerney.org</a>
+            <h1 class="title">Send a Tip</h1>
+            <p class="subtitle">Photos, videos, or documents. High-resolution upload, sent directly to Chris. Any size.</p>
+        </header>
+
+        <section class="uploader" id="uploader">
+            <label for="fileInput" class="dropzone" id="dropzone">
+                <input type="file" id="fileInput" accept="image/*,video/*,.pdf,.heic,.heif,.mov,.mp4" multiple hidden>
+                <div class="dropzone-inner">
+                    <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                        <path d="M12 16V4M12 4l-5 5M12 4l5 5" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <p class="dropzone-primary">Tap to choose files</p>
+                    <p class="dropzone-secondary">or drag &amp; drop. Photos, videos, any size.</p>
+                </div>
+            </label>
+
+            <ul class="file-list" id="fileList" aria-live="polite"></ul>
+
+            <details class="details-toggle" id="detailsToggle">
+                <summary>Add details (optional)</summary>
+                <div class="details-body">
+                    <label class="field">
+                        <span class="field-label">Your name</span>
+                        <input type="text" id="senderName" autocomplete="name" placeholder="Jane Doe">
+                    </label>
+                    <label class="field">
+                        <span class="field-label">Contact (email or phone)</span>
+                        <input type="text" id="senderContact" autocomplete="email" placeholder="you@example.com or (555) 123&ndash;4567">
+                    </label>
+                    <label class="field">
+                        <span class="field-label">What's this about?</span>
+                        <textarea id="description" rows="3" placeholder="Brief description, time, location, any context..."></textarea>
+                    </label>
+                    <label class="checkbox">
+                        <input type="checkbox" id="anonymous">
+                        <span>Send anonymously (no name or contact saved)</span>
+                    </label>
+                </div>
+            </details>
+
+            <button type="button" class="submit-btn" id="submitBtn" disabled>
+                <span class="btn-label">Send tip</span>
+            </button>
+
+            <p class="privacy-note">Your submission goes directly to Chris. Files are not shared publicly.</p>
+        </section>
+
+        <section class="progress-screen" id="progressScreen" hidden>
+            <h2 class="progress-title">Uploading&hellip;</h2>
+            <div class="progress-bar-wrap">
+                <div class="progress-bar" id="progressBar"></div>
+            </div>
+            <p class="progress-status" id="progressStatus">Preparing&hellip;</p>
+        </section>
+
+        <section class="thankyou-screen" id="thankyouScreen" hidden>
+            <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M8 12l3 3 5-6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <h2 class="thankyou-title">Thank you</h2>
+            <p class="thankyou-body">Your tip has been sent. Chris will review it personally.</p>
+
+            <div class="socials">
+                <p class="socials-label">Follow along</p>
+                <div class="socials-row">
+                    <a href="https://www.instagram.com/chrizcerney" target="_blank" rel="noopener noreferrer" class="social-link" aria-label="Instagram">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                            <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
+                            <circle cx="12" cy="12" r="5"/>
+                            <circle cx="17.5" cy="6.5" r="1.2" fill="currentColor" stroke="none"/>
+                        </svg>
+                    </a>
+                    <a href="https://www.facebook.com/chrizcerney" target="_blank" rel="noopener noreferrer" class="social-link" aria-label="Facebook">
+                        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                            <path d="M22 12a10 10 0 10-11.56 9.88v-6.99H7.9V12h2.54V9.8c0-2.51 1.49-3.89 3.77-3.89 1.09 0 2.23.19 2.23.19v2.46h-1.26c-1.24 0-1.63.77-1.63 1.56V12h2.77l-.44 2.89h-2.33v6.99A10 10 0 0022 12z"/>
+                        </svg>
+                    </a>
+                    <a href="https://www.tiktok.com/@chrizcerney" target="_blank" rel="noopener noreferrer" class="social-link" aria-label="TikTok">
+                        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                            <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-5.2 1.74 2.89 2.89 0 012.31-4.64 2.93 2.93 0 01.88.13V9.4a6.84 6.84 0 00-1-.05A6.33 6.33 0 005.8 20.1a6.34 6.34 0 0010.86-4.43v-7a8.16 8.16 0 004.77 1.52v-3.4a4.85 4.85 0 01-1.84-.1z"/>
+                        </svg>
+                    </a>
+                    <a href="https://x.com/chrizcerney" target="_blank" rel="noopener noreferrer" class="social-link" aria-label="X">
+                        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                            <path d="M18.244 2H21.5l-7.5 8.57L23 22h-6.8l-5.33-6.96L4.78 22H1.5l8.02-9.16L1 2h6.95l4.82 6.37L18.244 2zm-2.38 18h1.88L7.22 4H5.2l10.66 16z"/>
+                        </svg>
+                    </a>
+                </div>
+            </div>
+
+            <button type="button" class="send-another" id="sendAnother">Send another tip</button>
+        </section>
+
+        <section class="error-screen" id="errorScreen" hidden>
+            <h2 class="error-title">Upload failed</h2>
+            <p class="error-body" id="errorBody">Something went wrong.</p>
+            <button type="button" class="send-another" id="errorRetry">Try again</button>
+        </section>
+    </main>
+
+    <script src="upload.js"></script>
+</body>
+</html>
