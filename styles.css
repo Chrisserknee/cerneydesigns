@@ -992,6 +992,103 @@ section {
 }
 
 /* ==================== REDUCED MOTION ==================== */
+/* ==================== HERO ACTIONS ==================== */
+.hero-actions {
+    margin-top: 36px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    align-items: center;
+}
+
+/* ==================== STORIES PLACEHOLDER ==================== */
+.stories-section {
+    background: var(--bg);
+}
+
+.stories-placeholder {
+    max-width: 720px;
+    padding: 24px 0 8px;
+}
+
+.stories-placeholder-lead {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: clamp(1.35rem, 2.6vw, 1.75rem);
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    line-height: 1.35;
+    color: var(--text);
+    margin-bottom: 18px;
+}
+
+.stories-placeholder p:not(.stories-placeholder-lead) {
+    font-size: 1.02rem;
+    line-height: 1.75;
+    color: var(--text-dim);
+    margin-bottom: 28px;
+    max-width: 58ch;
+}
+
+.stories-placeholder-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-top: 4px;
+}
+
+/* ==================== CONTACT SECONDARY ==================== */
+.contact-secondary {
+    margin-top: 24px;
+    font-size: 0.98rem;
+    color: var(--text-dim);
+    line-height: 1.7;
+}
+
+.contact-secondary a {
+    color: var(--accent-blue);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color var(--transition), color var(--transition);
+}
+
+.contact-secondary a:hover {
+    color: var(--text);
+    border-bottom-color: var(--accent-red);
+}
+
+/* ==================== STANDALONE PAGE (PORTFOLIO) ==================== */
+body.page-portfolio .portfolio-section {
+    padding-top: 160px;
+}
+
+body.page-portfolio .portfolio-section .section-title {
+    font-size: clamp(2.6rem, 6vw, 4.4rem);
+}
+
+@media (max-width: 768px) {
+    body.page-portfolio .portfolio-section {
+        padding-top: 120px;
+    }
+
+    .stories-placeholder-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .stories-placeholder-actions .btn {
+        width: 100%;
+    }
+
+    .hero-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .hero-actions .btn {
+        width: 100%;
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
         animation-duration: 0.01ms !important;

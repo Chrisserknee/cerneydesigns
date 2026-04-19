@@ -5,21 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-Content-Type-Options" content="nosniff">
     <meta http-equiv="X-Frame-Options" content="SAMEORIGIN">
-    <title>Chris Cerney - Reporter & Photo/Videographer</title>
-    
-    <!-- Open Graph / Facebook -->
+    <meta name="theme-color" content="#0e1116">
+    <title>Chris Cerney &mdash; Reporter, Photo/Videographer</title>
+
     <meta property="og:type" content="website">
-    <meta property="og:title" content="Chris Cerney - Reporter & Photo/Videographer">
-    <meta property="og:description" content="Reporter & Photo/Videographer based in California. Creating professional news packages, photo and video content, advertisements, and promotional campaigns for live audiences and digital platforms.">
+    <meta property="og:title" content="Chris Cerney &mdash; Reporter, Photo/Videographer">
+    <meta property="og:description" content="Independent news coverage and original reporting from Chris Cerney.">
     <meta property="og:url" content="https://chriscerney.org">
-    
-    <!-- Twitter -->
+
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Chris Cerney - Reporter & Photo/Videographer">
-    <meta name="twitter:description" content="Reporter & Photo/Videographer based in California. Creating professional news packages, photo and video content, advertisements, and promotional campaigns for live audiences and digital platforms.">
-    
-    <meta name="description" content="Chris Cerney - Reporter & Photo/Videographer. Portfolio showcasing professional news reporting, video content, photography, advertisements, and promotional campaigns.">
-    
+    <meta name="twitter:title" content="Chris Cerney &mdash; Reporter, Photo/Videographer">
+    <meta name="twitter:description" content="Independent news coverage and original reporting from Chris Cerney.">
+
+    <meta name="description" content="Chris Cerney &mdash; Reporter and Photo/Videographer. Independent news coverage, original reporting, video content, and investigative stories.">
+
     <link rel="icon" type="image/png" href="images/logo1.png">
     <link rel="stylesheet" href="styles.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -27,16 +26,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <!-- Film Grain Overlay -->
-    <div class="film-grain" aria-hidden="true"></div>
-
-    <!-- Scroll Progress Bar -->
     <div class="scroll-progress" id="scrollProgress" aria-hidden="true"></div>
 
-    <!-- Cursor Glow -->
-    <div class="cursor-glow" id="cursorGlow" aria-hidden="true"></div>
-
-    <!-- Navigation -->
     <nav class="navbar" id="navbar">
         <div class="container">
             <div class="nav-brand">
@@ -51,10 +42,9 @@
                 <span></span>
             </button>
             <ul class="nav-menu" id="navMenu">
-                <li><a href="#portfolio">Portfolio</a></li>
+                <li><a href="#stories">Stories</a></li>
+                <li><a href="/portfolio">Portfolio</a></li>
                 <li><a href="#about">About</a></li>
-                <li><a href="#blog">Blog</a></li>
-                <li><a href="#newsletter">Newsletter</a></li>
                 <li><a href="#contact">Contact</a></li>
                 <li><a href="/upload" class="nav-tipline">Tipline</a></li>
                 <li><a href="https://www.instagram.com/chrizcerney" target="_blank" rel="noopener noreferrer" class="nav-instagram" aria-label="Instagram"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><circle cx="12" cy="12" r="5"></circle><circle cx="17.5" cy="6.5" r="1.5" fill="currentColor" stroke="none"></circle></svg></a></li>
@@ -62,25 +52,20 @@
         </div>
     </nav>
 
-    <!-- Hero Section -->
     <section id="home" class="hero">
-        <div class="hero-bg-lines" aria-hidden="true">
-            <span></span><span></span><span></span><span></span><span></span>
-        </div>
-        <div class="hero-overlay"></div>
-        <div class="hero-vignette" aria-hidden="true"></div>
         <div class="container">
             <div class="hero-content">
-                <p class="hero-eyebrow reveal-text">On Assignment</p>
+                <p class="hero-eyebrow reveal-text">Independent Journalism</p>
                 <h1 class="hero-title">
                     <span class="title-line reveal-text" style="--delay: 0.2s">Chris</span>
                     <span class="title-line reveal-text" style="--delay: 0.4s">Cerney</span>
                 </h1>
                 <div class="hero-divider reveal-text" style="--delay: 0.6s"></div>
-                <p class="hero-tagline reveal-text" style="--delay: 0.7s">Creating professional news packages, video and photo content, advertisements, and promotional campaigns for live audiences and digital platforms.</p>
-                <a href="#portfolio" class="btn btn-primary magnetic reveal-text" style="--delay: 0.9s">
-                    <span>View Portfolio</span>
-                </a>
+                <p class="hero-tagline reveal-text" style="--delay: 0.7s">Reporter and photo/videographer covering news, investigations, and community stories across Monterey County and beyond.</p>
+                <div class="hero-actions reveal-text" style="--delay: 0.9s">
+                    <a href="#stories" class="btn btn-primary magnetic"><span>Latest Coverage</span></a>
+                    <a href="/upload" class="btn btn-outline magnetic"><span>Send a Tip</span></a>
+                </div>
             </div>
         </div>
         <div class="scroll-indicator" aria-hidden="true">
@@ -89,505 +74,49 @@
         </div>
     </section>
 
-    <!-- Portfolio Section -->
-    <section id="portfolio" class="portfolio-section">
+    <section id="stories" class="stories-section">
         <div class="container">
             <div class="section-header reveal-section">
-                <span class="section-label">Selected Projects</span>
-                <h2 class="section-title">Portfolio</h2>
+                <span class="section-label">Latest Coverage</span>
+                <h2 class="section-title">Stories</h2>
                 <div class="section-divider"></div>
             </div>
-
-            <!-- Portfolio Filter Tabs -->
-            <div class="portfolio-tabs reveal-section">
-                <button class="portfolio-tab active" data-filter="all">All</button>
-                <button class="portfolio-tab" data-filter="reporter">Reporter Packages</button>
-                <button class="portfolio-tab" data-filter="filmmaking">Videography / Filmmaking</button>
-            </div>
-
-            <!-- Reporter Packages -->
-            <div class="portfolio-category" data-category="reporter">
-                <h3 class="category-title reveal-section">Reporter Packages</h3>
-                <div class="portfolio-grid">
-
-                    <div class="portfolio-item reveal-section" data-type="reporter">
-                        <span class="portfolio-number">01</span>
-                        <div class="video-wrapper thumbnail-wrapper">
-                            <a href="https://vimeo.com/1169704821" target="_blank" rel="noopener noreferrer" class="thumbnail-link">
-                                <img src="samples/pesticide-exposure-thumbnail.png" alt="Pesticide Exposure in Salinas" class="portfolio-thumbnail" style="object-position: center 30%;" loading="lazy">
-                                <div class="play-overlay">
-                                    <svg class="play-icon" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                                </div>
-                            </a>
-                        </div>
-                        <div class="portfolio-info">
-                            <span class="portfolio-year">2026</span>
-                            <h3>"Pesticide Exposure in Salinas: What the Data Shows in Monterey County"</h3>
-                            <p>A look at pesticide exposure data in Salinas and what it means for Monterey County residents.</p>
-                            <a href="https://vimeo.com/1169704821" target="_blank" rel="noopener noreferrer" class="watch-link">
-                                <span>Watch on Vimeo</span>
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-                            </a>
-                        </div>
-                    </div>
-
-                    <div class="portfolio-item reveal-section" data-type="reporter">
-                        <span class="portfolio-number">02</span>
-                        <div class="video-wrapper thumbnail-wrapper">
-                            <a href="https://vimeo.com/1169704771" target="_blank" rel="noopener noreferrer" class="thumbnail-link">
-                                <img src="samples/imjin-parkway-thumbnail.png" alt="New Imjin Parkway" class="portfolio-thumbnail" style="object-position: center 20%;" loading="lazy">
-                                <div class="play-overlay">
-                                    <svg class="play-icon" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                                </div>
-                            </a>
-                        </div>
-                        <div class="portfolio-info">
-                            <span class="portfolio-year">2026</span>
-                            <h3>"New Imjin Parkway - Better or Worse?"</h3>
-                            <p>An examination of the new Imjin Parkway and whether the changes are an improvement for the community.</p>
-                            <a href="https://vimeo.com/1169704771" target="_blank" rel="noopener noreferrer" class="watch-link">
-                                <span>Watch on Vimeo</span>
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-                            </a>
-                        </div>
-                    </div>
-
-                    <div class="portfolio-item reveal-section" data-type="reporter">
-                        <span class="portfolio-number">03</span>
-                        <div class="video-wrapper thumbnail-wrapper">
-                            <a href="https://vimeo.com/1169704716" target="_blank" rel="noopener noreferrer" class="thumbnail-link">
-                                <img src="https://i.vimeocdn.com/video/2129171770-dbdfef75779d7d2bf3ccf90cb1de072b25f6303f331ee9a8809ce6792aa0d22f-d_1280x720" alt="Salinas Councilmember Andrew Sandoval Censured" class="portfolio-thumbnail" style="object-fit: contain; background: #000;" loading="lazy">
-                                <div class="play-overlay">
-                                    <svg class="play-icon" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                                </div>
-                            </a>
-                        </div>
-                        <div class="portfolio-info">
-                            <span class="portfolio-year">2026</span>
-                            <h3>"Salinas Councilmember Andrew Sandoval Censured"</h3>
-                            <p>Coverage of the censure of Salinas Councilmember Andrew Sandoval.</p>
-                            <a href="https://vimeo.com/1169704716" target="_blank" rel="noopener noreferrer" class="watch-link">
-                                <span>Watch on Vimeo</span>
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-                            </a>
-                        </div>
-                    </div>
-
-                    <div class="portfolio-item reveal-section" data-type="reporter">
-                        <span class="portfolio-number">04</span>
-                        <div class="video-wrapper thumbnail-wrapper">
-                            <a href="https://vimeo.com/1167008631" target="_blank" rel="noopener noreferrer" class="thumbnail-link">
-                                <img src="samples/Untitled-1-Re3r3rr3r3covered-Recovered.jpg" alt="Fort Ord Burn in 2026" class="portfolio-thumbnail" style="object-position: center 30%;" loading="lazy">
-                                <div class="play-overlay">
-                                    <svg class="play-icon" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                                </div>
-                            </a>
-                        </div>
-                        <div class="portfolio-info">
-                            <span class="portfolio-year">2026</span>
-                            <h3>"Fort Ord Burn in 2026"</h3>
-                            <p>Fort Ord's massive Superfund site faces a 305-acre burn in 2026. Officials say it's safe — some residents aren't so sure.</p>
-                            <a href="https://vimeo.com/1167008631" target="_blank" rel="noopener noreferrer" class="watch-link">
-                                <span>Watch on Vimeo</span>
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-                            </a>
-                        </div>
-                    </div>
-
-                    <div class="portfolio-item reveal-section" data-type="reporter">
-                        <span class="portfolio-number">05</span>
-                        <div class="video-wrapper thumbnail-wrapper">
-                            <a href="https://vimeo.com/1165865915" target="_blank" rel="noopener noreferrer" class="thumbnail-link">
-                                <img src="https://i.vimeocdn.com/video/2123303433-820ec22cd0c5e635d81af9bf2271358d2c527e2b107d2ca043bb61abd560bb8f-d_1280x720" alt="Monterey County Storm" class="portfolio-thumbnail" loading="lazy">
-                                <div class="play-overlay">
-                                    <svg class="play-icon" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                                </div>
-                            </a>
-                        </div>
-                        <div class="portfolio-info">
-                            <span class="portfolio-year">2026</span>
-                            <h3>"Monterey County Storm: Road Hazards (Demo Package)"</h3>
-                            <p>A demo news package covering road hazards during the Monterey County storm.</p>
-                            <a href="https://vimeo.com/1165865915" target="_blank" rel="noopener noreferrer" class="watch-link">
-                                <span>Watch on Vimeo</span>
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-                            </a>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-
-            <!-- Videography / Filmmaking -->
-            <div class="portfolio-category" data-category="filmmaking">
-                <h3 class="category-title reveal-section">Videography / Filmmaking</h3>
-                <div class="portfolio-grid">
-
-                    <div class="portfolio-item reveal-section" data-type="filmmaking">
-                        <span class="portfolio-number">01</span>
-                        <div class="video-wrapper thumbnail-wrapper">
-                            <a href="https://www.youtube.com/watch?v=DdBDEQaXYaA" target="_blank" rel="noopener noreferrer" class="thumbnail-link">
-                                <img src="https://img.youtube.com/vi/DdBDEQaXYaA/hqdefault.jpg" alt="Barbie Movie Party at Lighthouse Cinema" class="portfolio-thumbnail" loading="lazy">
-                                <div class="play-overlay">
-                                    <svg class="play-icon" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                                </div>
-                            </a>
-                        </div>
-                        <div class="portfolio-info">
-                            <span class="portfolio-year">2023</span>
-                            <h3>"Barbie Movie Party at Lighthouse Cinema"</h3>
-                            <p>A fun, vibrant promotional video for the Barbie movie screening event at Lighthouse Cinema.</p>
-                            <a href="https://www.youtube.com/watch?v=DdBDEQaXYaA" target="_blank" rel="noopener noreferrer" class="watch-link">
-                                <span>Watch on YouTube</span>
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-                            </a>
-                        </div>
-                    </div>
-
-                    <div class="portfolio-item reveal-section" data-type="filmmaking">
-                        <span class="portfolio-number">02</span>
-                        <div class="video-wrapper thumbnail-wrapper">
-                            <a href="https://www.youtube.com/watch?v=uiyGe1ST4yE" target="_blank" rel="noopener noreferrer" class="thumbnail-link">
-                                <img src="https://img.youtube.com/vi/uiyGe1ST4yE/maxresdefault.jpg" alt="The Healing Collaborative Commercial" class="portfolio-thumbnail" loading="lazy">
-                                <div class="play-overlay">
-                                    <svg class="play-icon" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                                </div>
-                            </a>
-                        </div>
-                        <div class="portfolio-info">
-                            <span class="portfolio-year">2025</span>
-                            <h3>"The Healing Collaborative Commercial"</h3>
-                            <p>A professional commercial produced for The Healing Collaborative.</p>
-                            <a href="https://www.youtube.com/watch?v=uiyGe1ST4yE" target="_blank" rel="noopener noreferrer" class="watch-link">
-                                <span>Watch on YouTube</span>
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-                            </a>
-                        </div>
-                    </div>
-
-                    <div class="portfolio-item reveal-section" data-type="filmmaking">
-                        <span class="portfolio-number">03</span>
-                        <div class="video-wrapper thumbnail-wrapper">
-                            <a href="https://www.youtube.com/watch?v=32YF-7toxcQ" target="_blank" rel="noopener noreferrer" class="thumbnail-link">
-                                <img src="https://img.youtube.com/vi/32YF-7toxcQ/maxresdefault.jpg" alt="Grindhouse Datenight at Lighthouse Cinema" class="portfolio-thumbnail" loading="lazy">
-                                <div class="play-overlay">
-                                    <svg class="play-icon" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                                </div>
-                            </a>
-                        </div>
-                        <div class="portfolio-info">
-                            <span class="portfolio-year">2024</span>
-                            <h3>"Grindhouse Datenight at Lighthouse Cinema"</h3>
-                            <p>As if plucked straight from a vintage 1970s movie theater, Chris Cerney and David Diaz premiered their advertisement at Lighthouse Cinema in early 2024.</p>
-                            <a href="https://www.youtube.com/watch?v=32YF-7toxcQ" target="_blank" rel="noopener noreferrer" class="watch-link">
-                                <span>Watch on YouTube</span>
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-                            </a>
-                        </div>
-                    </div>
-
-                    <div class="portfolio-item reveal-section" data-type="filmmaking">
-                        <span class="portfolio-number">04</span>
-                        <div class="video-wrapper thumbnail-wrapper">
-                            <a href="https://www.youtube.com/watch?v=IG3PF0REBps" target="_blank" rel="noopener noreferrer" class="thumbnail-link">
-                                <img src="https://img.youtube.com/vi/IG3PF0REBps/maxresdefault.jpg" alt="Lighthouse Cinema is Back" class="portfolio-thumbnail" loading="lazy">
-                                <div class="play-overlay">
-                                    <svg class="play-icon" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                                </div>
-                            </a>
-                        </div>
-                        <div class="portfolio-info">
-                            <span class="portfolio-year">2023</span>
-                            <h3>"Lighthouse Cinema is Back"</h3>
-                            <p>This is the first advertisement I made for Lighthouse Cinema in 2023.</p>
-                            <a href="https://www.youtube.com/watch?v=IG3PF0REBps" target="_blank" rel="noopener noreferrer" class="watch-link">
-                                <span>Watch on YouTube</span>
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-                            </a>
-                        </div>
-                    </div>
-
-                    <div class="portfolio-item reveal-section" data-type="filmmaking">
-                        <span class="portfolio-number">05</span>
-                        <div class="video-wrapper thumbnail-wrapper">
-                            <a href="https://www.youtube.com/watch?v=_qRJP1YHdzE" target="_blank" rel="noopener noreferrer" class="thumbnail-link">
-                                <img src="https://img.youtube.com/vi/_qRJP1YHdzE/maxresdefault.jpg" alt="Pizza My Way Advertisement" class="portfolio-thumbnail" loading="lazy">
-                                <div class="play-overlay">
-                                    <svg class="play-icon" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                                </div>
-                            </a>
-                        </div>
-                        <div class="portfolio-info">
-                            <span class="portfolio-year">2024</span>
-                            <h3>"Pizza My Way Advertisement at Lighthouse Cinema"</h3>
-                            <p>An advertisement created for Pizza My Way, screened at Lighthouse Cinema.</p>
-                            <a href="https://www.youtube.com/watch?v=_qRJP1YHdzE" target="_blank" rel="noopener noreferrer" class="watch-link">
-                                <span>Watch on YouTube</span>
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-                            </a>
-                        </div>
-                    </div>
-
-                    <div class="portfolio-item reveal-section" data-type="filmmaking">
-                        <span class="portfolio-number">06</span>
-                        <div class="video-wrapper thumbnail-wrapper">
-                            <a href="https://vimeo.com/808895286" target="_blank" rel="noopener noreferrer" class="thumbnail-link">
-                                <img src="https://i.vimeocdn.com/video/1633993910-6d77e9055c55d3a7d9102a0b7844fddbc05de05d93dfdb6b5ed90f8c37bc7d68-d_1280x720" alt="Chris Cerney's Director Reel" class="portfolio-thumbnail" loading="lazy">
-                                <div class="play-overlay">
-                                    <svg class="play-icon" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                                </div>
-                            </a>
-                        </div>
-                        <div class="portfolio-info">
-                            <span class="portfolio-year">2023</span>
-                            <h3>"Chris Cerney's Director Reel"</h3>
-                            <p>A short experimental short showcasing my directorial vision.</p>
-                            <a href="https://vimeo.com/808895286" target="_blank" rel="noopener noreferrer" class="watch-link">
-                                <span>Watch on Vimeo</span>
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-                            </a>
-                        </div>
-                    </div>
-
-                    <div class="portfolio-item reveal-section" data-type="filmmaking">
-                        <span class="portfolio-number">07</span>
-                        <div class="video-wrapper thumbnail-wrapper">
-                            <a href="https://vimeo.com/872242307" target="_blank" rel="noopener noreferrer" class="thumbnail-link">
-                                <img src="https://i.vimeocdn.com/video/1735167373-6bbef6a54278af6e94a18dacb41aa5c59fac9e751f284d6d6a09e103c9d83f9c-d_1280x720" alt="How Do I Make Movies on my Own?" class="portfolio-thumbnail" loading="lazy">
-                                <div class="play-overlay">
-                                    <svg class="play-icon" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                                </div>
-                            </a>
-                        </div>
-                        <div class="portfolio-info">
-                            <span class="portfolio-year">2023</span>
-                            <h3>"How Do I Make Movies on my Own?"</h3>
-                            <p>A behind-the-scenes look at the solo filmmaking process and creative independence.</p>
-                            <a href="https://vimeo.com/872242307" target="_blank" rel="noopener noreferrer" class="watch-link">
-                                <span>Watch on Vimeo</span>
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-                            </a>
-                        </div>
-                    </div>
-
-                    <div class="portfolio-item reveal-section" data-type="filmmaking">
-                        <span class="portfolio-number">08</span>
-                        <div class="video-wrapper thumbnail-wrapper">
-                            <a href="https://www.youtube.com/watch?v=RkJYL-ZsmOc" target="_blank" rel="noopener noreferrer" class="thumbnail-link">
-                                <img src="https://img.youtube.com/vi/RkJYL-ZsmOc/maxresdefault.jpg" alt="Lights, Camera, Terror!" class="portfolio-thumbnail" loading="lazy">
-                                <div class="play-overlay">
-                                    <svg class="play-icon" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                                </div>
-                            </a>
-                        </div>
-                        <div class="portfolio-info">
-                            <span class="portfolio-year">2024</span>
-                            <h3>"Lights, Camera, Terror!"</h3>
-                            <p>This is a special Halloween-themed short film filled with old movie nostalgia, made entirely from scratch with no budget.</p>
-                            <a href="https://www.youtube.com/watch?v=RkJYL-ZsmOc" target="_blank" rel="noopener noreferrer" class="watch-link">
-                                <span>Watch on YouTube</span>
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-                            </a>
-                        </div>
-                    </div>
-
-                    <div class="portfolio-item reveal-section" data-type="filmmaking">
-                        <span class="portfolio-number">09</span>
-                        <div class="video-wrapper thumbnail-wrapper">
-                            <a href="https://www.youtube.com/watch?v=70drCPzd5oo" target="_blank" rel="noopener noreferrer" class="thumbnail-link">
-                                <img src="https://img.youtube.com/vi/70drCPzd5oo/maxresdefault.jpg" alt="Pre-Summer Pool Party" class="portfolio-thumbnail" loading="lazy">
-                                <div class="play-overlay">
-                                    <svg class="play-icon" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                                </div>
-                            </a>
-                        </div>
-                        <div class="portfolio-info">
-                            <span class="portfolio-year">2024</span>
-                            <h3>"Pre-Summer Pool Party"</h3>
-                            <p>I was tasked with creating an engaging music video-style short with local rappers and friends.</p>
-                            <a href="https://www.youtube.com/watch?v=70drCPzd5oo" target="_blank" rel="noopener noreferrer" class="watch-link">
-                                <span>Watch on YouTube</span>
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-                            </a>
-                        </div>
-                    </div>
-
-                    <div class="portfolio-item reveal-section" data-type="filmmaking">
-                        <span class="portfolio-number">10</span>
-                        <div class="video-wrapper thumbnail-wrapper">
-                            <a href="https://www.youtube.com/watch?v=PLOmmmfiQKk" target="_blank" rel="noopener noreferrer" class="thumbnail-link">
-                                <img src="https://img.youtube.com/vi/PLOmmmfiQKk/maxresdefault.jpg" alt="Back To The Future at Lighthouse Cinema" class="portfolio-thumbnail" loading="lazy">
-                                <div class="play-overlay">
-                                    <svg class="play-icon" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                                </div>
-                            </a>
-                        </div>
-                        <div class="portfolio-info">
-                            <span class="portfolio-year">2023</span>
-                            <h3>"Back To The Future & DMC Delorian at Lighthouse Cinema"</h3>
-                            <p>I was asked to create a fun, original video in 2023 as a promotion for our special screening of "Back to the Future." We even had a local car touring company loan us their DMC Delorian for the event.</p>
-                            <a href="https://www.youtube.com/watch?v=PLOmmmfiQKk" target="_blank" rel="noopener noreferrer" class="watch-link">
-                                <span>Watch on YouTube</span>
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-                            </a>
-                        </div>
-                    </div>
-
-                    <div class="portfolio-item reveal-section" data-type="filmmaking">
-                        <span class="portfolio-number">11</span>
-                        <div class="video-wrapper thumbnail-wrapper">
-                            <a href="https://www.youtube.com/watch?v=V7DG3DmjQVA" target="_blank" rel="noopener noreferrer" class="thumbnail-link">
-                                <img src="https://img.youtube.com/vi/V7DG3DmjQVA/maxresdefault.jpg" alt="The Overlord - First 8 Minutes" class="portfolio-thumbnail" loading="lazy">
-                                <div class="play-overlay">
-                                    <svg class="play-icon" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                                </div>
-                            </a>
-                        </div>
-                        <div class="portfolio-info">
-                            <span class="portfolio-year">2024</span>
-                            <h3>"The Overlord - First 8 Minutes"</h3>
-                            <p>A preview of the first 8 minutes of The Overlord.</p>
-                            <a href="https://www.youtube.com/watch?v=V7DG3DmjQVA" target="_blank" rel="noopener noreferrer" class="watch-link">
-                                <span>Watch on YouTube</span>
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-                            </a>
-                        </div>
-                    </div>
-
-                    <div class="portfolio-item reveal-section" data-type="filmmaking">
-                        <span class="portfolio-number">12</span>
-                        <div class="video-wrapper thumbnail-wrapper">
-                            <a href="https://www.youtube.com/watch?v=GuclTOjWd0g" target="_blank" rel="noopener noreferrer" class="thumbnail-link">
-                                <img src="https://img.youtube.com/vi/GuclTOjWd0g/maxresdefault.jpg" alt="Hold Tight! Audio Screenplay" class="portfolio-thumbnail" loading="lazy">
-                                <div class="play-overlay">
-                                    <svg class="play-icon" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                                </div>
-                            </a>
-                        </div>
-                        <div class="portfolio-info">
-                            <span class="portfolio-year">2024</span>
-                            <h3>"Hold Tight! Original Feature Film Audio Screenplay"</h3>
-                            <p>An original feature film audio screenplay brought to life.</p>
-                            <a href="https://www.youtube.com/watch?v=GuclTOjWd0g" target="_blank" rel="noopener noreferrer" class="watch-link">
-                                <span>Watch on YouTube</span>
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-                            </a>
-                        </div>
-                    </div>
-
-                    <div class="portfolio-item reveal-section" data-type="filmmaking">
-                        <span class="portfolio-number">13</span>
-                        <div class="video-wrapper thumbnail-wrapper">
-                            <a href="https://www.youtube.com/watch?v=R1li_dEcejc" target="_blank" rel="noopener noreferrer" class="thumbnail-link">
-                                <img src="https://img.youtube.com/vi/R1li_dEcejc/maxresdefault.jpg" alt="HUMAN FLY" class="portfolio-thumbnail" loading="lazy">
-                                <div class="play-overlay">
-                                    <svg class="play-icon" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                                </div>
-                            </a>
-                        </div>
-                        <div class="portfolio-info">
-                            <span class="portfolio-year">2024</span>
-                            <h3>"HUMAN FLY"</h3>
-                            <p>A creative short film production.</p>
-                            <a href="https://www.youtube.com/watch?v=R1li_dEcejc" target="_blank" rel="noopener noreferrer" class="watch-link">
-                                <span>Watch on YouTube</span>
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-                            </a>
-                        </div>
-                    </div>
-
+            <div class="stories-placeholder reveal-section">
+                <p class="stories-placeholder-lead">Original reporting and investigations will be published here soon.</p>
+                <p>In the meantime, explore past reporter packages, commercials, documentaries, and short films in the portfolio.</p>
+                <div class="stories-placeholder-actions">
+                    <a href="/portfolio" class="btn btn-outline magnetic"><span>View Portfolio</span></a>
+                    <a href="/upload" class="btn btn-primary magnetic"><span>Submit a Tip</span></a>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Marquee Divider -->
-    <div class="marquee-strip" aria-hidden="true">
-        <div class="marquee-track">
-            <span>News Reporting</span>
-            <span>&bull;</span>
-            <span>Video Editing</span>
-            <span>&bull;</span>
-            <span>Photography</span>
-            <span>&bull;</span>
-            <span>Advertising</span>
-            <span>&bull;</span>
-            <span>Live Production</span>
-            <span>&bull;</span>
-            <span>Promo Campaigns</span>
-            <span>&bull;</span>
-            <span>News Reporting</span>
-            <span>&bull;</span>
-            <span>Video Editing</span>
-            <span>&bull;</span>
-            <span>Photography</span>
-            <span>&bull;</span>
-            <span>Advertising</span>
-            <span>&bull;</span>
-            <span>Live Production</span>
-            <span>&bull;</span>
-            <span>Promo Campaigns</span>
-            <span>&bull;</span>
-        </div>
-    </div>
-
-    <!-- About Section -->
     <section id="about" class="about-section">
         <div class="container">
             <div class="section-header reveal-section">
                 <span class="section-label">Who I Am</span>
-                <h2 class="section-title">About Me</h2>
+                <h2 class="section-title">About</h2>
                 <div class="section-divider"></div>
             </div>
             <div class="about-content reveal-section">
                 <div class="about-text">
-                    <p class="about-lead">I'm Chris Cerney, a reporter and photo/videographer with experience creating news packages, promotional content, and advertisements for live audiences and digital platforms.</p>
-                    <p>From field reporting and news packages to in-house cinema ads, short-form marketing content, and event coverage, I focus on producing clean, professional visuals with strong storytelling and fast turnaround. Whether it's covering breaking news in the field, capturing the energy of a live event, or delivering polished promotional campaigns, my goal is always the same &mdash; create content that connects with people and drives engagement.</p>
+                    <p class="about-lead">I'm Chris Cerney, a reporter and photo/videographer based in California. I cover news, investigations, and community stories with a focus on clean, accurate reporting.</p>
+                    <p>My work has spanned field reporting, news packages, short-form video, and documentary content. Whether it's breaking news, a long-running investigation, or a local story that deserves attention, my goal is the same: tell it clearly, tell it honestly, and get it right.</p>
                 </div>
-                <div class="about-stats">
-                    <div class="stat">
-                        <span class="stat-number" data-count="18">0</span>
-                        <span class="stat-label">Projects</span>
-                    </div>
-                    <div class="stat">
-                        <span class="stat-number" data-count="6">0</span>
-                        <span class="stat-label">Years</span>
-                    </div>
-                    <div class="stat">
-                        <span class="stat-number" data-count="10">0</span>
-                        <span class="stat-label">Clients</span>
-                    </div>
-                </div>
-                <a href="#blog" class="btn btn-outline magnetic"><span>Read My Story</span></a>
             </div>
         </div>
     </section>
 
-    <!-- Blog Section -->
-    <section id="blog" class="blog-section">
-        <div class="container">
-            <div class="section-header reveal-section">
-                <span class="section-label">Behind the Scenes</span>
-                <h2 class="section-title">Blog</h2>
-                <div class="section-divider"></div>
-            </div>
-            <div class="blog-content reveal-section">
-                <p>Read about my journey, behind-the-scenes stories, and thoughts on photo/video production and the media industry.</p>
-                <a href="#" class="btn btn-primary magnetic"><span>Read the Blog</span></a>
-            </div>
-        </div>
-    </section>
-
-    <!-- Newsletter Section -->
     <section id="newsletter" class="newsletter-section">
         <div class="container">
             <div class="section-header reveal-section">
-                <span class="section-label">Stay Connected</span>
+                <span class="section-label">Stay Informed</span>
                 <h2 class="section-title">Newsletter</h2>
                 <div class="section-divider"></div>
             </div>
             <div class="newsletter-content reveal-section">
-                <p>Stay up to date with my latest projects, production updates, and new content drops.</p>
+                <p>Get new stories, investigations, and updates delivered to your inbox.</p>
                 <form id="newsletterForm" class="newsletter-form">
                     <div class="form-group">
                         <input type="email" id="emailInput" placeholder=" " required aria-label="Email address">
@@ -599,7 +128,6 @@
         </div>
     </section>
 
-    <!-- Contact Section -->
     <section id="contact" class="contact-section">
         <div class="container">
             <div class="section-header reveal-section">
@@ -611,11 +139,11 @@
                 <a href="mailto:chrisserknee@gmail.com" class="contact-link magnetic">
                     <span>chrisserknee@gmail.com</span>
                 </a>
+                <p class="contact-secondary">For confidential tips, use the <a href="/upload">tipline</a> to send photos or video.</p>
             </div>
         </div>
     </section>
 
-    <!-- Footer -->
     <footer class="footer">
         <div class="container">
             <div class="footer-inner">
