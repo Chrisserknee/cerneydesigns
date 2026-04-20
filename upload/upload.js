@@ -6,10 +6,10 @@
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw_xPCXhuU7gMn4MyV1q6FOmWZpNbvuWgWJwrr-zJdaJCG1Bz4I4WfUMFUCdmxugj2E/exec';
 // ============================================================
 
-// 5 MB raw chunks. After base64 encoding (~33% overhead) each POST body is ~7 MB
+// 3 MB raw chunks. After base64 encoding (~33% overhead) each POST body is ~4 MB
 // — well under the Apps Script 50 MB limit with headroom for JSON keys/metadata.
 // Must be a multiple of 256 KB per Drive's resumable upload spec.
-const CHUNK_SIZE = 5 * 1024 * 1024;
+const CHUNK_SIZE = 3 * 1024 * 1024;
 const MAX_CHUNK_RETRIES = 4;
 const RETRY_BASE_DELAY_MS = 1500;
 
@@ -199,119 +199,110 @@ function resetProgressUI() {
 
 // ---------- UPLOAD ONE FILE ----------
 // All chunks are POSTed to Apps Script as base64 JSON. Apps Script forwards
-// them to Drive's resumable session server-side, so there's no CORS exposure.
+// them to Drive's resumable session server-side, so there's no CORS exposure
+// as long as each POST remains a "simple request" (no upload listeners).
 async function uploadOneFile(file, meta, onProgress) {
     // Step 1: Ask Apps Script to open a server-side resumable Drive session.
-    const startRes = await postJSON(SCRIPT_URL, {
-        action: 'start',
-        fileName: file.name,
-        mimeType: file.type || 'application/octet-stream',
-        size: file.size,
-    });
-
+    let startRes;
+    try {
+        startRes = await postJSON(SCRIPT_URL, {
+            action: 'start',
+            fileName: file.name,
+            mimeType: file.type || 'application/octet-stream',
+            size: file.size,
+        });
+    } catch (err) {
+        throw new Error(`Start failed for "${file.name}": ${err.message || err}`);
+    }
     if (!startRes.uploadId) {
-        throw new Error(startRes.error || 'Failed to start upload.');
+        throw new Error(`Start failed for "${file.name}": ${startRes.error || 'no uploadId returned'}`);
     }
 
     const uploadId = startRes.uploadId;
+    const totalChunks = Math.max(1, Math.ceil(file.size / CHUNK_SIZE));
 
     // Step 2: Stream chunks to Apps Script, which relays them to Drive.
     let offset = 0;
-    let reportedBytes = 0;
-
-    const credit = (toByte) => {
-        const delta = toByte - reportedBytes;
-        if (delta !== 0) {
-            onProgress(delta);
-            reportedBytes = toByte;
-        }
-    };
+    let chunkIndex = 0;
 
     while (offset < file.size) {
+        chunkIndex++;
         const end = Math.min(offset + CHUNK_SIZE, file.size);
         const chunkBlob = file.slice(offset, end);
-        const chunkSize = end - offset;
 
-        // Read chunk as base64 once (reused across retries if needed).
+        // Read chunk as base64 once; reused across retries.
         const chunkBase64 = await blobToBase64(chunkBlob);
 
+        // Inform UI which chunk is in flight (activity feedback between completions).
+        onProgress(0, `Uploading chunk ${chunkIndex} of ${totalChunks}…`);
+
         let succeeded = false;
+        let lastErr = null;
         for (let attempt = 0; attempt <= MAX_CHUNK_RETRIES; attempt++) {
             try {
-                const res = await postJSON(
-                    SCRIPT_URL,
-                    {
-                        action: 'chunk',
-                        uploadId: uploadId,
-                        offset: offset,
-                        dataBase64: chunkBase64,
-                    },
-                    // Byte-level progress: credit bytes as they leave the browser.
-                    (bytesSent, totalToSend) => {
-                        if (totalToSend > 0) {
-                            const frac = Math.min(1, bytesSent / totalToSend);
-                            // Credit up to (but not past) the end of this chunk.
-                            credit(offset + Math.floor(chunkSize * frac));
-                        }
-                    }
-                );
+                const res = await postJSON(SCRIPT_URL, {
+                    action: 'chunk',
+                    uploadId: uploadId,
+                    offset: offset,
+                    dataBase64: chunkBase64,
+                });
 
                 if (res.error) throw new Error(res.error);
 
-                credit(end);
+                // Chunk accepted — credit its full byte count in one go.
+                onProgress(end - offset);
                 succeeded = true;
                 break;
             } catch (err) {
-                if (attempt === MAX_CHUNK_RETRIES) {
-                    throw new Error(
-                        `Upload failed on "${file.name}" at ${formatBytes(offset)} / ${formatBytes(file.size)} ` +
-                        `after ${MAX_CHUNK_RETRIES} retries. ${err.message || err}`
-                    );
-                }
-
-                // Roll back any in-flight progress for this chunk.
-                const rollback = reportedBytes - offset;
-                if (rollback > 0) {
-                    onProgress(-rollback);
-                    reportedBytes = offset;
-                }
+                lastErr = err;
+                if (attempt === MAX_CHUNK_RETRIES) break;
 
                 const delay = RETRY_BASE_DELAY_MS * Math.pow(2, attempt);
-                onProgress(0, `Network hiccup — retrying in ${Math.round(delay / 1000)}s (${attempt + 1}/${MAX_CHUNK_RETRIES})…`);
+                onProgress(0, `Network hiccup on chunk ${chunkIndex}/${totalChunks} — retrying in ${Math.round(delay / 1000)}s (${attempt + 1}/${MAX_CHUNK_RETRIES})…`);
                 await sleep(delay);
             }
         }
 
-        if (!succeeded) break; // unreachable; MAX_CHUNK_RETRIES exhausted throws
+        if (!succeeded) {
+            throw new Error(
+                `Chunk ${chunkIndex}/${totalChunks} failed for "${file.name}" at ${formatBytes(offset)} / ${formatBytes(file.size)} ` +
+                `after ${MAX_CHUNK_RETRIES} retries. ${lastErr?.message || lastErr || ''}`
+            );
+        }
+
         offset = end;
     }
 
     // Step 3: Finalize — sidecar metadata + email notification.
-    const finishRes = await postJSON(SCRIPT_URL, {
-        action: 'finish',
-        uploadId: uploadId,
-        ...meta,
-    });
-    if (finishRes.error) throw new Error(finishRes.error);
+    onProgress(0, 'Finalizing…');
+    let finishRes;
+    try {
+        finishRes = await postJSON(SCRIPT_URL, {
+            action: 'finish',
+            uploadId: uploadId,
+            ...meta,
+        });
+    } catch (err) {
+        throw new Error(`Finish failed for "${file.name}": ${err.message || err}`);
+    }
+    if (finishRes.error) {
+        throw new Error(`Finish failed for "${file.name}": ${finishRes.error}`);
+    }
 }
 
 // ---------- POST JSON TO APPS SCRIPT ----------
-// Uses XHR (not fetch) so we can get upload progress events.
-// Content-Type text/plain avoids the CORS preflight that Apps Script can't handle.
-function postJSON(url, payload, onUploadProgress) {
+// Simple-request CORS: POST + Content-Type text/plain, no upload listeners.
+// This is critical — adding an xhr.upload event listener would make this a
+// non-simple request, triggering a CORS preflight that Apps Script can't
+// answer correctly. Don't add one.
+function postJSON(url, payload) {
     return new Promise((resolve, reject) => {
         const body = JSON.stringify(payload);
         const xhr = new XMLHttpRequest();
         xhr.open('POST', url, true);
         xhr.setRequestHeader('Content-Type', 'text/plain;charset=utf-8');
-        // 5 minutes per chunk — plenty for a 5MB chunk on slow mobile.
+        // 5 minutes per request — plenty for a chunk on slow mobile.
         xhr.timeout = 300000;
-
-        if (onUploadProgress) {
-            xhr.upload.onprogress = (ev) => {
-                if (ev.lengthComputable) onUploadProgress(ev.loaded, ev.total);
-            };
-        }
 
         xhr.onload = () => {
             if (xhr.status >= 200 && xhr.status < 300) {
