@@ -12,7 +12,7 @@
 //   3. POST to Apps Script action=finish with the returned fileId → it
 //      writes a .info.txt sidecar and emails the submission notice.
 // ============================================================
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw_xPCXhuU7gMn4MyV1q6FOmWZpNbvuWgWJwrr-zJdaJCG1Bz4I4WfUMFUCdmxugj2E/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby_fPbxOjvE8aTjpcx7_wNTfSOPaKAfjWh68yGR9nkWjp4GAkfDb5ZdXYcU5xCGFi3NqQ/exec';
 // ============================================================
 
 // 8 MB raw chunks. Uploaded directly to Drive (no base64), so what the
