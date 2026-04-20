@@ -52,8 +52,11 @@ window.addEventListener('beforeunload', (e) => {
 
 // ---------- FILE SELECTION ----------
 els.fileInput.addEventListener('change', (e) => {
-    addFiles(Array.from(e.target.files));
-    els.fileInput.value = '';
+    const files = Array.from(e.target.files);
+    // Defer the reset so iOS Safari can close the photo picker first.
+    // Resetting synchronously can prolong the picker dismissal on iOS.
+    setTimeout(() => { els.fileInput.value = ''; }, 0);
+    addFiles(files);
 });
 
 ['dragenter', 'dragover'].forEach(evt => {
