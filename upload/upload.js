@@ -15,6 +15,11 @@ const CHUNK_SIZE = 3 * 1024 * 1024;
 const MAX_CHUNK_RETRIES = 4;
 const RETRY_BASE_DELAY_MS = 1500;
 
+// Per-file hard cap. Enforced again in Apps Script (defense in depth) once
+// the backend is updated. For now, at least block the user from starting an
+// upload we don't want to process.
+const MAX_FILE_BYTES = 500 * 1024 * 1024; // 500 MB
+
 const els = {
     dropzone: document.getElementById('dropzone'),
     fileInput: document.getElementById('fileInput'),
@@ -92,11 +97,23 @@ els.dropzone.addEventListener('drop', (e) => {
 
 function addFiles(files) {
     if (files.length > 0) warmUpAppsScript();
+    const rejected = [];
     for (const f of files) {
+        if (f.size > MAX_FILE_BYTES) {
+            rejected.push(f.name);
+            continue;
+        }
         // Prevent duplicates by name+size.
         if (!selectedFiles.some(s => s.name === f.name && s.size === f.size)) {
             selectedFiles.push(f);
         }
+    }
+    if (rejected.length) {
+        // Non-blocking: tell the user which files were too big; keep the rest.
+        alert(
+            `The following file${rejected.length > 1 ? 's are' : ' is'} too large ` +
+            `(max ${formatBytes(MAX_FILE_BYTES)}):\n\n` + rejected.join('\n')
+        );
     }
     renderFileList();
 }
@@ -111,7 +128,10 @@ function renderFileList() {
             <span class="file-item-size">${formatBytes(file.size)}</span>
             <button class="file-item-remove" aria-label="Remove file" data-idx="${idx}">&times;</button>
         `;
-        li.querySelector('.file-item-name').textContent = file.name;
+        // Truncate overly long filenames for display so they can't break layout.
+        const displayName = file.name.length > 60 ? file.name.slice(0, 57) + '…' : file.name;
+        li.querySelector('.file-item-name').textContent = displayName;
+        li.querySelector('.file-item-name').title = file.name;
         els.fileList.appendChild(li);
     });
     els.submitBtn.disabled = selectedFiles.length === 0;
@@ -148,7 +168,9 @@ els.submitBtn.addEventListener('click', async () => {
         senderContact: els.anonymous.checked ? '' : els.senderContact.value.trim(),
         description: els.description.value.trim(),
         anonymous: els.anonymous.checked,
-        userAgent: navigator.userAgent,
+        // For anonymous submissions, don't leak the user-agent string — it
+        // partially de-anonymizes the sender (browser, OS, device model).
+        userAgent: els.anonymous.checked ? '' : navigator.userAgent,
     };
 
     showScreen('progress');
