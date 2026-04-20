@@ -3,7 +3,7 @@
 // All uploads are proxied through Google Apps Script to Drive,
 // which eliminates all CORS issues (no direct browser→googleapis.com).
 // ============================================================
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxKAg7SlmtA_Qipa_GFJ3CfxacNtjy9xmQO76EA5yH8Q4eSZKQGu9GAwZC7WEhS8TYzJQ/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw_xPCXhuU7gMn4MyV1q6FOmWZpNbvuWgWJwrr-zJdaJCG1Bz4I4WfUMFUCdmxugj2E/exec';
 // ============================================================
 
 // 5 MB raw chunks. After base64 encoding (~33% overhead) each POST body is ~7 MB
