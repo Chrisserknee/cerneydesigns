@@ -3,7 +3,7 @@
 // ============================================================
 // PASTE YOUR APPS SCRIPT WEB APP URL BELOW
 // (ends with /exec, from the Apps Script deployment)
-const SCRIPT_URL = 'PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxKAg7SlmtA_Qipa_GFJ3CfxacNtjy9xmQO76EA5yH8Q4eSZKQGu9GAwZC7WEhS8TYzJQ/exec';
 // ============================================================
 
 // 8 MB chunks — large enough to be fast, small enough to resume quickly on flaky mobile networks.

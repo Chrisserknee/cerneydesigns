@@ -46,8 +46,8 @@
  */
 
 // ==== CONFIGURE THESE TWO LINES ====
-const FOLDER_ID = 'PASTE_YOUR_DRIVE_FOLDER_ID_HERE';
-const NOTIFY_EMAIL = ''; // e.g. 'chrisserknee@gmail.com' — leave '' to skip emails
+const FOLDER_ID = '1bYqiGoCQ9cyx4OHIoM3rJADvkAUh6TIQ';
+const NOTIFY_EMAIL = 'captainraptorz@gmail.com';
 // ===================================
 
 function doPost(e) {
