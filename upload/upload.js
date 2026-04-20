@@ -24,7 +24,6 @@ const els = {
     progressPercent: document.getElementById('progressPercent'),
     progressFile: document.getElementById('progressFile'),
     progressStatus: document.getElementById('progressStatus'),
-    progressTotals: document.getElementById('progressTotals'),
     thankyouScreen: document.getElementById('thankyouScreen'),
     errorScreen: document.getElementById('errorScreen'),
     errorBody: document.getElementById('errorBody'),
@@ -148,7 +147,9 @@ els.submitBtn.addEventListener('click', async () => {
 
         for (let i = 0; i < selectedFiles.length; i++) {
             const file = selectedFiles[i];
-            els.progressFile.textContent = `File ${i + 1} of ${selectedFiles.length}: ${file.name}`;
+            els.progressFile.textContent = selectedFiles.length > 1
+                ? `${file.name}  (${i + 1} / ${selectedFiles.length})`
+                : file.name;
 
             await uploadOneFile(file, meta, (bytesDelta, phase) => {
                 uploadedBytes += bytesDelta;
@@ -172,7 +173,6 @@ els.submitBtn.addEventListener('click', async () => {
                     : '';
 
                 els.progressStatus.textContent = phase || (rateStr ? `${rateStr}${etaStr}` : 'Uploading…');
-                els.progressTotals.textContent = `${formatBytes(uploadedBytes)} / ${formatBytes(totalBytes)}`;
             });
         }
 
@@ -194,7 +194,6 @@ function resetProgressUI() {
     els.progressPercent.textContent = '0%';
     els.progressFile.textContent = 'Preparing…';
     els.progressStatus.textContent = 'Starting upload…';
-    els.progressTotals.textContent = '';
 }
 
 // ---------- UPLOAD ONE FILE ----------
@@ -212,29 +211,25 @@ async function uploadOneFile(file, meta, onProgress) {
             size: file.size,
         });
     } catch (err) {
-        throw new Error(`Start failed for "${file.name}": ${err.message || err}`);
+        console.error('Start failed:', err);
+        throw new Error(`Couldn't start the upload. Please check your connection and try again.`);
     }
     if (!startRes.uploadId) {
-        throw new Error(`Start failed for "${file.name}": ${startRes.error || 'no uploadId returned'}`);
+        console.error('Start error:', startRes.error);
+        throw new Error(`Couldn't start the upload. Please try again.`);
     }
 
     const uploadId = startRes.uploadId;
-    const totalChunks = Math.max(1, Math.ceil(file.size / CHUNK_SIZE));
 
     // Step 2: Stream chunks to Apps Script, which relays them to Drive.
     let offset = 0;
-    let chunkIndex = 0;
 
     while (offset < file.size) {
-        chunkIndex++;
         const end = Math.min(offset + CHUNK_SIZE, file.size);
         const chunkBlob = file.slice(offset, end);
 
         // Read chunk as base64 once; reused across retries.
         const chunkBase64 = await blobToBase64(chunkBlob);
-
-        // Inform UI which chunk is in flight (activity feedback between completions).
-        onProgress(0, `Uploading chunk ${chunkIndex} of ${totalChunks}…`);
 
         let succeeded = false;
         let lastErr = null;
@@ -258,23 +253,22 @@ async function uploadOneFile(file, meta, onProgress) {
                 if (attempt === MAX_CHUNK_RETRIES) break;
 
                 const delay = RETRY_BASE_DELAY_MS * Math.pow(2, attempt);
-                onProgress(0, `Network hiccup on chunk ${chunkIndex}/${totalChunks} — retrying in ${Math.round(delay / 1000)}s (${attempt + 1}/${MAX_CHUNK_RETRIES})…`);
+                onProgress(0, 'Connection issue — reconnecting…');
                 await sleep(delay);
             }
         }
 
         if (!succeeded) {
-            throw new Error(
-                `Chunk ${chunkIndex}/${totalChunks} failed for "${file.name}" at ${formatBytes(offset)} / ${formatBytes(file.size)} ` +
-                `after ${MAX_CHUNK_RETRIES} retries. ${lastErr?.message || lastErr || ''}`
-            );
+            // Log technical detail for debugging but show a simple message to the user.
+            console.error('Chunk upload failed:', lastErr);
+            throw new Error(`Upload failed on "${file.name}". Please try again.`);
         }
 
         offset = end;
     }
 
     // Step 3: Finalize — sidecar metadata + email notification.
-    onProgress(0, 'Finalizing…');
+    onProgress(0, 'Finishing up…');
     let finishRes;
     try {
         finishRes = await postJSON(SCRIPT_URL, {
@@ -283,10 +277,12 @@ async function uploadOneFile(file, meta, onProgress) {
             ...meta,
         });
     } catch (err) {
-        throw new Error(`Finish failed for "${file.name}": ${err.message || err}`);
+        console.error('Finish failed:', err);
+        throw new Error(`Upload couldn't be finalized. Please try again.`);
     }
     if (finishRes.error) {
-        throw new Error(`Finish failed for "${file.name}": ${finishRes.error}`);
+        console.error('Finish error:', finishRes.error);
+        throw new Error(`Upload couldn't be finalized. Please try again.`);
     }
 }
 
