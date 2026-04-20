@@ -6,9 +6,12 @@
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxKAg7SlmtA_Qipa_GFJ3CfxacNtjy9xmQO76EA5yH8Q4eSZKQGu9GAwZC7WEhS8TYzJQ/exec';
 // ============================================================
 
-// 8 MB chunks — large enough to be fast, small enough to resume quickly on flaky mobile networks.
-// Google Drive resumable upload requires chunks to be multiples of 256 KB (except the final chunk).
-const CHUNK_SIZE = 8 * 1024 * 1024;
+// 4 MB chunks — Google Drive resumable upload requires chunk size to be a multiple of 256 KB
+// (except the final chunk). Smaller chunks = better resilience on flaky mobile networks at
+// the cost of slightly more overhead. 4MB is a good sweet spot.
+const CHUNK_SIZE = 4 * 1024 * 1024;
+const MAX_CHUNK_RETRIES = 4;
+const RETRY_BASE_DELAY_MS = 1500;
 
 const els = {
     dropzone: document.getElementById('dropzone'),
@@ -164,18 +167,63 @@ async function uploadOneFile(file, meta, onProgress) {
 
     const uploadUrl = startRes.uploadUrl;
 
-    // Step 2: PUT chunks to the session URL.
+    // Step 2: PUT chunks to the session URL, with retry-and-resume on network hiccups.
     let offset = 0;
+    let lastReportedOffset = 0;
+
     while (offset < file.size) {
         const end = Math.min(offset + CHUNK_SIZE, file.size);
         const chunk = file.slice(offset, end);
-        const isLast = end === file.size;
 
-        await putChunk(uploadUrl, chunk, offset, end - 1, file.size);
-        onProgress(chunk.size);
+        let succeeded = false;
+        for (let attempt = 0; attempt <= MAX_CHUNK_RETRIES; attempt++) {
+            try {
+                await putChunk(uploadUrl, chunk, offset, end - 1, file.size);
+                succeeded = true;
+                break;
+            } catch (err) {
+                if (attempt === MAX_CHUNK_RETRIES) {
+                    throw new Error(
+                        `Upload failed on "${file.name}" at ${formatBytes(offset)} / ${formatBytes(file.size)} ` +
+                        `after ${MAX_CHUNK_RETRIES} retries. ${err.message || err}`
+                    );
+                }
+                const delay = RETRY_BASE_DELAY_MS * Math.pow(2, attempt);
+                els.progressStatus.textContent =
+                    `Network hiccup on "${file.name}" — retrying in ${Math.round(delay / 1000)}s (${attempt + 1}/${MAX_CHUNK_RETRIES})…`;
+                await sleep(delay);
+
+                // Ask Drive how many bytes it actually has, in case the chunk partially landed.
+                try {
+                    const serverOffset = await queryUploadOffset(uploadUrl, file.size);
+                    if (serverOffset !== null && serverOffset > offset) {
+                        // Credit the progress bar for bytes Drive already received.
+                        const delta = serverOffset - lastReportedOffset;
+                        if (delta > 0) {
+                            onProgress(delta);
+                            lastReportedOffset = serverOffset;
+                        }
+                        offset = serverOffset;
+                        succeeded = true;
+                        break;
+                    }
+                } catch {
+                    // Ignore; we'll just retry the original chunk.
+                }
+            }
+        }
+
+        if (succeeded && offset < end) {
+            // Drive already had the chunk (or past it). Loop continues from updated offset.
+            continue;
+        }
+
+        const delta = end - lastReportedOffset;
+        if (delta > 0) {
+            onProgress(delta);
+            lastReportedOffset = end;
+        }
         offset = end;
-
-        if (isLast) break;
     }
 
     // Step 3: Tell the script upload finished, so it can attach metadata.
@@ -213,19 +261,56 @@ function putChunk(uploadUrl, chunk, startByte, endByte, totalSize) {
         const xhr = new XMLHttpRequest();
         xhr.open('PUT', uploadUrl, true);
         xhr.setRequestHeader('Content-Range', `bytes ${startByte}-${endByte}/${totalSize}`);
+        // Give slow connections plenty of time before we consider it dead.
+        xhr.timeout = 120000;
 
         xhr.onload = () => {
             // 200/201 = upload complete. 308 = chunk received, continue.
             if (xhr.status === 200 || xhr.status === 201 || xhr.status === 308) {
                 resolve();
             } else {
-                reject(new Error(`Chunk upload failed: ${xhr.status} ${xhr.statusText}`));
+                reject(new Error(`HTTP ${xhr.status} ${xhr.statusText}`));
             }
         };
-        xhr.onerror = () => reject(new Error('Network error during chunk upload.'));
-        xhr.ontimeout = () => reject(new Error('Upload timed out.'));
+        xhr.onerror = () => reject(new Error('Network error (connection dropped).'));
+        xhr.ontimeout = () => reject(new Error('Chunk timed out.'));
         xhr.send(chunk);
     });
+}
+
+// ---------- QUERY UPLOAD OFFSET ----------
+// Per Drive resumable protocol: PUT with Content-Range: bytes *\/TOTAL and empty body
+// returns 308 with a Range header like "bytes=0-4194303" showing what Drive already has.
+// Returns the next byte to send, or null if the query failed.
+function queryUploadOffset(uploadUrl, totalSize) {
+    return new Promise((resolve) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('PUT', uploadUrl, true);
+        xhr.setRequestHeader('Content-Range', `bytes */${totalSize}`);
+        xhr.timeout = 30000;
+
+        xhr.onload = () => {
+            if (xhr.status === 200 || xhr.status === 201) {
+                resolve(totalSize); // whole file already uploaded
+                return;
+            }
+            if (xhr.status === 308) {
+                const range = xhr.getResponseHeader('Range');
+                if (!range) return resolve(0);
+                const m = range.match(/bytes=0-(\d+)/);
+                if (m) return resolve(Number(m[1]) + 1);
+                return resolve(0);
+            }
+            resolve(null);
+        };
+        xhr.onerror = () => resolve(null);
+        xhr.ontimeout = () => resolve(null);
+        xhr.send('');
+    });
+}
+
+function sleep(ms) {
+    return new Promise(r => setTimeout(r, ms));
 }
 
 // ---------- SCREEN SWITCHING ----------
