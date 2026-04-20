@@ -40,6 +40,17 @@ const els = {
 
 let isUploading = false;
 let selectedFiles = [];
+let warmedUp = false;
+
+// Fire a lightweight POST to Apps Script the moment the user first picks
+// a file. This forces Apps Script to spin up a V8 container NOW rather
+// than when the user hits Submit — saving ~1-2s of cold-start on the
+// first real chunk. The response is ignored; we don't even care if it errors.
+function warmUpAppsScript() {
+    if (warmedUp) return;
+    warmedUp = true;
+    postJSON(SCRIPT_URL, { action: 'ping' }).catch(() => {});
+}
 
 // Warn the user if they try to close the tab mid-upload.
 window.addEventListener('beforeunload', (e) => {
@@ -80,6 +91,7 @@ els.dropzone.addEventListener('drop', (e) => {
 });
 
 function addFiles(files) {
+    if (files.length > 0) warmUpAppsScript();
     for (const f of files) {
         // Prevent duplicates by name+size.
         if (!selectedFiles.some(s => s.name === f.name && s.size === f.size)) {
@@ -146,40 +158,66 @@ els.submitBtn.addEventListener('click', async () => {
     try {
         const totalBytes = selectedFiles.reduce((acc, f) => acc + f.size, 0);
         let uploadedBytes = 0;
+        let filesCompleted = 0;
         let lastTick = Date.now();
         let lastTickBytes = 0;
         let smoothedRate = 0;
 
-        for (let i = 0; i < selectedFiles.length; i++) {
-            const file = selectedFiles[i];
-            els.progressFile.textContent = selectedFiles.length > 1
-                ? `${file.name}  (${i + 1} / ${selectedFiles.length})`
-                : file.name;
+        const updateFileLabel = () => {
+            if (selectedFiles.length <= 1) {
+                els.progressFile.textContent = selectedFiles[0]?.name || '';
+            } else {
+                els.progressFile.textContent = `${filesCompleted} of ${selectedFiles.length} files complete`;
+            }
+        };
+        updateFileLabel();
 
-            await uploadOneFile(file, meta, (bytesDelta, phase) => {
-                uploadedBytes += bytesDelta;
+        // Shared progress callback. All parallel workers funnel into this
+        // so the bar, percentage, and rate/ETA reflect total progress.
+        const onAnyProgress = (bytesDelta, phase) => {
+            uploadedBytes += bytesDelta;
 
-                const pct = totalBytes > 0 ? Math.min(100, (uploadedBytes / totalBytes) * 100) : 0;
-                els.progressBar.style.width = pct.toFixed(2) + '%';
-                els.progressPercent.textContent = pct.toFixed(0) + '%';
+            const pct = totalBytes > 0 ? Math.min(100, (uploadedBytes / totalBytes) * 100) : 0;
+            els.progressBar.style.width = pct.toFixed(2) + '%';
+            els.progressPercent.textContent = pct.toFixed(0) + '%';
 
-                const now = Date.now();
-                const dt = (now - lastTick) / 1000;
-                if (dt >= 0.4) {
-                    const instant = (uploadedBytes - lastTickBytes) / Math.max(dt, 0.001);
-                    smoothedRate = smoothedRate === 0 ? instant : smoothedRate * 0.6 + instant * 0.4;
-                    lastTick = now;
-                    lastTickBytes = uploadedBytes;
-                }
+            const now = Date.now();
+            const dt = (now - lastTick) / 1000;
+            if (dt >= 0.4) {
+                const instant = (uploadedBytes - lastTickBytes) / Math.max(dt, 0.001);
+                smoothedRate = smoothedRate === 0 ? instant : smoothedRate * 0.6 + instant * 0.4;
+                lastTick = now;
+                lastTickBytes = uploadedBytes;
+            }
 
-                const rateStr = smoothedRate > 0 ? `${formatBytes(smoothedRate)}/s` : '';
-                const etaStr = smoothedRate > 0
-                    ? ` · ~${formatDuration((totalBytes - uploadedBytes) / smoothedRate)} remaining`
-                    : '';
+            const rateStr = smoothedRate > 0 ? `${formatBytes(smoothedRate)}/s` : '';
+            const etaStr = smoothedRate > 0
+                ? ` · ~${formatDuration((totalBytes - uploadedBytes) / smoothedRate)} remaining`
+                : '';
 
-                els.progressStatus.textContent = phase || (rateStr ? `${rateStr}${etaStr}` : 'Uploading…');
-            });
-        }
+            els.progressStatus.textContent = phase || (rateStr ? `${rateStr}${etaStr}` : 'Uploading…');
+        };
+
+        // Parallel file uploads. Each worker pulls the next unclaimed file
+        // off a shared index and uploads it. Individual chunks within a file
+        // remain strictly sequential (Drive requires byte-range order), but
+        // different files run side-by-side. For 5 photos at CONCURRENCY=2,
+        // total wall time drops to roughly half.
+        const CONCURRENCY = Math.min(2, selectedFiles.length);
+        let nextIdx = 0;
+        const worker = async () => {
+            while (true) {
+                const i = nextIdx++;
+                if (i >= selectedFiles.length) break;
+                const file = selectedFiles[i];
+                await uploadOneFile(file, meta, onAnyProgress);
+                filesCompleted++;
+                updateFileLabel();
+            }
+        };
+        const workers = [];
+        for (let w = 0; w < CONCURRENCY; w++) workers.push(worker());
+        await Promise.all(workers);
 
         els.progressBar.style.width = '100%';
         els.progressPercent.textContent = '100%';
