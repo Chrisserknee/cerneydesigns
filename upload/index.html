@@ -73,11 +73,22 @@
         </section>
 
         <section class="progress-screen" id="progressScreen" hidden>
-            <h2 class="screen-title">Uploading</h2>
+            <h2 class="screen-title">Uploading Your Tip</h2>
+            <p class="progress-warning">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="8" x2="12" y2="12"/>
+                    <line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                <span>Keep this page open until the upload finishes.</span>
+            </p>
             <div class="progress-bar-wrap">
                 <div class="progress-bar" id="progressBar"></div>
+                <span class="progress-percent" id="progressPercent">0%</span>
             </div>
-            <p class="progress-status" id="progressStatus">Preparing&hellip;</p>
+            <p class="progress-file" id="progressFile">Preparing&hellip;</p>
+            <p class="progress-status" id="progressStatus">Starting upload&hellip;</p>
+            <p class="progress-totals" id="progressTotals"></p>
         </section>
 
         <section class="thankyou-screen" id="thankyouScreen" hidden>

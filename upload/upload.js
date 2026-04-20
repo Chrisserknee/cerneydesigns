@@ -21,7 +21,10 @@ const els = {
     uploader: document.getElementById('uploader'),
     progressScreen: document.getElementById('progressScreen'),
     progressBar: document.getElementById('progressBar'),
+    progressPercent: document.getElementById('progressPercent'),
+    progressFile: document.getElementById('progressFile'),
     progressStatus: document.getElementById('progressStatus'),
+    progressTotals: document.getElementById('progressTotals'),
     thankyouScreen: document.getElementById('thankyouScreen'),
     errorScreen: document.getElementById('errorScreen'),
     errorBody: document.getElementById('errorBody'),
@@ -33,6 +36,17 @@ const els = {
     description: document.getElementById('description'),
     detailsToggle: document.getElementById('detailsToggle'),
 };
+
+let isUploading = false;
+
+// Warn users who try to close the tab during an active upload.
+window.addEventListener('beforeunload', (e) => {
+    if (isUploading) {
+        e.preventDefault();
+        e.returnValue = 'Your upload is still in progress. Leaving will cancel it.';
+        return e.returnValue;
+    }
+});
 
 let selectedFiles = [];
 
@@ -123,31 +137,68 @@ els.submitBtn.addEventListener('click', async () => {
     };
 
     showScreen('progress');
+    isUploading = true;
+    resetProgressUI();
 
     try {
         const totalBytes = selectedFiles.reduce((acc, f) => acc + f.size, 0);
         let uploadedBytes = 0;
+        let lastTick = Date.now();
+        let lastTickBytes = 0;
+        let smoothedRate = 0; // bytes / sec
 
         for (let i = 0; i < selectedFiles.length; i++) {
             const file = selectedFiles[i];
-            const fileLabel = `${i + 1} of ${selectedFiles.length}`;
-            els.progressStatus.textContent = `File ${fileLabel} — ${file.name}`;
+            els.progressFile.textContent = `File ${i + 1} of ${selectedFiles.length}: ${file.name}`;
 
-            await uploadOneFile(file, meta, (chunkBytes) => {
-                uploadedBytes += chunkBytes;
-                const pct = Math.min(100, (uploadedBytes / totalBytes) * 100);
-                els.progressBar.style.width = pct.toFixed(1) + '%';
-                els.progressStatus.textContent =
-                    `File ${fileLabel} — ${formatBytes(uploadedBytes)} / ${formatBytes(totalBytes)} (${pct.toFixed(0)}%)`;
+            await uploadOneFile(file, meta, (bytesDelta, phase) => {
+                uploadedBytes += bytesDelta;
+
+                const pct = totalBytes > 0 ? Math.min(100, (uploadedBytes / totalBytes) * 100) : 0;
+                els.progressBar.style.width = pct.toFixed(2) + '%';
+                els.progressPercent.textContent = pct.toFixed(0) + '%';
+
+                // Instantaneous transfer rate (smoothed).
+                const now = Date.now();
+                const dt = (now - lastTick) / 1000;
+                if (dt >= 0.4) {
+                    const instant = (uploadedBytes - lastTickBytes) / Math.max(dt, 0.001);
+                    smoothedRate = smoothedRate === 0 ? instant : smoothedRate * 0.6 + instant * 0.4;
+                    lastTick = now;
+                    lastTickBytes = uploadedBytes;
+                }
+
+                const rateStr = smoothedRate > 0 ? `${formatBytes(smoothedRate)}/s` : '';
+                const etaStr = smoothedRate > 0
+                    ? ` · ~${formatDuration((totalBytes - uploadedBytes) / smoothedRate)} remaining`
+                    : '';
+
+                els.progressStatus.textContent = phase || (rateStr ? `${rateStr}${etaStr}` : 'Uploading…');
+                els.progressTotals.textContent = `${formatBytes(uploadedBytes)} / ${formatBytes(totalBytes)}`;
             });
         }
 
+        // Final flourish before switching screens.
+        els.progressBar.style.width = '100%';
+        els.progressPercent.textContent = '100%';
+        els.progressStatus.textContent = 'Finalizing…';
+
+        isUploading = false;
         showScreen('thankyou');
     } catch (err) {
         console.error(err);
+        isUploading = false;
         showError(err?.message || 'Upload failed. Please try again.');
     }
 });
+
+function resetProgressUI() {
+    els.progressBar.style.width = '0%';
+    els.progressPercent.textContent = '0%';
+    els.progressFile.textContent = 'Preparing…';
+    els.progressStatus.textContent = 'Starting upload…';
+    els.progressTotals.textContent = '';
+}
 
 // ---------- UPLOAD ONE FILE ----------
 async function uploadOneFile(file, meta, onProgress) {
@@ -167,9 +218,17 @@ async function uploadOneFile(file, meta, onProgress) {
 
     const uploadUrl = startRes.uploadUrl;
 
-    // Step 2: PUT chunks to the session URL, with retry-and-resume on network hiccups.
+    // Step 2: PUT chunks to the session URL, with byte-level progress + retry/resume.
     let offset = 0;
-    let lastReportedOffset = 0;
+    let reportedBytes = 0; // bytes credited to onProgress so far for THIS file
+
+    const credit = (toByte) => {
+        const delta = toByte - reportedBytes;
+        if (delta > 0) {
+            onProgress(delta);
+            reportedBytes = toByte;
+        }
+    };
 
     while (offset < file.size) {
         const end = Math.min(offset + CHUNK_SIZE, file.size);
@@ -178,7 +237,18 @@ async function uploadOneFile(file, meta, onProgress) {
         let succeeded = false;
         for (let attempt = 0; attempt <= MAX_CHUNK_RETRIES; attempt++) {
             try {
-                await putChunk(uploadUrl, chunk, offset, end - 1, file.size);
+                await putChunk(
+                    uploadUrl,
+                    chunk,
+                    offset,
+                    end - 1,
+                    file.size,
+                    // Byte-level progress inside the chunk: credit bytes as they leave the browser.
+                    (bytesSentInChunk) => {
+                        credit(offset + bytesSentInChunk);
+                    }
+                );
+                credit(end); // ensure full chunk is credited once complete
                 succeeded = true;
                 break;
             } catch (err) {
@@ -188,42 +258,35 @@ async function uploadOneFile(file, meta, onProgress) {
                         `after ${MAX_CHUNK_RETRIES} retries. ${err.message || err}`
                     );
                 }
-                const delay = RETRY_BASE_DELAY_MS * Math.pow(2, attempt);
-                els.progressStatus.textContent =
-                    `Network hiccup on "${file.name}" — retrying in ${Math.round(delay / 1000)}s (${attempt + 1}/${MAX_CHUNK_RETRIES})…`;
-                await sleep(delay);
+                // Roll back the global counter for any bytes optimistically credited from this failed chunk.
+                const rollback = reportedBytes - offset;
+                if (rollback > 0) {
+                    onProgress(-rollback);
+                    reportedBytes = offset;
+                }
+                onProgress(0, `Network hiccup — retrying in ${Math.round(
+                    RETRY_BASE_DELAY_MS * Math.pow(2, attempt) / 1000
+                )}s (${attempt + 1}/${MAX_CHUNK_RETRIES})…`);
 
-                // Ask Drive how many bytes it actually has, in case the chunk partially landed.
+                await sleep(RETRY_BASE_DELAY_MS * Math.pow(2, attempt));
+
+                // Ask Drive what it actually has so we skip already-received bytes.
                 try {
                     const serverOffset = await queryUploadOffset(uploadUrl, file.size);
                     if (serverOffset !== null && serverOffset > offset) {
-                        // Credit the progress bar for bytes Drive already received.
-                        const delta = serverOffset - lastReportedOffset;
-                        if (delta > 0) {
-                            onProgress(delta);
-                            lastReportedOffset = serverOffset;
-                        }
+                        credit(serverOffset);
                         offset = serverOffset;
                         succeeded = true;
                         break;
                     }
                 } catch {
-                    // Ignore; we'll just retry the original chunk.
+                    // ignore and retry
                 }
             }
         }
 
-        if (succeeded && offset < end) {
-            // Drive already had the chunk (or past it). Loop continues from updated offset.
-            continue;
-        }
-
-        const delta = end - lastReportedOffset;
-        if (delta > 0) {
-            onProgress(delta);
-            lastReportedOffset = end;
-        }
-        offset = end;
+        if (!succeeded) break; // shouldn't happen, throws above
+        offset = Math.max(offset, end);
     }
 
     // Step 3: Tell the script upload finished, so it can attach metadata.
@@ -256,13 +319,21 @@ async function postScript(payload) {
 }
 
 // ---------- CHUNK PUT (to Drive resumable session) ----------
-function putChunk(uploadUrl, chunk, startByte, endByte, totalSize) {
+function putChunk(uploadUrl, chunk, startByte, endByte, totalSize, onChunkProgress) {
     return new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         xhr.open('PUT', uploadUrl, true);
         xhr.setRequestHeader('Content-Range', `bytes ${startByte}-${endByte}/${totalSize}`);
         // Give slow connections plenty of time before we consider it dead.
-        xhr.timeout = 120000;
+        xhr.timeout = 180000;
+
+        if (onChunkProgress) {
+            xhr.upload.onprogress = (ev) => {
+                if (ev.lengthComputable) {
+                    onChunkProgress(ev.loaded);
+                }
+            };
+        }
 
         xhr.onload = () => {
             // 200/201 = upload complete. 308 = chunk received, continue.
@@ -340,8 +411,21 @@ function resetForm() {
 
 // ---------- HELPERS ----------
 function formatBytes(bytes) {
-    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024) return Math.round(bytes) + ' B';
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
     if (bytes < 1024 * 1024 * 1024) return (bytes / 1024 / 1024).toFixed(1) + ' MB';
     return (bytes / 1024 / 1024 / 1024).toFixed(2) + ' GB';
+}
+
+function formatDuration(seconds) {
+    if (!isFinite(seconds) || seconds < 0) return '—';
+    if (seconds < 60) return Math.max(1, Math.round(seconds)) + 's';
+    if (seconds < 3600) {
+        const m = Math.floor(seconds / 60);
+        const s = Math.round(seconds % 60);
+        return `${m}m ${s}s`;
+    }
+    const h = Math.floor(seconds / 3600);
+    const m = Math.round((seconds % 3600) / 60);
+    return `${h}h ${m}m`;
 }
