@@ -6,12 +6,12 @@
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw_xPCXhuU7gMn4MyV1q6FOmWZpNbvuWgWJwrr-zJdaJCG1Bz4I4WfUMFUCdmxugj2E/exec';
 // ============================================================
 
-// 6 MB raw chunks. After base64 encoding (~33% overhead) each POST body is ~8 MB
-// — well under the Apps Script 50 MB limit with plenty of headroom. Bigger chunks
-// = fewer round trips to Apps Script, which is the dominant per-request cost
-// (~1-2s of script startup per call regardless of payload size).
-// Must be a multiple of 256 KB per Drive's resumable upload spec.
-const CHUNK_SIZE = 6 * 1024 * 1024;
+// 3 MB raw chunks. After base64 encoding (~33% overhead) each POST body is ~4 MB.
+// Kept small because for most home/mobile internet, the POST upload time (not
+// Apps Script overhead) is the dominant per-chunk cost. Smaller chunks = each
+// chunk finishes faster, progress feels smoother, and flaky connections recover
+// quickly. Must be a multiple of 256 KB per Drive's resumable upload spec.
+const CHUNK_SIZE = 3 * 1024 * 1024;
 const MAX_CHUNK_RETRIES = 4;
 const RETRY_BASE_DELAY_MS = 1500;
 
