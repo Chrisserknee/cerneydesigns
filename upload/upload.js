@@ -1,24 +1,17 @@
 // ============================================================
 // TIPLINE UPLOAD CLIENT
-//
-// Architecture:
-//   1. POST to Apps Script action=start  → returns a Drive resumable
-//      upload session URL (generated server-side by Apps Script using
-//      its OAuth token).
-//   2. PUT chunks directly from the browser to that Drive session URL.
-//      No Apps Script in the path for file bytes → no base64 overhead,
-//      no double hop, and upload.onprogress works cleanly because Drive
-//      handles CORS properly.
-//   3. POST to Apps Script action=finish with the returned fileId → it
-//      writes a .info.txt sidecar and emails the submission notice.
+// All uploads are proxied through Google Apps Script to Drive,
+// which eliminates all CORS issues (no direct browser→googleapis.com).
 // ============================================================
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw_xPCXhuU7gMn4MyV1q6FOmWZpNbvuWgWJwrr-zJdaJCG1Bz4I4WfUMFUCdmxugj2E/exec';
 // ============================================================
 
-// 8 MB raw chunks. Uploaded directly to Drive (no base64), so what the
-// browser sends is exactly what Drive stores — no overhead. Must be a
-// multiple of 256 KB per Drive's resumable upload spec.
-const CHUNK_SIZE = 8 * 1024 * 1024;
+// 3 MB raw chunks. After base64 encoding (~33% overhead) each POST body is ~4 MB.
+// Kept small because for most home/mobile internet, the POST upload time (not
+// Apps Script overhead) is the dominant per-chunk cost. Smaller chunks = each
+// chunk finishes faster, progress feels smoother, and flaky connections recover
+// quickly. Must be a multiple of 256 KB per Drive's resumable upload spec.
+const CHUNK_SIZE = 3 * 1024 * 1024;
 const MAX_CHUNK_RETRIES = 4;
 const RETRY_BASE_DELAY_MS = 1500;
 
@@ -209,11 +202,11 @@ function resetProgressUI() {
 }
 
 // ---------- UPLOAD ONE FILE ----------
-// Chunks go directly from the browser to Drive's resumable session URL.
-// Apps Script is only involved at the start (to open the session) and
-// at the end (to write the sidecar file + send the notification email).
+// All chunks are POSTed to Apps Script as base64 JSON. Apps Script forwards
+// them to Drive's resumable session server-side, so there's no CORS exposure
+// as long as each POST remains a "simple request" (no upload listeners).
 async function uploadOneFile(file, meta, onProgress) {
-    // Step 1: Ask Apps Script to open a Drive resumable session.
+    // Step 1: Ask Apps Script to open a server-side resumable Drive session.
     let startRes;
     try {
         startRes = await postJSON(SCRIPT_URL, {
@@ -226,85 +219,43 @@ async function uploadOneFile(file, meta, onProgress) {
         console.error('Start failed:', err);
         throw new Error(`Couldn't start the upload. Please check your connection and try again.`);
     }
-    if (!startRes.uploadUrl) {
+    if (!startRes.uploadId) {
         console.error('Start error:', startRes.error);
         throw new Error(`Couldn't start the upload. Please try again.`);
     }
 
-    const uploadUrl = startRes.uploadUrl;
-    const storedName = startRes.storedName || '';
-    const mimeType = file.type || 'application/octet-stream';
+    const uploadId = startRes.uploadId;
 
-    // Step 2: PUT chunks directly to Drive.
+    // Step 2: Stream chunks to Apps Script, which relays them to Drive.
     let offset = 0;
-    let fileId = null;
-    let creditedBytes = 0; // total bytes reported to onProgress so far
 
-    // Helper: report a net delta from creditedBytes up to newCumulative.
-    const creditUpTo = (newCumulative) => {
-        const delta = newCumulative - creditedBytes;
-        if (delta !== 0) {
-            onProgress(delta);
-            creditedBytes = newCumulative;
-        }
-    };
-
-    while (offset < file.size && !fileId) {
+    while (offset < file.size) {
         const end = Math.min(offset + CHUNK_SIZE, file.size);
         const chunkBlob = file.slice(offset, end);
 
+        // Read chunk as base64 once; reused across retries.
+        const chunkBase64 = await blobToBase64(chunkBlob);
+
         let succeeded = false;
         let lastErr = null;
-
         for (let attempt = 0; attempt <= MAX_CHUNK_RETRIES; attempt++) {
             try {
-                const result = await putChunkToDrive(
-                    uploadUrl,
-                    chunkBlob,
-                    offset,
-                    end - 1,
-                    file.size,
-                    mimeType,
-                    // Live within-chunk progress.
-                    (bytesSentInChunk) => creditUpTo(offset + bytesSentInChunk)
-                );
+                const res = await postJSON(SCRIPT_URL, {
+                    action: 'chunk',
+                    uploadId: uploadId,
+                    offset: offset,
+                    dataBase64: chunkBase64,
+                });
 
-                if (result.done) {
-                    // Final chunk accepted; response contains the file metadata.
-                    fileId = result.fileId;
-                    creditUpTo(file.size);
-                } else {
-                    // 308 Resume Incomplete — Drive tells us how much it has.
-                    creditUpTo(result.nextOffset);
-                    offset = result.nextOffset;
-                }
+                if (res.error) throw new Error(res.error);
 
+                // Chunk accepted — credit its full byte count in one go.
+                onProgress(end - offset);
                 succeeded = true;
                 break;
             } catch (err) {
                 lastErr = err;
                 if (attempt === MAX_CHUNK_RETRIES) break;
-
-                // Roll back any in-flight bytes for this chunk — we don't
-                // know how much Drive actually received yet.
-                creditUpTo(offset);
-
-                // Ask Drive where it actually is. If the chunk actually
-                // completed server-side (common on transient network hiccups),
-                // we skip ahead instead of re-sending.
-                try {
-                    const queried = await queryDriveOffset(uploadUrl, file.size);
-                    if (queried.done) {
-                        fileId = queried.fileId;
-                        creditUpTo(file.size);
-                        succeeded = true;
-                        break;
-                    }
-                    offset = queried.nextOffset;
-                    creditUpTo(offset);
-                } catch (qErr) {
-                    // Query failed; fall through to backoff + retry at same offset.
-                }
 
                 const delay = RETRY_BASE_DELAY_MS * Math.pow(2, attempt);
                 onProgress(0, 'Connection issue — reconnecting…');
@@ -313,23 +264,12 @@ async function uploadOneFile(file, meta, onProgress) {
         }
 
         if (!succeeded) {
+            // Log technical detail for debugging but show a simple message to the user.
             console.error('Chunk upload failed:', lastErr);
             throw new Error(`Upload failed on "${file.name}". Please try again.`);
         }
 
-        if (!fileId) offset = Math.max(offset, end);
-    }
-
-    if (!fileId) {
-        // Drive finished ingesting but we somehow didn't capture the id.
-        // Query once more as a safety net.
-        try {
-            const finalQuery = await queryDriveOffset(uploadUrl, file.size);
-            if (finalQuery.done) fileId = finalQuery.fileId;
-        } catch { /* ignore */ }
-    }
-    if (!fileId) {
-        throw new Error(`Upload didn't complete for "${file.name}". Please try again.`);
+        offset = end;
     }
 
     // Step 3: Finalize — sidecar metadata + email notification.
@@ -338,19 +278,16 @@ async function uploadOneFile(file, meta, onProgress) {
     try {
         finishRes = await postJSON(SCRIPT_URL, {
             action: 'finish',
-            fileId: fileId,
-            fileName: file.name,
-            storedName: storedName,
+            uploadId: uploadId,
             ...meta,
         });
     } catch (err) {
         console.error('Finish failed:', err);
-        // File is already in Drive; the email/sidecar just didn't land.
-        throw new Error(`Upload saved to Drive, but notification failed. Please let Chris know.`);
+        throw new Error(`Upload couldn't be finalized. Please try again.`);
     }
     if (finishRes.error) {
         console.error('Finish error:', finishRes.error);
-        throw new Error(`Upload saved to Drive, but notification failed. Please let Chris know.`);
+        throw new Error(`Upload couldn't be finalized. Please try again.`);
     }
 }
 
@@ -385,89 +322,18 @@ function postJSON(url, payload) {
     });
 }
 
-// ---------- PUT A CHUNK DIRECTLY TO DRIVE ----------
-// Resolves with either:
-//   { done: true,  fileId: '...' }       // on 200/201 (final chunk)
-//   { done: false, nextOffset: number }  // on 308 Resume Incomplete
-// Rejects on network error, timeout, or any 4xx/5xx from Drive.
-function putChunkToDrive(uploadUrl, chunkBlob, startByte, endByte, totalSize, mimeType, onProgress) {
+// ---------- BLOB → BASE64 ----------
+// Reads a File/Blob slice and returns the raw base64 payload (no data URL prefix).
+function blobToBase64(blob) {
     return new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open('PUT', uploadUrl, true);
-        xhr.setRequestHeader('Content-Range', `bytes ${startByte}-${endByte}/${totalSize}`);
-        // Don't set Content-Type on resumable PUTs; the mime type was already
-        // declared in the session init. Setting it here is harmless but adds
-        // preflight header complexity.
-        xhr.timeout = 600000; // 10 minutes per chunk, for slow mobile connections
-
-        if (onProgress) {
-            xhr.upload.onprogress = (ev) => {
-                if (ev.lengthComputable) onProgress(ev.loaded);
-            };
-        }
-
-        xhr.onload = () => {
-            const status = xhr.status;
-            if (status === 200 || status === 201) {
-                try {
-                    const data = JSON.parse(xhr.responseText);
-                    resolve({ done: true, fileId: data.id });
-                } catch {
-                    reject(new Error('Invalid completion response from Drive.'));
-                }
-            } else if (status === 308) {
-                // Drive accepted so far; Range header tells us how far.
-                const rangeHeader = xhr.getResponseHeader('Range');
-                let nextOffset = endByte + 1; // assume full chunk if Range not exposed
-                if (rangeHeader) {
-                    const m = rangeHeader.match(/bytes=0-(\d+)/);
-                    if (m) nextOffset = parseInt(m[1], 10) + 1;
-                }
-                resolve({ done: false, nextOffset: nextOffset });
-            } else {
-                reject(new Error(`Drive returned ${status}: ${(xhr.responseText || '').slice(0, 200)}`));
-            }
+        const reader = new FileReader();
+        reader.onload = () => {
+            const dataUrl = reader.result;
+            const comma = dataUrl.indexOf(',');
+            resolve(comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl);
         };
-        xhr.onerror = () => reject(new Error('Network error during chunk upload.'));
-        xhr.ontimeout = () => reject(new Error('Chunk upload timed out.'));
-        xhr.send(chunkBlob);
-    });
-}
-
-// ---------- QUERY DRIVE FOR CURRENT OFFSET ----------
-// Used after a failed chunk to ask "how much did you actually receive?"
-// so we can skip re-sending bytes Drive already has.
-function queryDriveOffset(uploadUrl, totalSize) {
-    return new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open('PUT', uploadUrl, true);
-        xhr.setRequestHeader('Content-Range', `bytes */${totalSize}`);
-        xhr.timeout = 60000;
-
-        xhr.onload = () => {
-            const status = xhr.status;
-            if (status === 200 || status === 201) {
-                try {
-                    const data = JSON.parse(xhr.responseText);
-                    resolve({ done: true, fileId: data.id });
-                } catch {
-                    reject(new Error('Invalid query response from Drive.'));
-                }
-            } else if (status === 308) {
-                const rangeHeader = xhr.getResponseHeader('Range');
-                let nextOffset = 0;
-                if (rangeHeader) {
-                    const m = rangeHeader.match(/bytes=0-(\d+)/);
-                    if (m) nextOffset = parseInt(m[1], 10) + 1;
-                }
-                resolve({ done: false, nextOffset: nextOffset });
-            } else {
-                reject(new Error(`Drive status query returned ${status}`));
-            }
-        };
-        xhr.onerror = () => reject(new Error('Network error querying upload status.'));
-        xhr.ontimeout = () => reject(new Error('Upload-status query timed out.'));
-        xhr.send(); // empty body: this is a status query
+        reader.onerror = () => reject(new Error('Failed to read file chunk.'));
+        reader.readAsDataURL(blob);
     });
 }
 
