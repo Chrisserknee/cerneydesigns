@@ -1,33 +1,26 @@
 // ============================================================
-// TIPLINE EMAIL NOTIFIER
+// TIPLINE PUSH NOTIFIER (via ntfy.sh)
 // Triggers whenever a _submission.json sidecar is written to
-// tips/* in Firebase Storage, then emails the recipient a
-// summary with direct download links to each uploaded file.
+// tips/* in Firebase Storage, then sends a push notification to
+// your phone via ntfy.sh. No email, no third-party account —
+// just the ntfy app on your phone subscribed to a private topic.
 // ============================================================
 const { onObjectFinalized } = require('firebase-functions/v2/storage');
 const { defineSecret } = require('firebase-functions/params');
 const { logger } = require('firebase-functions');
 const admin = require('firebase-admin');
-const { Resend } = require('resend');
 
 admin.initializeApp();
 
-const resendApiKey = defineSecret('RESEND_API_KEY');
-
-// Where to send tip notifications. Hardcoded on purpose so the user
-// doesn't have to manage yet another secret.
-const NOTIFY_EMAIL = 'captainraptorz@gmail.com';
-
-// Resend's sandbox sender. No domain verification required; delivers
-// to the email address you used to sign up for Resend.
-const FROM_EMAIL = 'Tipline <onboarding@resend.dev>';
+// Secret topic name. Anyone who knows it can send you notifications,
+// so it's stored as a Firebase secret, never committed to git.
+const ntfyTopic = defineSecret('NTFY_TOPIC');
 
 exports.notifyOnTip = onObjectFinalized(
     {
         // Must match the region of the Storage bucket (us-west1 for this project).
         region: 'us-west1',
-        secrets: [resendApiKey],
-        // Reasonable ceiling — this function is tiny and infrequent.
+        secrets: [ntfyTopic],
         memory: '256MiB',
         timeoutSeconds: 60,
     },
@@ -44,7 +37,6 @@ exports.notifyOnTip = onObjectFinalized(
         const folder = filePath.substring(0, filePath.lastIndexOf('/'));
         const bucket = admin.storage().bucket(object.bucket);
 
-        // Parse the submission metadata
         let submission = {};
         try {
             const [buf] = await bucket.file(filePath).download();
@@ -53,13 +45,11 @@ exports.notifyOnTip = onObjectFinalized(
             logger.error('Failed to read submission JSON', err);
         }
 
-        // Gather all sibling files (the actual tip media)
         const [files] = await bucket.getFiles({ prefix: folder + '/' });
         const tipFiles = files.filter(f => !f.name.endsWith('/_submission.json'));
 
-        // Build download URLs using the download tokens that the client SDK
-        // already attached at upload time. Avoids the IAM friction that
-        // getSignedUrl() requires.
+        // Build tokenized download URLs using the download tokens that the
+        // client SDK already attached at upload time.
         const fileLinks = tipFiles.map((f) => {
             const tokens = f.metadata.metadata?.firebaseStorageDownloadTokens;
             const firstToken = tokens ? String(tokens).split(',')[0] : null;
@@ -72,68 +62,65 @@ exports.notifyOnTip = onObjectFinalized(
             return { name: basename, url, sizeBytes };
         });
 
+        // Firebase Console URL for the folder (for the notification tap action).
         const consoleUrl = `https://console.firebase.google.com/project/${process.env.GCLOUD_PROJECT}/storage/${object.bucket}/files/~2F${encodeURIComponent(folder).replace(/%2F/g, '~2F')}`;
 
-        const senderBlock = submission.anonymous
-            ? '<p style="margin:0 0 12px 0"><strong>Anonymous submission</strong></p>'
-            : `<table style="border-collapse:collapse;margin:0 0 12px 0">
-                  <tr><td style="padding:2px 12px 2px 0;color:#666">Name</td><td>${escapeHtml(submission.senderName || '(not provided)')}</td></tr>
-                  <tr><td style="padding:2px 12px 2px 0;color:#666">Contact</td><td>${escapeHtml(submission.senderContact || '(not provided)')}</td></tr>
-               </table>`;
+        // Build the message body
+        const lines = [];
+        if (submission.anonymous) {
+            lines.push('Anonymous submission');
+        } else {
+            if (submission.senderName) lines.push(`From: ${submission.senderName}`);
+            if (submission.senderContact) lines.push(`Contact: ${submission.senderContact}`);
+        }
+        if (submission.description) {
+            lines.push('');
+            lines.push(submission.description.length > 500 ? submission.description.slice(0, 497) + '...' : submission.description);
+        }
+        if (fileLinks.length) {
+            lines.push('');
+            lines.push(`Files (${fileLinks.length}):`);
+            fileLinks.forEach(f => lines.push(`• ${f.name} (${formatBytes(f.sizeBytes)})`));
+        }
 
-        const descriptionBlock = submission.description
-            ? `<p style="margin:0 0 12px 0"><strong>Description</strong><br>${escapeHtml(submission.description).replace(/\n/g, '<br>')}</p>`
-            : '';
+        const title = `New Tip: ${fileLinks.length} file${fileLinks.length === 1 ? '' : 's'}${submission.anonymous ? ' (anon)' : ''}`;
+        const message = lines.join('\n') || 'New tip received.';
 
-        const filesBlock = fileLinks.length
-            ? '<ul style="margin:0 0 12px 0;padding-left:20px">' + fileLinks.map(f => {
-                const sizeStr = formatBytes(f.sizeBytes);
-                return f.url
-                    ? `<li style="margin:4px 0"><a href="${f.url}">${escapeHtml(f.name)}</a> <span style="color:#888">(${sizeStr})</span></li>`
-                    : `<li style="margin:4px 0">${escapeHtml(f.name)} <span style="color:#888">(${sizeStr})</span></li>`;
-            }).join('') + '</ul>'
-            : '<p>(no files found)</p>';
+        // Up to 3 clickable action buttons. Priority: Console, then first file.
+        const actions = [{ action: 'view', label: 'Open Folder', url: consoleUrl, clear: true }];
+        if (fileLinks[0]?.url) {
+            actions.push({ action: 'view', label: 'Download First', url: fileLinks[0].url, clear: true });
+        }
 
-        const html = `
-<div style="font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;max-width:560px;color:#222">
-  <h2 style="margin:0 0 16px 0;font-size:20px">New Tip Received</h2>
-  ${senderBlock}
-  ${descriptionBlock}
-  <p style="margin:0 0 8px 0"><strong>Files (${fileLinks.length})</strong></p>
-  ${filesBlock}
-  <p style="margin:16px 0 0 0"><a href="${consoleUrl}" style="color:#0a66c2">Open folder in Firebase Console</a></p>
-  <hr style="border:none;border-top:1px solid #eee;margin:20px 0">
-  <p style="color:#888;font-size:12px;margin:0">Submitted ${escapeHtml(submission.submittedAt || new Date().toISOString())}</p>
-</div>`.trim();
+        const body = {
+            topic: ntfyTopic.value(),
+            title,
+            message,
+            priority: 4, // high
+            tags: ['camera_flash', 'newspaper'],
+            click: consoleUrl,
+            actions,
+        };
 
-        const subject = `New Tip: ${fileLinks.length} file${fileLinks.length === 1 ? '' : 's'}${submission.anonymous ? ' (anonymous)' : ''}`;
-
-        const resend = new Resend(resendApiKey.value());
         try {
-            await resend.emails.send({
-                from: FROM_EMAIL,
-                to: NOTIFY_EMAIL,
-                subject,
-                html,
+            const res = await fetch('https://ntfy.sh', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
             });
-            logger.info(`Notification email sent for ${folder}`);
+            if (!res.ok) {
+                const text = await res.text();
+                logger.error(`ntfy returned ${res.status}: ${text}`);
+            } else {
+                logger.info(`Notification sent for ${folder}`);
+            }
         } catch (err) {
-            logger.error('Failed to send notification email', err);
+            logger.error('Failed to POST to ntfy', err);
         }
 
         return null;
     }
 );
-
-function escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, (c) => ({
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#39;',
-    }[c]));
-}
 
 function formatBytes(bytes) {
     if (bytes < 1024) return Math.round(bytes) + ' B';
