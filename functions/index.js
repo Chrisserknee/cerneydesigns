@@ -1,41 +1,48 @@
 // ============================================================
-// TIPLINE PUSH NOTIFIER (via ntfy.sh)
-// Triggers whenever a _submission.json sidecar is written to
-// tips/* in Firebase Storage, then sends a push notification to
-// your phone via ntfy.sh. No email, no third-party account —
-// just the ntfy app on your phone subscribed to a private topic.
+// TIPLINE — ntfy push + Google Drive mirror
+// Triggers when tips/*/ _submission.json is finalized (after all
+// media is already in Storage). Then:
+//   1) Mirrors every file in that session folder to a new subfolder
+//      under your Google Drive folder (streaming, full originals).
+//   2) Sends the ntfy.sh notification (unchanged).
+//
+// Drive auth: default Cloud Functions service account + Drive API
+// scope drive.file. You must share the Drive parent folder with:
+//   218726736554-compute@developer.gserviceaccount.com  (Editor)
 // ============================================================
 const { onObjectFinalized } = require('firebase-functions/v2/storage');
 const { defineSecret } = require('firebase-functions/params');
 const { logger } = require('firebase-functions');
 const admin = require('firebase-admin');
+const { google } = require('googleapis');
 
 admin.initializeApp();
 
-// Secret topic name. Anyone who knows it can send you notifications,
-// so it's stored as a Firebase secret, never committed to git.
 const ntfyTopic = defineSecret('NTFY_TOPIC');
+
+// Google Drive folder ID (from the folder URL). Share this folder with the
+// Cloud Functions default service account as Editor — see repo README or
+// deploy notes. Change here if you ever use a different folder.
+const DRIVE_PARENT_FOLDER_ID = '1bYqiGoCQ9cyx4OHIoM3rJADvkAUh6TIQ';
 
 exports.notifyOnTip = onObjectFinalized(
     {
-        // Must match the region of the Storage bucket (us-west1 for this project).
         region: 'us-west1',
         secrets: [ntfyTopic],
-        memory: '256MiB',
-        timeoutSeconds: 60,
+        memory: '1GiB',
+        timeoutSeconds: 540,
     },
     async (event) => {
         const object = event.data;
         const filePath = object.name;
 
-        // Only fire on _submission.json (written last by the client), so all
-        // other files in the folder are guaranteed to already exist.
         if (!filePath || !filePath.startsWith('tips/') || !filePath.endsWith('/_submission.json')) {
             return null;
         }
 
         const folder = filePath.substring(0, filePath.lastIndexOf('/'));
         const bucket = admin.storage().bucket(object.bucket);
+        const sessionLabel = folder.split('/').pop() || 'tip';
 
         let submission = {};
         try {
@@ -47,9 +54,8 @@ exports.notifyOnTip = onObjectFinalized(
 
         const [files] = await bucket.getFiles({ prefix: folder + '/' });
         const tipFiles = files.filter(f => !f.name.endsWith('/_submission.json'));
+        const allSessionFiles = files.filter((f) => !f.name.endsWith('/'));
 
-        // Build tokenized download URLs using the download tokens that the
-        // client SDK already attached at upload time.
         const fileLinks = tipFiles.map((f) => {
             const tokens = f.metadata.metadata?.firebaseStorageDownloadTokens;
             const firstToken = tokens ? String(tokens).split(',')[0] : null;
@@ -62,10 +68,8 @@ exports.notifyOnTip = onObjectFinalized(
             return { name: basename, url, sizeBytes };
         });
 
-        // Firebase Console URL for the folder (for the notification tap action).
         const consoleUrl = `https://console.firebase.google.com/project/${process.env.GCLOUD_PROJECT}/storage/${object.bucket}/files/~2F${encodeURIComponent(folder).replace(/%2F/g, '~2F')}`;
 
-        // Build the message body
         const lines = [];
         if (submission.anonymous) {
             lines.push('Anonymous submission');
@@ -86,41 +90,114 @@ exports.notifyOnTip = onObjectFinalized(
         const title = `New Tip: ${fileLinks.length} file${fileLinks.length === 1 ? '' : 's'}${submission.anonymous ? ' (anon)' : ''}`;
         const message = lines.join('\n') || 'New tip received.';
 
-        // Up to 3 clickable action buttons. Priority: Console, then first file.
-        const actions = [{ action: 'view', label: 'Open Folder', url: consoleUrl, clear: true }];
-        if (fileLinks[0]?.url) {
+        let driveFolderUrl = null;
+        let driveError = null;
+        try {
+            const driveMirror = await mirrorSessionToDrive({
+                bucket,
+                sessionFiles: allSessionFiles,
+                sessionLabel,
+                parentFolderId: DRIVE_PARENT_FOLDER_ID,
+            });
+            driveFolderUrl = driveMirror.folderUrl;
+            logger.info(`Drive mirror OK for ${folder}`);
+        } catch (err) {
+            driveError = err;
+            logger.error('Drive mirror failed', err);
+        }
+
+        const actions = [];
+        if (driveFolderUrl) {
+            actions.push({ action: 'view', label: 'Open Drive Folder', url: driveFolderUrl, clear: true });
+        }
+        actions.push({ action: 'view', label: 'Open Firebase Folder', url: consoleUrl, clear: true });
+        if (fileLinks[0]?.url && actions.length < 3) {
             actions.push({ action: 'view', label: 'Download First', url: fileLinks[0].url, clear: true });
         }
 
-        const body = {
+        const ntfyBody = {
             topic: ntfyTopic.value(),
-            title,
-            message,
-            priority: 4, // high
+            title: driveError ? `${title} (Drive copy failed)` : title,
+            message: driveError
+                ? `${message}\n\nDrive copy failed, but Firebase upload is safe.`
+                : message,
+            priority: 4,
             tags: ['camera_flash', 'newspaper'],
-            click: consoleUrl,
+            click: driveFolderUrl || consoleUrl,
             actions,
         };
 
         try {
-            const res = await fetch('https://ntfy.sh', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body),
-            });
-            if (!res.ok) {
-                const text = await res.text();
-                logger.error(`ntfy returned ${res.status}: ${text}`);
-            } else {
-                logger.info(`Notification sent for ${folder}`);
-            }
+            await postNtfy(ntfyBody);
         } catch (err) {
-            logger.error('Failed to POST to ntfy', err);
+            logger.error('ntfy failed', err);
         }
 
         return null;
     }
 );
+
+/**
+ * Streams each Storage object into a new Drive subfolder (original bytes).
+ */
+async function mirrorSessionToDrive({ bucket, sessionFiles, sessionLabel, parentFolderId }) {
+    if (!parentFolderId) {
+        logger.warn('DRIVE_FOLDER_ID empty — skipping Drive mirror');
+        return;
+    }
+
+    const auth = new google.auth.GoogleAuth({
+        scopes: ['https://www.googleapis.com/auth/drive.file'],
+    });
+    const drive = google.drive({ version: 'v3', auth });
+
+    const folderRes = await drive.files.create({
+        requestBody: {
+            name: sessionLabel.replace(/[/\\]/g, '_'),
+            mimeType: 'application/vnd.google-apps.folder',
+            parents: [parentFolderId],
+        },
+        fields: 'id',
+        supportsAllDrives: true,
+    });
+    const driveSubFolderId = folderRes.data.id;
+    const folderUrl = `https://drive.google.com/drive/folders/${driveSubFolderId}`;
+
+    for (const f of sessionFiles) {
+        const basename = (f.name.split('/').pop() || 'file').replace(/[/\\]/g, '_');
+        const mimeType = f.metadata.contentType || 'application/octet-stream';
+        const readStream = bucket.file(f.name).createReadStream();
+
+        await drive.files.create({
+            requestBody: {
+                name: basename,
+                parents: [driveSubFolderId],
+            },
+            media: {
+                mimeType,
+                body: readStream,
+            },
+            fields: 'id',
+            supportsAllDrives: true,
+        });
+        logger.info(`Drive: uploaded ${basename}`);
+    }
+
+    return { folderId: driveSubFolderId, folderUrl };
+}
+
+async function postNtfy(body) {
+    const res = await fetch('https://ntfy.sh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`ntfy ${res.status}: ${text}`);
+    }
+    logger.info('ntfy notification sent');
+}
 
 function formatBytes(bytes) {
     if (bytes < 1024) return Math.round(bytes) + ' B';
