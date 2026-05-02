@@ -26,6 +26,8 @@ const storage = getStorage(app);
 
 // Per-file hard cap. Storage rules enforce the same limit server-side.
 const MAX_FILE_BYTES = 500 * 1024 * 1024; // 500 MB
+const MAX_TOTAL_BYTES = 750 * 1024 * 1024; // 750 MB per submission
+const MAX_FILES_PER_SUBMISSION = 10;
 
 // How many files to upload in parallel. Firebase Storage comfortably handles
 // multiple concurrent streams; 2 is a safe sweet spot for most connections.
@@ -98,7 +100,20 @@ function addFiles(files) {
     const rejected = [];
     for (const f of files) {
         if (f.size > MAX_FILE_BYTES) {
-            rejected.push(f.name);
+            rejected.push(`${f.name} (too large)`);
+            continue;
+        }
+        if (!getAllowedContentType(f)) {
+            rejected.push(`${f.name} (unsupported file type)`);
+            continue;
+        }
+        if (selectedFiles.length >= MAX_FILES_PER_SUBMISSION) {
+            rejected.push(`${f.name} (too many files)`);
+            continue;
+        }
+        const nextTotal = selectedFiles.reduce((sum, file) => sum + file.size, 0) + f.size;
+        if (nextTotal > MAX_TOTAL_BYTES) {
+            rejected.push(`${f.name} (submission total too large)`);
             continue;
         }
         if (!selectedFiles.some(s => s.name === f.name && s.size === f.size)) {
@@ -107,8 +122,9 @@ function addFiles(files) {
     }
     if (rejected.length) {
         alert(
-            `The following file${rejected.length > 1 ? 's are' : ' is'} too large ` +
-            `(max ${formatBytes(MAX_FILE_BYTES)}):\n\n` + rejected.join('\n')
+            `Some file${rejected.length > 1 ? 's were' : ' was'} not added:\n\n` +
+            rejected.join('\n') +
+            `\n\nLimits: ${MAX_FILES_PER_SUBMISSION} files, ${formatBytes(MAX_FILE_BYTES)} each, ${formatBytes(MAX_TOTAL_BYTES)} total.`
         );
     }
     renderFileList();
@@ -230,9 +246,10 @@ els.submitBtn.addEventListener('click', async () => {
             // Strip any path separators from the filename (defense in depth).
             const safeName = file.name.replace(/[\\/]/g, '_');
             const storageRef = ref(storage, `${sessionFolder}/${safeName}`);
+            const contentType = getAllowedContentType(file);
 
             const task = uploadBytesResumable(storageRef, file, {
-                contentType: file.type || 'application/octet-stream',
+                contentType,
                 customMetadata: customMetadata,
             });
 
@@ -336,6 +353,28 @@ function resetForm() {
 }
 
 // ---------- HELPERS ----------
+function getAllowedContentType(file) {
+    if (file.type?.startsWith('image/') || file.type?.startsWith('video/') || file.type === 'application/pdf') {
+        return file.type;
+    }
+
+    // Some mobile browsers report HEIC/HEIF as an empty MIME type.
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    const fallbackTypes = {
+        heic: 'image/heic',
+        heif: 'image/heif',
+        jpg: 'image/jpeg',
+        jpeg: 'image/jpeg',
+        png: 'image/png',
+        gif: 'image/gif',
+        webp: 'image/webp',
+        mov: 'video/quicktime',
+        mp4: 'video/mp4',
+        pdf: 'application/pdf',
+    };
+    return fallbackTypes[ext] || null;
+}
+
 function formatBytes(bytes) {
     if (bytes < 1024) return Math.round(bytes) + ' B';
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';

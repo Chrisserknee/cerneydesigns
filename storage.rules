@@ -1,0 +1,36 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isAllowedMediaType() {
+      return request.resource.contentType.matches('image/.*')
+        || request.resource.contentType.matches('video/.*')
+        || request.resource.contentType == 'application/pdf';
+    }
+
+    function isSubmissionJson(fileName) {
+      return fileName == '_submission.json'
+        && request.resource.contentType == 'application/json'
+        && request.resource.size < 100 * 1024;
+    }
+
+    function isTipMedia(fileName) {
+      return fileName != '_submission.json'
+        && request.resource.size > 0
+        && request.resource.size < 500 * 1024 * 1024
+        && isAllowedMediaType();
+    }
+
+    // Anonymous tipline uploads are write-only. Nobody can list, read,
+    // overwrite, or delete objects through the public client SDK.
+    match /tips/{session}/{fileName} {
+      allow create: if isTipMedia(fileName) || isSubmissionJson(fileName);
+      allow read, update, delete: if false;
+    }
+
+    // Everything else in the bucket is locked down.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
