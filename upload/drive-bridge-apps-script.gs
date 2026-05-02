@@ -50,6 +50,13 @@ function doPost(e) {
     );
     sessionFolder.createFile(submissionBlob);
 
+    const tipInfoBlob = Utilities.newBlob(
+      buildTipInfoText_(submission, files, sessionLabel),
+      'text/plain',
+      '00_TIP_INFO.txt'
+    );
+    sessionFolder.createFile(tipInfoBlob);
+
     const copied = [];
     files.forEach(function(file) {
       const result = mirrorFile_(file, sessionFolder.getId());
@@ -69,6 +76,49 @@ function doPost(e) {
       error: err && err.message ? err.message : String(err)
     });
   }
+}
+
+function buildTipInfoText_(submission, files, sessionLabel) {
+  const lines = [];
+  lines.push('TIP INFORMATION');
+  lines.push('===============');
+  lines.push('');
+  lines.push('Folder: ' + sessionLabel);
+  lines.push('Copied to Drive: ' + new Date().toLocaleString());
+  if (submission.submittedAt) {
+    lines.push('Submitted: ' + submission.submittedAt);
+  }
+  lines.push('');
+
+  if (submission.anonymous) {
+    lines.push('Sender: Anonymous');
+  } else {
+    lines.push('Sender Name: ' + (submission.senderName || '(not provided)'));
+    lines.push('Sender Contact: ' + (submission.senderContact || '(not provided)'));
+  }
+
+  lines.push('');
+  lines.push('What this tip is about:');
+  lines.push(submission.description || '(not provided)');
+  lines.push('');
+  lines.push('Files:');
+
+  if (!files.length) {
+    lines.push('(no files listed)');
+  } else {
+    files.forEach(function(file, idx) {
+      lines.push(
+        (idx + 1) + '. ' +
+        (file.name || 'upload') +
+        ' - ' +
+        formatBytes_(Number(file.sizeBytes || 0))
+      );
+    });
+  }
+
+  lines.push('');
+  lines.push('Privacy note: files may be used in news coverage. Anonymous submissions do not include sender name/contact.');
+  return lines.join('\n');
 }
 
 function mirrorFile_(file, folderId) {
@@ -175,6 +225,13 @@ function safeName_(name) {
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, 180) || 'upload';
+}
+
+function formatBytes_(bytes) {
+  if (bytes < 1024) return Math.round(bytes) + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  if (bytes < 1024 * 1024 * 1024) return (bytes / 1024 / 1024).toFixed(1) + ' MB';
+  return (bytes / 1024 / 1024 / 1024).toFixed(2) + ' GB';
 }
 
 function header_(response, name) {
