@@ -1,34 +1,26 @@
 // ============================================================
-// TIPLINE — ntfy push + Google Drive mirror
+// TIPLINE — ntfy push + Google Drive bridge
 // Triggers when tips/*/ _submission.json is finalized (after all
 // media is already in Storage). Then:
-//   1) Mirrors every file in that session folder to a new subfolder
-//      under your Google Drive folder (streaming, full originals).
+//   1) Calls an Apps Script bridge that runs as Chris and mirrors
+//      each original Firebase file into the Google Drive Tips folder.
 //   2) Sends the ntfy.sh notification (unchanged).
-//
-// Drive auth: default Cloud Functions service account + Drive API
-// scope drive.file. You must share the Drive parent folder with:
-//   218726736554-compute@developer.gserviceaccount.com  (Editor)
 // ============================================================
 const { onObjectFinalized } = require('firebase-functions/v2/storage');
 const { defineSecret } = require('firebase-functions/params');
 const { logger } = require('firebase-functions');
 const admin = require('firebase-admin');
-const { google } = require('googleapis');
 
 admin.initializeApp();
 
 const ntfyTopic = defineSecret('NTFY_TOPIC');
-
-// Google Drive folder ID (from the folder URL). Share this folder with the
-// Cloud Functions default service account as Editor — see repo README or
-// deploy notes. Change here if you ever use a different folder.
-const DRIVE_PARENT_FOLDER_ID = '1bYqiGoCQ9cyx4OHIoM3rJADvkAUh6TIQ';
+const driveBridgeUrl = defineSecret('DRIVE_BRIDGE_URL');
+const driveBridgeToken = defineSecret('DRIVE_BRIDGE_TOKEN');
 
 exports.notifyOnTip = onObjectFinalized(
     {
         region: 'us-west1',
-        secrets: [ntfyTopic],
+        secrets: [ntfyTopic, driveBridgeUrl, driveBridgeToken],
         memory: '1GiB',
         timeoutSeconds: 540,
     },
@@ -65,7 +57,8 @@ exports.notifyOnTip = onObjectFinalized(
                 : null;
             const basename = f.name.split('/').pop();
             const sizeBytes = Number(f.metadata.size || 0);
-            return { name: basename, url, sizeBytes };
+            const mimeType = f.metadata.contentType || 'application/octet-stream';
+            return { name: basename, url, sizeBytes, mimeType };
         });
 
         const consoleUrl = `https://console.firebase.google.com/project/${process.env.GCLOUD_PROJECT}/storage/${object.bucket}/files/~2F${encodeURIComponent(folder).replace(/%2F/g, '~2F')}`;
@@ -93,11 +86,10 @@ exports.notifyOnTip = onObjectFinalized(
         let driveFolderUrl = null;
         let driveError = null;
         try {
-            const driveMirror = await mirrorSessionToDrive({
-                bucket,
-                sessionFiles: allSessionFiles,
+            const driveMirror = await mirrorSessionToDriveBridge({
                 sessionLabel,
-                parentFolderId: DRIVE_PARENT_FOLDER_ID,
+                files: fileLinks,
+                submission,
             });
             driveFolderUrl = driveMirror.folderUrl;
             logger.info(`Drive mirror OK for ${folder}`);
@@ -138,52 +130,39 @@ exports.notifyOnTip = onObjectFinalized(
 );
 
 /**
- * Streams each Storage object into a new Drive subfolder (original bytes).
+ * Calls the Apps Script bridge. The bridge runs as Chris's Google account,
+ * which avoids the personal-Drive quota issue service accounts hit.
  */
-async function mirrorSessionToDrive({ bucket, sessionFiles, sessionLabel, parentFolderId }) {
-    if (!parentFolderId) {
-        logger.warn('DRIVE_FOLDER_ID empty — skipping Drive mirror');
-        return;
+async function mirrorSessionToDriveBridge({ sessionLabel, files, submission }) {
+    const url = driveBridgeUrl.value();
+    if (!url || !url.startsWith('https://script.google.com/')) {
+        throw new Error('DRIVE_BRIDGE_URL is not configured.');
     }
 
-    const auth = new google.auth.GoogleAuth({
-        scopes: ['https://www.googleapis.com/auth/drive.file'],
+    const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+            token: driveBridgeToken.value(),
+            sessionLabel,
+            submission,
+            files: files.filter((f) => f.url),
+        }),
     });
-    const drive = google.drive({ version: 'v3', auth });
 
-    const folderRes = await drive.files.create({
-        requestBody: {
-            name: sessionLabel.replace(/[/\\]/g, '_'),
-            mimeType: 'application/vnd.google-apps.folder',
-            parents: [parentFolderId],
-        },
-        fields: 'id',
-        supportsAllDrives: true,
-    });
-    const driveSubFolderId = folderRes.data.id;
-    const folderUrl = `https://drive.google.com/drive/folders/${driveSubFolderId}`;
-
-    for (const f of sessionFiles) {
-        const basename = (f.name.split('/').pop() || 'file').replace(/[/\\]/g, '_');
-        const mimeType = f.metadata.contentType || 'application/octet-stream';
-        const readStream = bucket.file(f.name).createReadStream();
-
-        await drive.files.create({
-            requestBody: {
-                name: basename,
-                parents: [driveSubFolderId],
-            },
-            media: {
-                mimeType,
-                body: readStream,
-            },
-            fields: 'id',
-            supportsAllDrives: true,
-        });
-        logger.info(`Drive: uploaded ${basename}`);
+    const text = await res.text();
+    let payload = {};
+    try {
+        payload = text ? JSON.parse(text) : {};
+    } catch {
+        throw new Error(`Drive bridge returned non-JSON response: ${text.slice(0, 200)}`);
     }
 
-    return { folderId: driveSubFolderId, folderUrl };
+    if (!res.ok || payload.error) {
+        throw new Error(payload.error || `Drive bridge HTTP ${res.status}`);
+    }
+
+    return payload;
 }
 
 async function postNtfy(body) {
