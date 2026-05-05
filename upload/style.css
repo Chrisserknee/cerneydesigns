@@ -162,6 +162,41 @@ body {
     max-width: 50ch;
 }
 
+.contact-card {
+    margin-top: 22px;
+    padding: 18px 20px;
+    background: linear-gradient(135deg, rgba(106, 144, 184, 0.1), rgba(200, 85, 82, 0.08));
+    border: 1px solid var(--border-strong);
+}
+
+.contact-card p {
+    color: var(--text-dim);
+    font-size: 0.86rem;
+    line-height: 1.5;
+}
+
+.contact-card .emergency-note {
+    color: var(--danger);
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.phone-tip {
+    display: inline-flex;
+    margin-bottom: 8px;
+    color: var(--text);
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 1.35rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-decoration: none;
+    text-transform: uppercase;
+}
+
+.phone-tip:hover {
+    color: var(--accent-blue-link);
+}
+
 /* ========== CARD ========== */
 .uploader,
 .progress-screen,
