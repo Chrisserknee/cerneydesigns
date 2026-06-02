@@ -16,6 +16,7 @@ admin.initializeApp();
 const ntfyTopic = defineSecret('NTFY_TOPIC');
 const driveBridgeUrl = defineSecret('DRIVE_BRIDGE_URL');
 const driveBridgeToken = defineSecret('DRIVE_BRIDGE_TOKEN');
+const DRIVE_BRIDGE_RETRIES = 3;
 
 exports.notifyOnTip = onObjectFinalized(
     {
@@ -46,7 +47,6 @@ exports.notifyOnTip = onObjectFinalized(
 
         const [files] = await bucket.getFiles({ prefix: folder + '/' });
         const tipFiles = files.filter(f => !f.name.endsWith('/_submission.json'));
-        const allSessionFiles = files.filter((f) => !f.name.endsWith('/'));
 
         const fileLinks = tipFiles.map((f) => {
             const tokens = f.metadata.metadata?.firebaseStorageDownloadTokens;
@@ -86,11 +86,11 @@ exports.notifyOnTip = onObjectFinalized(
         let driveFolderUrl = null;
         let driveError = null;
         try {
-            const driveMirror = await mirrorSessionToDriveBridge({
+            const driveMirror = await retryAsync(() => mirrorSessionToDriveBridge({
                 sessionLabel,
                 files: fileLinks,
                 submission,
-            });
+            }), DRIVE_BRIDGE_RETRIES);
             driveFolderUrl = driveMirror.folderUrl;
             logger.info(`Drive mirror OK for ${folder}`);
         } catch (err) {
@@ -176,6 +176,27 @@ async function postNtfy(body) {
         throw new Error(`ntfy ${res.status}: ${text}`);
     }
     logger.info('ntfy notification sent');
+}
+
+async function retryAsync(fn, maxRetries) {
+    let lastErr = null;
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+            return await fn();
+        } catch (err) {
+            lastErr = err;
+            if (attempt < maxRetries) {
+                const delay = Math.min(30000, 1000 * Math.pow(2, attempt));
+                logger.warn(`Retrying Drive bridge in ${delay}ms`, err);
+                await sleep(delay);
+            }
+        }
+    }
+    throw lastErr;
+}
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 function formatBytes(bytes) {
