@@ -6,23 +6,23 @@
 }
 
 :root {
-    --accent-red: #3f8edc;
-    --accent-red-hover: #5aa6ef;
-    --accent-blue: #6a9fd1;
-    --accent-blue-link: #8bbbe8;
+    --accent-red: #6f95b8;
+    --accent-red-hover: #83a8c8;
+    --accent-blue: #426b91;
+    --accent-blue-link: #9bbbd6;
     --accent-salmon: #c85552;
     --accent-salmon-hover: #d66663;
     --accent-tipline: #c85552;
     --accent-tipline-hover: #d66663;
-    --bg: #0e1116;
-    --bg-elev: #161b22;
-    --bg-card: #1a2029;
-    --bg-card-hover: #232a35;
+    --bg: #0b1118;
+    --bg-elev: #121922;
+    --bg-card: #16202b;
+    --bg-card-hover: #1d2a37;
     --text: #e6e8eb;
     --text-dim: #9098a3;
     --text-muted: #5c6470;
-    --border: #222831;
-    --border-strong: #2d343f;
+    --border: #202c3a;
+    --border-strong: #2f4154;
     --shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
     --shadow-lg: 0 14px 40px rgba(0, 0, 0, 0.5);
     --transition: 0.2s ease;
@@ -71,7 +71,7 @@ body {
 
 /* ==================== NAVIGATION ==================== */
 .navbar {
-    background: rgba(14, 17, 22, 0.85);
+    background: rgba(11, 17, 24, 0.85);
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
     border-bottom: 1px solid var(--border);
@@ -86,7 +86,7 @@ body {
 
 .navbar.scrolled {
     padding: 10px 0;
-    background: rgba(14, 17, 22, 0.95);
+    background: rgba(11, 17, 24, 0.95);
 }
 
 .navbar .container {
@@ -234,7 +234,7 @@ body {
     left: -10%;
     width: 60%;
     height: 80%;
-    background: radial-gradient(circle, rgba(106, 159, 209, 0.08) 0%, transparent 60%);
+    background: radial-gradient(circle, rgba(111, 149, 184, 0.1) 0%, transparent 60%);
     pointer-events: none;
 }
 
@@ -245,7 +245,7 @@ body {
     right: -10%;
     width: 50%;
     height: 60%;
-    background: radial-gradient(circle, rgba(63, 142, 220, 0.07) 0%, transparent 60%);
+    background: radial-gradient(circle, rgba(79, 120, 157, 0.08) 0%, transparent 60%);
     pointer-events: none;
 }
 
@@ -374,13 +374,13 @@ body {
 }
 
 .hero-actions .btn-primary[href="#stories"] {
-    background: var(--accent-salmon);
-    border-color: var(--accent-salmon);
+    background: var(--accent-blue);
+    border-color: var(--accent-blue);
 }
 
 .hero-actions .btn-primary[href="#stories"]:hover {
-    background: var(--accent-salmon-hover);
-    border-color: var(--accent-salmon-hover);
+    background: #557fa4;
+    border-color: #557fa4;
 }
 
 .btn-primary[href="/upload"],
@@ -578,11 +578,11 @@ section {
     font-size: 0.72rem;
     font-weight: 700;
     letter-spacing: 0.15em;
-    background: rgba(14, 17, 22, 0.85);
+    background: rgba(11, 17, 24, 0.85);
     backdrop-filter: blur(6px);
     color: var(--accent-red);
     padding: 4px 10px;
-    border: 1px solid rgba(63, 142, 220, 0.45);
+    border: 1px solid rgba(111, 149, 184, 0.45);
 }
 
 .video-wrapper,
