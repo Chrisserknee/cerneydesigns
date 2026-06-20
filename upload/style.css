@@ -7,8 +7,8 @@
 [hidden] { display: none !important; }
 
 :root {
-    --accent-red: #d85f35;
-    --accent-red-hover: #ef7448;
+    --accent-red: #c85552;
+    --accent-red-hover: #d66663;
     --accent-blue: #6a9fd1;
     --accent-blue-link: #8bbbe8;
     --bg: #0e1116;
@@ -20,7 +20,7 @@
     --text-muted: #5c6470;
     --border: #222831;
     --border-strong: #2d343f;
-    --danger: #ef7448;
+    --danger: #d66663;
 }
 
 html, body {
@@ -115,7 +115,7 @@ body {
     right: -30%;
     width: 70%;
     height: 50%;
-    background: radial-gradient(circle, rgba(216, 95, 53, 0.08) 0%, transparent 60%);
+    background: radial-gradient(circle, rgba(200, 85, 82, 0.08) 0%, transparent 60%);
     pointer-events: none;
     z-index: -1;
 }
@@ -165,7 +165,7 @@ body {
 .contact-card {
     margin-top: 22px;
     padding: 18px 20px;
-    background: linear-gradient(135deg, rgba(106, 159, 209, 0.1), rgba(216, 95, 53, 0.1));
+    background: linear-gradient(135deg, rgba(106, 159, 209, 0.1), rgba(200, 85, 82, 0.1));
     border: 1px solid var(--border-strong);
 }
 
@@ -226,7 +226,7 @@ body {
 .dropzone:hover,
 .dropzone.drag-over {
     border-color: var(--accent-red);
-    background: rgba(216, 95, 53, 0.05);
+    background: rgba(200, 85, 82, 0.05);
 }
 
 .upload-icon {
@@ -385,7 +385,7 @@ body {
 .field textarea:focus {
     outline: none;
     border-color: var(--accent-red);
-    box-shadow: 0 0 0 3px rgba(216, 95, 53, 0.16);
+    box-shadow: 0 0 0 3px rgba(200, 85, 82, 0.16);
 }
 
 .field input::placeholder,
@@ -492,8 +492,8 @@ body {
     gap: 10px;
     margin: 0 auto 28px;
     padding: 10px 16px;
-    background: rgba(216, 95, 53, 0.1);
-    border: 1px solid rgba(216, 95, 53, 0.35);
+    background: rgba(200, 85, 82, 0.1);
+    border: 1px solid rgba(200, 85, 82, 0.35);
     border-radius: 2px;
     color: var(--accent-red);
     font-size: 0.88rem;
