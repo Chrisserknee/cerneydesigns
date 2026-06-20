@@ -10,6 +10,10 @@
     --accent-red-hover: #5aa6ef;
     --accent-blue: #6a9fd1;
     --accent-blue-link: #8bbbe8;
+    --accent-salmon: #c85552;
+    --accent-salmon-hover: #d66663;
+    --accent-tipline: #d85f35;
+    --accent-tipline-hover: #ef7448;
     --bg: #0e1116;
     --bg-elev: #161b22;
     --bg-card: #1a2029;
@@ -149,15 +153,15 @@ body {
 }
 
 .nav-menu a.nav-tipline {
-    color: var(--accent-red);
-    border: 1px solid var(--accent-red);
+    color: var(--accent-tipline);
+    border: 1px solid var(--accent-tipline);
     padding: 7px 14px;
     letter-spacing: 0.1em;
     transition: background var(--transition), color var(--transition);
 }
 
 .nav-menu a.nav-tipline:hover {
-    background: var(--accent-red);
+    background: var(--accent-tipline);
     color: #fff;
 }
 
@@ -230,7 +234,7 @@ body {
     left: -10%;
     width: 60%;
     height: 80%;
-    background: radial-gradient(circle, rgba(106, 144, 184, 0.08) 0%, transparent 60%);
+    background: radial-gradient(circle, rgba(106, 159, 209, 0.08) 0%, transparent 60%);
     pointer-events: none;
 }
 
@@ -369,6 +373,28 @@ body {
     border-color: var(--accent-red-hover);
 }
 
+.hero-actions .btn-primary[href="#stories"] {
+    background: var(--accent-salmon);
+    border-color: var(--accent-salmon);
+}
+
+.hero-actions .btn-primary[href="#stories"]:hover {
+    background: var(--accent-salmon-hover);
+    border-color: var(--accent-salmon-hover);
+}
+
+.btn-primary[href="/upload"],
+.stories-placeholder-actions .btn-primary[href="/upload"] {
+    background: var(--accent-tipline);
+    border-color: var(--accent-tipline);
+}
+
+.btn-primary[href="/upload"]:hover,
+.stories-placeholder-actions .btn-primary[href="/upload"]:hover {
+    background: var(--accent-tipline-hover);
+    border-color: var(--accent-tipline-hover);
+}
+
 .btn-outline {
     background: transparent;
     color: var(--text);
@@ -378,6 +404,17 @@ body {
 .btn-outline:hover {
     border-color: var(--accent-blue);
     color: var(--accent-blue-link);
+}
+
+.btn-outline[href="/upload"] {
+    color: var(--accent-tipline);
+    border-color: var(--accent-tipline);
+}
+
+.btn-outline[href="/upload"]:hover {
+    background: var(--accent-tipline);
+    color: #fff;
+    border-color: var(--accent-tipline);
 }
 
 /* ==================== SECTION HEADERS ==================== */
@@ -1045,15 +1082,15 @@ section {
 }
 
 .contact-secondary a {
-    color: var(--accent-blue);
+    color: var(--accent-tipline);
     text-decoration: none;
     border-bottom: 1px solid transparent;
     transition: border-color var(--transition), color var(--transition);
 }
 
 .contact-secondary a:hover {
-    color: var(--text);
-    border-bottom-color: var(--accent-red);
+    color: var(--accent-tipline-hover);
+    border-bottom-color: var(--accent-tipline-hover);
 }
 
 /* ==================== STANDALONE PAGE (PORTFOLIO) ==================== */
