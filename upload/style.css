@@ -676,6 +676,10 @@ body {
     text-align: center;
 }
 
+.business-placement-compact {
+    margin: -12px 0 24px;
+}
+
 .business-placement-card {
     position: relative;
     display: flex;
@@ -724,6 +728,21 @@ body {
     white-space: nowrap;
     text-transform: uppercase;
     text-shadow: 0 0 18px rgba(155, 187, 214, 0.3), 0 12px 22px rgba(0, 0, 0, 0.36);
+}
+
+.business-placement-compact .business-placement-card {
+    aspect-ratio: 5.6 / 1;
+    border-radius: clamp(14px, 2.6vw, 22px);
+}
+
+.business-placement-compact .business-placement-card::before {
+    inset: 10%;
+    border-radius: clamp(10px, 2vw, 16px);
+}
+
+.business-placement-compact .business-placement-card p {
+    font-size: clamp(1.25rem, 4.4vw, 2.5rem);
+    letter-spacing: 0.08em;
 }
 
 .business-placement-note {
