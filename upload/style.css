@@ -684,12 +684,13 @@ body {
     width: 100%;
     aspect-ratio: 3.27 / 1;
     overflow: hidden;
-    border: 1px solid rgba(224, 237, 248, 0.72);
+    border: 1px solid rgba(200, 85, 82, 0.58);
     border-radius: clamp(20px, 4vw, 34px);
     background:
-        radial-gradient(circle at 18% 18%, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.22) 34%, transparent 62%),
-        linear-gradient(135deg, #dbeafa 0%, #b9cde1 44%, #7f9eba 100%);
-    box-shadow: 0 20px 42px rgba(0, 0, 0, 0.28), inset 0 0 0 2px rgba(255, 255, 255, 0.38);
+        radial-gradient(circle at 22% 16%, rgba(155, 187, 214, 0.42), rgba(155, 187, 214, 0.12) 32%, transparent 60%),
+        radial-gradient(circle at 78% 82%, rgba(200, 85, 82, 0.28), transparent 46%),
+        linear-gradient(135deg, #172333 0%, #24374a 50%, #0f1822 100%);
+    box-shadow: 0 20px 42px rgba(0, 0, 0, 0.3), 0 0 34px rgba(200, 85, 82, 0.12), inset 0 0 0 1px rgba(155, 187, 214, 0.2);
 }
 
 .business-placement-card::before,
@@ -701,20 +702,20 @@ body {
 
 .business-placement-card::before {
     inset: 6%;
-    border: 2px solid rgba(255, 255, 255, 0.86);
+    border: 1px solid rgba(155, 187, 214, 0.52);
     border-radius: clamp(16px, 3.4vw, 28px);
-    box-shadow: 0 0 20px rgba(255, 255, 255, 0.4);
+    box-shadow: 0 0 18px rgba(155, 187, 214, 0.16);
 }
 
 .business-placement-card::after {
     inset: 0;
-    background: linear-gradient(115deg, rgba(255, 255, 255, 0.22), transparent 40%, rgba(11, 17, 24, 0.08));
+    background: linear-gradient(115deg, rgba(255, 255, 255, 0.08), transparent 42%, rgba(11, 17, 24, 0.24));
 }
 
 .business-placement-card p {
     position: relative;
     z-index: 1;
-    color: #172333;
+    color: var(--text);
     font-family: 'Barlow Condensed', sans-serif;
     font-size: clamp(1.65rem, 5.8vw, 3.65rem);
     font-weight: 800;
@@ -722,7 +723,7 @@ body {
     line-height: 1;
     white-space: nowrap;
     text-transform: uppercase;
-    text-shadow: 0 2px 0 rgba(255, 255, 255, 0.26), 0 12px 22px rgba(11, 17, 24, 0.22);
+    text-shadow: 0 0 18px rgba(155, 187, 214, 0.3), 0 12px 22px rgba(0, 0, 0, 0.36);
 }
 
 .business-placement-note {
