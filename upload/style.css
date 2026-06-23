@@ -30,6 +30,7 @@ html, body {
     -webkit-font-smoothing: antialiased;
     min-height: 100vh;
     min-height: 100dvh;
+    overflow-x: hidden;
 }
 
 body {
@@ -667,6 +668,80 @@ body {
     background: var(--accent-red);
     color: #fff;
     border-color: var(--accent-red);
+}
+
+/* ========== BUSINESS PLACEMENT ========== */
+.business-placement {
+    margin-top: 34px;
+    text-align: center;
+}
+
+.business-placement-card {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    aspect-ratio: 3.27 / 1;
+    overflow: hidden;
+    border: 1px solid rgba(224, 237, 248, 0.72);
+    border-radius: clamp(20px, 4vw, 34px);
+    background:
+        radial-gradient(circle at 18% 18%, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.22) 34%, transparent 62%),
+        linear-gradient(135deg, #dbeafa 0%, #b9cde1 44%, #7f9eba 100%);
+    box-shadow: 0 20px 42px rgba(0, 0, 0, 0.28), inset 0 0 0 2px rgba(255, 255, 255, 0.38);
+}
+
+.business-placement-card::before,
+.business-placement-card::after {
+    content: '';
+    position: absolute;
+    pointer-events: none;
+}
+
+.business-placement-card::before {
+    inset: 6%;
+    border: 2px solid rgba(255, 255, 255, 0.86);
+    border-radius: clamp(16px, 3.4vw, 28px);
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.4);
+}
+
+.business-placement-card::after {
+    inset: 0;
+    background: linear-gradient(115deg, rgba(255, 255, 255, 0.22), transparent 40%, rgba(11, 17, 24, 0.08));
+}
+
+.business-placement-card p {
+    position: relative;
+    z-index: 1;
+    color: #172333;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: clamp(1.65rem, 5.8vw, 3.65rem);
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    line-height: 1;
+    white-space: nowrap;
+    text-transform: uppercase;
+    text-shadow: 0 2px 0 rgba(255, 255, 255, 0.26), 0 12px 22px rgba(11, 17, 24, 0.22);
+}
+
+.business-placement-note {
+    margin-top: 12px;
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    line-height: 1.5;
+}
+
+.business-placement-note a {
+    color: var(--accent-red);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+.business-placement-note a:hover {
+    color: var(--accent-red-hover);
+    border-bottom-color: var(--accent-red-hover);
 }
 
 /* ========== FOOTER ========== */
