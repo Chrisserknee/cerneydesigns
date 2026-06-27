@@ -182,20 +182,69 @@ body {
     margin-bottom: 8px;
 }
 
-.phone-tip {
-    display: inline-flex;
-    margin-bottom: 8px;
-    color: var(--accent-red);
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 1.35rem;
-    font-weight: 700;
-    letter-spacing: 0.02em;
-    text-decoration: none;
-    text-transform: uppercase;
+.contact-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin: 12px 0 10px;
 }
 
-.phone-tip:hover {
-    color: var(--accent-red-hover);
+.contact-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    min-height: 46px;
+    padding: 12px 14px;
+    border: 1px solid transparent;
+    color: var(--text);
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    line-height: 1;
+    text-align: center;
+    text-decoration: none;
+    text-transform: uppercase;
+    transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.contact-action svg {
+    width: 19px;
+    height: 19px;
+    flex: 0 0 auto;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.8;
+}
+
+.contact-action-text {
+    background: var(--accent-red);
+    border-color: var(--accent-red);
+}
+
+.contact-action-call {
+    background: rgba(66, 107, 145, 0.16);
+    border-color: rgba(155, 187, 214, 0.46);
+    color: var(--accent-blue-link);
+}
+
+.contact-action:hover {
+    transform: translateY(-1px);
+}
+
+.contact-action-text:hover {
+    background: var(--accent-red-hover);
+    border-color: var(--accent-red-hover);
+}
+
+.contact-action-call:hover {
+    background: rgba(66, 107, 145, 0.26);
+    border-color: rgba(155, 187, 214, 0.72);
+    color: var(--text);
 }
 
 /* ========== CARD ========== */
@@ -778,6 +827,7 @@ body {
 @media (max-width: 520px) {
     .page { padding: 36px 18px 56px; }
     .top-nav-inner { padding: 14px 18px; }
+    .contact-actions { grid-template-columns: 1fr; }
     .uploader,
     .progress-screen,
     .thankyou-screen,
