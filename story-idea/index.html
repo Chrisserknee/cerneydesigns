@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="X-Frame-Options" content="SAMEORIGIN">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://firebasestorage.googleapis.com https://*.firebasestorage.app https://www.googleapis.com; frame-ancestors 'self'; base-uri 'self'; form-action 'self'">
+    <meta name="theme-color" content="#0e1116">
+    <title>Submit a Story Idea &mdash; Chris Cerney</title>
+    <meta name="description" content="Submit a story idea or possible investigation to independent journalist Chris Cerney.">
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="icon" type="image/svg+xml" href="/images/favicon.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/story-idea/style.css">
+</head>
+<body>
+    <nav class="top-nav">
+        <div class="top-nav-inner">
+            <a href="/" class="brand">
+                <span class="brand-first">Chris</span><span class="brand-last">Cerney</span>
+            </a>
+            <a href="/" class="back-link">&larr; Back to site</a>
+        </div>
+    </nav>
+
+    <main class="page">
+        <header class="page-header">
+            <span class="badge">Story Idea</span>
+            <h1 class="title">Submit a Story Idea</h1>
+            <p class="lede">Share a possible investigation, community issue, or story Chris should look into.</p>
+        </header>
+
+        <section class="wizard-shell" aria-live="polite">
+            <div class="progress-row" aria-hidden="true">
+                <span class="progress-label" id="stepLabel">Step 1 of 6</span>
+                <span class="progress-track"><span class="progress-bar" id="progressBar"></span></span>
+            </div>
+
+            <form id="storyIdeaForm" novalidate>
+                <section class="wizard-step active" data-step="0">
+                    <span class="step-kicker">What happened?</span>
+                    <h2 class="step-title">Describe the story.</h2>
+                    <label class="field">
+                        <span class="field-label">What happened?</span>
+                        <textarea id="whatHappened" rows="6" maxlength="1800" required placeholder="Tell Chris what happened, who is involved, and why it may matter."></textarea>
+                    </label>
+                </section>
+
+                <section class="wizard-step" data-step="1">
+                    <span class="step-kicker">Where?</span>
+                    <h2 class="step-title">Give the location.</h2>
+                    <label class="field">
+                        <span class="field-label">Where did this happen?</span>
+                        <input type="text" id="storyLocation" maxlength="240" required placeholder="City, neighborhood, address, business, school, agency, or area">
+                    </label>
+                </section>
+
+                <section class="wizard-step" data-step="2">
+                    <span class="step-kicker">When?</span>
+                    <h2 class="step-title">Add the timing.</h2>
+                    <label class="field">
+                        <span class="field-label">When did this happen?</span>
+                        <input type="text" id="storyTiming" maxlength="240" required placeholder="Today, last week, ongoing, a specific date, or approximate time">
+                    </label>
+                </section>
+
+                <section class="wizard-step" data-step="3">
+                    <span class="step-kicker">Evidence</span>
+                    <h2 class="step-title">Do you have photos or video?</h2>
+                    <fieldset class="choice-group">
+                        <legend class="sr-only">Do you have photos or video?</legend>
+                        <label class="choice">
+                            <input type="radio" name="hasMedia" value="Yes, I can upload photos or video" required>
+                            <span>Yes, I can upload photos or video</span>
+                        </label>
+                        <label class="choice">
+                            <input type="radio" name="hasMedia" value="No, I only have information right now">
+                            <span>No, I only have information right now</span>
+                        </label>
+                        <label class="choice">
+                            <input type="radio" name="hasMedia" value="Maybe, I need Chris to follow up">
+                            <span>Maybe, I need Chris to follow up</span>
+                        </label>
+                    </fieldset>
+                </section>
+
+                <section class="wizard-step" data-step="4">
+                    <span class="step-kicker">Follow-up</span>
+                    <h2 class="step-title">Can Chris contact you?</h2>
+                    <fieldset class="choice-group">
+                        <legend class="sr-only">Can Chris contact you?</legend>
+                        <label class="choice">
+                            <input type="radio" name="canContact" value="Yes" required>
+                            <span>Yes, Chris can contact me privately</span>
+                        </label>
+                        <label class="choice">
+                            <input type="radio" name="canContact" value="No">
+                            <span>No, I do not want follow-up contact</span>
+                        </label>
+                    </fieldset>
+                    <div class="contact-fields" id="contactFields" hidden>
+                        <label class="field">
+                            <span class="field-label">Your name</span>
+                            <input type="text" id="senderName" maxlength="180" placeholder="Your name">
+                        </label>
+                        <label class="field">
+                            <span class="field-label">Best contact</span>
+                            <input type="text" id="senderContact" maxlength="220" placeholder="Phone number, email, or Instagram">
+                        </label>
+                    </div>
+                </section>
+
+                <section class="wizard-step" data-step="5">
+                    <span class="step-kicker">Privacy</span>
+                    <h2 class="step-title">Do you want to remain anonymous?</h2>
+                    <fieldset class="choice-group">
+                        <legend class="sr-only">Do you want to remain anonymous?</legend>
+                        <label class="choice">
+                            <input type="radio" name="anonymous" value="Yes" required>
+                            <span>Yes, keep me anonymous in coverage</span>
+                        </label>
+                        <label class="choice">
+                            <input type="radio" name="anonymous" value="No">
+                            <span>No, Chris may use my name if needed</span>
+                        </label>
+                    </fieldset>
+                    <label class="field">
+                        <span class="field-label">Anything else Chris should know?</span>
+                        <textarea id="extraContext" rows="4" maxlength="1000" placeholder="Documents, witnesses, agencies involved, safety concerns, or other context."></textarea>
+                    </label>
+                </section>
+
+                <section class="wizard-step review-step" data-step="6">
+                    <span class="step-kicker">Review</span>
+                    <h2 class="step-title">Check the details.</h2>
+                    <div class="review-card" id="reviewCard"></div>
+                    <p class="privacy-note">Only include information you are comfortable sharing. If there is an immediate emergency, call 911 first.</p>
+                </section>
+
+                <p class="form-error" id="formError" role="alert" hidden></p>
+
+                <div class="wizard-actions">
+                    <button type="button" class="secondary-btn" id="prevBtn" hidden>Back</button>
+                    <button type="button" class="primary-btn" id="nextBtn">Next</button>
+                    <button type="submit" class="primary-btn" id="submitBtn" hidden>Submit Story Idea</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="success-screen" id="successScreen" hidden>
+            <span class="success-icon" aria-hidden="true">✓</span>
+            <h2 class="screen-title">Story idea sent.</h2>
+            <p class="screen-body">Thanks. Chris received the details. If you have photos, videos, or documents, send them through the tipline upload portal.</p>
+            <div class="success-actions">
+                <a class="primary-btn" href="/upload">Upload Photos / Video</a>
+                <button type="button" class="secondary-btn" id="sendAnother">Submit Another Idea</button>
+            </div>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <p>&copy; 2026 Chris Cerney &middot; chriscerney.org</p>
+    </footer>
+
+    <script type="module" src="/story-idea/story-idea.js"></script>
+</body>
+</html>
