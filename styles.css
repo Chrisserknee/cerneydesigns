@@ -153,7 +153,7 @@ body {
 }
 
 .nav-menu a.nav-tipline,
-.nav-menu a.nav-news-lead {
+.nav-menu a.nav-submit-story {
     color: var(--accent-tipline);
     border: 1px solid var(--accent-tipline);
     padding: 7px 14px;
@@ -161,7 +161,7 @@ body {
     transition: background var(--transition), color var(--transition);
 }
 
-.nav-menu a.nav-news-lead {
+.nav-menu a.nav-submit-story {
     color: var(--accent-blue-link);
     border-color: var(--border-strong);
 }
@@ -171,14 +171,14 @@ body {
     color: #fff;
 }
 
-.nav-menu a.nav-news-lead:hover {
+.nav-menu a.nav-submit-story:hover {
     background: var(--accent-blue);
     border-color: var(--accent-blue);
     color: #fff;
 }
 
 .nav-menu a.nav-tipline::after,
-.nav-menu a.nav-news-lead::after {
+.nav-menu a.nav-submit-story::after {
     display: none;
 }
 
@@ -430,12 +430,12 @@ body {
     border-color: var(--accent-tipline);
 }
 
-.btn-outline[href="/news-lead"] {
+.btn-outline[href="/submit-story"] {
     color: var(--accent-blue-link);
     border-color: var(--border-strong);
 }
 
-.btn-outline[href="/news-lead"]:hover {
+.btn-outline[href="/submit-story"]:hover {
     background: var(--accent-blue);
     color: #fff;
     border-color: var(--accent-blue);
@@ -1000,7 +1000,7 @@ section {
     }
 
     .nav-menu a.nav-tipline,
-    .nav-menu a.nav-news-lead {
+    .nav-menu a.nav-submit-story {
         margin-top: 8px;
     }
 

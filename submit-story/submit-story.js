@@ -136,8 +136,8 @@ function collectData() {
     const canContact = getRadioValue('canContact') === 'Yes';
     const anonymous = getRadioValue('anonymous') === 'Yes';
     return {
-        type: 'news_lead',
-        title: 'News Lead / Potential Investigation',
+        type: 'story_submission',
+        title: 'Story Submission / Potential Investigation',
         whatHappened: els.whatHappened.value.trim(),
         location: els.storyLocation.value.trim(),
         timing: els.storyTiming.value.trim(),
@@ -190,7 +190,7 @@ async function submitStoryIdea() {
 
     const data = collectData();
     const description = [
-        'NEWS LEAD / POTENTIAL INVESTIGATION',
+        'STORY SUBMISSION / POTENTIAL INVESTIGATION',
         '',
         `What happened: ${data.whatHappened}`,
         `Where: ${data.location}`,
@@ -211,14 +211,14 @@ async function submitStoryIdea() {
         const pad = (n) => String(n).padStart(2, '0');
         const ts = `${now.getUTCFullYear()}-${pad(now.getUTCMonth() + 1)}-${pad(now.getUTCDate())}_${pad(now.getUTCHours())}-${pad(now.getUTCMinutes())}-${pad(now.getUTCSeconds())}`;
         const rand = Math.random().toString(36).slice(2, 8);
-        const sessionFolder = `tips/news-lead_${ts}_${rand}`;
+        const sessionFolder = `tips/submit-story_${ts}_${rand}`;
         const body = JSON.stringify(submission, null, 2);
         const fileRef = ref(storage, `${sessionFolder}/_submission.json`);
 
         await uploadBytes(fileRef, new Blob([body], { type: 'application/json' }), {
             contentType: 'application/json',
             customMetadata: {
-                submissionType: 'news_lead',
+                submissionType: 'story_submission',
                 anonymous: String(data.anonymous),
             },
         });
@@ -228,11 +228,11 @@ async function submitStoryIdea() {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
         console.error(err);
-        showError('Could not send this news lead. Try again, or use the tipline upload page.');
+        showError('Could not send this story submission. Try again, or use the tipline upload page.');
     } finally {
         isSubmitting = false;
         els.submitBtn.disabled = false;
-        els.submitBtn.textContent = 'Submit a News Lead';
+        els.submitBtn.textContent = 'Submit a Story';
     }
 }
 

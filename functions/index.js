@@ -80,11 +80,11 @@ exports.notifyOnTip = onObjectFinalized(
             fileLinks.forEach(f => lines.push(`• ${f.name} (${formatBytes(f.sizeBytes)})`));
         }
 
-        const isNewsLead = submission.type === 'news_lead';
-        const title = isNewsLead
-            ? `New News Lead${submission.anonymous ? ' (anon)' : ''}`
+        const isStorySubmission = submission.type === 'story_submission';
+        const title = isStorySubmission
+            ? `New Story Submission${submission.anonymous ? ' (anon)' : ''}`
             : `New Tip: ${fileLinks.length} file${fileLinks.length === 1 ? '' : 's'}${submission.anonymous ? ' (anon)' : ''}`;
-        const message = lines.join('\n') || (isNewsLead ? 'New news lead received.' : 'New tip received.');
+        const message = lines.join('\n') || (isStorySubmission ? 'New story submission received.' : 'New tip received.');
 
         let driveFolderUrl = null;
         let driveError = null;
