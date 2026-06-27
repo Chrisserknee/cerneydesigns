@@ -80,22 +80,29 @@ exports.notifyOnTip = onObjectFinalized(
             fileLinks.forEach(f => lines.push(`• ${f.name} (${formatBytes(f.sizeBytes)})`));
         }
 
-        const title = `New Tip: ${fileLinks.length} file${fileLinks.length === 1 ? '' : 's'}${submission.anonymous ? ' (anon)' : ''}`;
-        const message = lines.join('\n') || 'New tip received.';
+        const isNewsLead = submission.type === 'news_lead';
+        const title = isNewsLead
+            ? `New News Lead${submission.anonymous ? ' (anon)' : ''}`
+            : `New Tip: ${fileLinks.length} file${fileLinks.length === 1 ? '' : 's'}${submission.anonymous ? ' (anon)' : ''}`;
+        const message = lines.join('\n') || (isNewsLead ? 'New news lead received.' : 'New tip received.');
 
         let driveFolderUrl = null;
         let driveError = null;
-        try {
-            const driveMirror = await retryAsync(() => mirrorSessionToDriveBridge({
-                sessionLabel,
-                files: fileLinks,
-                submission,
-            }), DRIVE_BRIDGE_RETRIES);
-            driveFolderUrl = driveMirror.folderUrl;
-            logger.info(`Drive mirror OK for ${folder}`);
-        } catch (err) {
-            driveError = err;
-            logger.error('Drive mirror failed', err);
+        if (fileLinks.length) {
+            try {
+                const driveMirror = await retryAsync(() => mirrorSessionToDriveBridge({
+                    sessionLabel,
+                    files: fileLinks,
+                    submission,
+                }), DRIVE_BRIDGE_RETRIES);
+                driveFolderUrl = driveMirror.folderUrl;
+                logger.info(`Drive mirror OK for ${folder}`);
+            } catch (err) {
+                driveError = err;
+                logger.error('Drive mirror failed', err);
+            }
+        } else {
+            logger.info(`No files to mirror for ${folder}`);
         }
 
         const actions = [];

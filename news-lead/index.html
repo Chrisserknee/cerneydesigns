@@ -7,14 +7,14 @@
     <meta http-equiv="X-Frame-Options" content="SAMEORIGIN">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://firebasestorage.googleapis.com https://*.firebasestorage.app https://www.googleapis.com; frame-ancestors 'self'; base-uri 'self'; form-action 'self'">
     <meta name="theme-color" content="#0e1116">
-    <title>Submit a Story Idea &mdash; Chris Cerney</title>
-    <meta name="description" content="Submit a story idea or possible investigation to independent journalist Chris Cerney.">
+    <title>Submit a News Lead &mdash; Chris Cerney</title>
+    <meta name="description" content="Submit a news lead or possible investigation to independent journalist Chris Cerney.">
     <meta name="robots" content="noindex, nofollow">
     <link rel="icon" type="image/svg+xml" href="/images/favicon.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/story-idea/style.css">
+    <link rel="stylesheet" href="/news-lead/style.css">
 </head>
 <body>
     <nav class="top-nav">
@@ -28,8 +28,8 @@
 
     <main class="page">
         <header class="page-header">
-            <span class="badge">Story Idea</span>
-            <h1 class="title">Submit a Story Idea</h1>
+            <span class="badge">News Lead</span>
+            <h1 class="title">Submit a News Lead</h1>
             <p class="lede">Share a possible investigation, community issue, or story Chris should look into.</p>
         </header>
 
@@ -145,18 +145,18 @@
                 <div class="wizard-actions">
                     <button type="button" class="secondary-btn" id="prevBtn" hidden>Back</button>
                     <button type="button" class="primary-btn" id="nextBtn">Next</button>
-                    <button type="submit" class="primary-btn" id="submitBtn" hidden>Submit Story Idea</button>
+                    <button type="submit" class="primary-btn" id="submitBtn" hidden>Submit a News Lead</button>
                 </div>
             </form>
         </section>
 
         <section class="success-screen" id="successScreen" hidden>
             <span class="success-icon" aria-hidden="true">✓</span>
-            <h2 class="screen-title">Story idea sent.</h2>
+            <h2 class="screen-title">News lead sent.</h2>
             <p class="screen-body">Thanks. Chris received the details. If you have photos, videos, or documents, send them through the tipline upload portal.</p>
             <div class="success-actions">
                 <a class="primary-btn" href="/upload">Upload Photos / Video</a>
-                <button type="button" class="secondary-btn" id="sendAnother">Submit Another Idea</button>
+                <button type="button" class="secondary-btn" id="sendAnother">Submit Another Lead</button>
             </div>
         </section>
     </main>
@@ -165,6 +165,6 @@
         <p>&copy; 2026 Chris Cerney &middot; chriscerney.org</p>
     </footer>
 
-    <script type="module" src="/story-idea/story-idea.js"></script>
+    <script type="module" src="/news-lead/news-lead.js"></script>
 </body>
 </html>
