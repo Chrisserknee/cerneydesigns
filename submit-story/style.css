@@ -313,6 +313,117 @@ textarea::placeholder {
     accent-color: var(--accent-red);
 }
 
+.media-upload-panel {
+    display: grid;
+    gap: 12px;
+    margin-top: 18px;
+    padding: 16px;
+    background: rgba(11, 17, 24, 0.58);
+    border: 1px solid var(--border-strong);
+}
+
+.upload-panel-label {
+    color: var(--accent-blue-link);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+}
+
+.mini-dropzone {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    min-height: 74px;
+    padding: 18px;
+    background: var(--bg-input);
+    border: 1px dashed var(--border-strong);
+    color: var(--text);
+    cursor: pointer;
+    text-align: center;
+    transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.mini-dropzone:hover,
+.mini-dropzone.drag-over {
+    border-color: var(--accent-red);
+    background: rgba(200, 85, 82, 0.06);
+}
+
+.upload-icon {
+    width: 24px;
+    height: 24px;
+    flex: 0 0 auto;
+    color: var(--accent-red);
+}
+
+.mini-dropzone span {
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    line-height: 1.3;
+    text-transform: uppercase;
+}
+
+.file-list {
+    display: grid;
+    gap: 8px;
+    list-style: none;
+}
+
+.file-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 10px;
+    align-items: center;
+    min-height: 42px;
+    padding: 10px 12px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+}
+
+.file-item-name {
+    min-width: 0;
+    overflow: hidden;
+    color: var(--text);
+    font-size: 0.88rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.file-item-size {
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    white-space: nowrap;
+}
+
+.file-item-remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    background: transparent;
+    border: 1px solid var(--border-strong);
+    color: var(--accent-red);
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+}
+
+.file-item-remove:hover {
+    border-color: var(--accent-red);
+    color: var(--accent-red-hover);
+}
+
+.upload-note {
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    line-height: 1.5;
+}
+
 .contact-fields {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));

@@ -69,12 +69,12 @@
 
                 <section class="wizard-step" data-step="3">
                     <span class="step-kicker">Evidence</span>
-                    <h2 class="step-title">Do you have photos or video?</h2>
+                    <h2 class="step-title">Do you have photos, video, or documents?</h2>
                     <fieldset class="choice-group">
-                        <legend class="sr-only">Do you have photos or video?</legend>
+                        <legend class="sr-only">Do you have photos, video, or documents?</legend>
                         <label class="choice">
-                            <input type="radio" name="hasMedia" value="Yes, I can upload photos or video" required>
-                            <span>Yes, I can upload photos or video</span>
+                            <input type="radio" name="hasMedia" value="Yes, I can upload photos, video, or documents" required>
+                            <span>Yes, I can upload photos, video, or documents</span>
                         </label>
                         <label class="choice">
                             <input type="radio" name="hasMedia" value="No, I only have information right now">
@@ -85,6 +85,19 @@
                             <span>Maybe, I need Chris to follow up</span>
                         </label>
                     </fieldset>
+                    <div class="media-upload-panel" id="mediaUploadPanel" hidden>
+                        <p class="upload-panel-label">Attach files now</p>
+                        <label for="fileInput" class="mini-dropzone" id="fileDropzone">
+                            <input type="file" id="fileInput" accept="image/*,video/*,.pdf,.heic,.heif,.mov,.mp4" multiple hidden>
+                            <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+                                <path d="M12 16V4M12 4l-5 5M12 4l5 5" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <span>Choose photos, videos, or PDFs</span>
+                        </label>
+                        <ul class="file-list" id="fileList" aria-live="polite"></ul>
+                        <p class="upload-note">Optional. Up to 10 files, 500 MB each, 750 MB total. Documents should be PDFs.</p>
+                    </div>
                 </section>
 
                 <section class="wizard-step" data-step="4">
@@ -153,7 +166,7 @@
         <section class="success-screen" id="successScreen" hidden>
             <span class="success-icon" aria-hidden="true">✓</span>
             <h2 class="screen-title">Story submitted.</h2>
-            <p class="screen-body">Thanks. Chris received the details. If you have photos, videos, or documents, send them through the tipline upload portal.</p>
+            <p class="screen-body">Thanks. Chris received the details. If you have more photos, videos, or documents, you can also send them through the tipline upload portal.</p>
             <div class="success-actions">
                 <a class="primary-btn" href="/upload">Upload Photos / Video</a>
                 <button type="button" class="secondary-btn" id="sendAnother">Submit Another Story</button>
