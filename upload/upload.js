@@ -58,6 +58,7 @@ const els = {
 
 let isUploading = false;
 let selectedFiles = [];
+let activeUploadTasks = new Set();
 
 // Warn the user if they try to close the tab mid-upload.
 window.addEventListener('beforeunload', (e) => {
@@ -179,11 +180,11 @@ els.submitBtn.addEventListener('click', async () => {
         userAgent: els.anonymous.checked ? '' : navigator.userAgent,
     };
 
-    // Unique folder per submission: sortable UTC timestamp + short random tag.
+    // Unique folder per submission: sortable UTC timestamp + cryptographic tag.
     const now = new Date();
     const pad = (n) => String(n).padStart(2, '0');
     const ts = `${now.getUTCFullYear()}-${pad(now.getUTCMonth() + 1)}-${pad(now.getUTCDate())}_${pad(now.getUTCHours())}-${pad(now.getUTCMinutes())}-${pad(now.getUTCSeconds())}`;
-    const rand = Math.random().toString(36).slice(2, 8);
+    const rand = createRandomTag();
     const sessionFolder = `tips/${ts}_${rand}`;
 
     showScreen('progress');
@@ -242,16 +243,28 @@ els.submitBtn.addEventListener('click', async () => {
         }
         if (meta.description) customMetadata.description = meta.description.slice(0, 1000);
 
+        const storedNames = selectedFiles.map((file, idx) =>
+            `${String(idx + 1).padStart(2, '0')}_${safeName(file.name)}`
+        );
+        let uploadAborted = false;
+        activeUploadTasks = new Set();
+
+        const cancelActiveUploads = () => {
+            uploadAborted = true;
+            for (const task of activeUploadTasks) {
+                task.cancel();
+            }
+        };
+
         const uploadOneFile = (file, idx) => new Promise((resolve, reject) => {
-            // Strip any path separators from the filename (defense in depth).
-            const safeName = file.name.replace(/[\\/]/g, '_');
-            const storageRef = ref(storage, `${sessionFolder}/${safeName}`);
+            const storageRef = ref(storage, `${sessionFolder}/${storedNames[idx]}`);
             const contentType = getAllowedContentType(file);
 
             const task = uploadBytesResumable(storageRef, file, {
                 contentType,
                 customMetadata: customMetadata,
             });
+            activeUploadTasks.add(task);
 
             task.on(
                 'state_changed',
@@ -260,10 +273,17 @@ els.submitBtn.addEventListener('click', async () => {
                     updateProgressUI();
                 },
                 (error) => {
+                    activeUploadTasks.delete(task);
+                    if (uploadAborted && error?.code === 'storage/canceled') {
+                        reject(error);
+                        return;
+                    }
                     console.error(`Upload failed for ${file.name}:`, error);
+                    cancelActiveUploads();
                     reject(new Error(`Upload failed on "${file.name}". Please try again.`));
                 },
                 () => {
+                    activeUploadTasks.delete(task);
                     filesCompleted++;
                     // Ensure this file's bar contribution reflects full size.
                     progresses[idx] = file.size;
@@ -294,7 +314,12 @@ els.submitBtn.addEventListener('click', async () => {
             submittedAt: new Date().toISOString(),
             fileCount: selectedFiles.length,
             totalBytes,
-            files: selectedFiles.map(f => ({ name: f.name, size: f.size, type: f.type })),
+            files: selectedFiles.map((f, idx) => ({
+                name: f.name,
+                storedName: storedNames[idx],
+                size: f.size,
+                type: getAllowedContentType(f),
+            })),
             anonymous: meta.anonymous,
             ...(meta.anonymous ? {} : {
                 senderName: meta.senderName,
@@ -312,10 +337,12 @@ els.submitBtn.addEventListener('click', async () => {
         els.progressStatus.textContent = 'Done';
 
         isUploading = false;
+        activeUploadTasks.clear();
         showScreen('thankyou');
     } catch (err) {
         console.error(err);
         isUploading = false;
+        activeUploadTasks.clear();
         showError(err?.message || 'Upload failed. Please try again.');
     }
 });
@@ -342,7 +369,10 @@ function showError(msg) {
 }
 
 els.sendAnother.addEventListener('click', resetForm);
-els.errorRetry.addEventListener('click', resetForm);
+els.errorRetry.addEventListener('click', () => {
+    showScreen('upload');
+    els.submitBtn.focus();
+});
 
 function resetForm() {
     selectedFiles = [];
@@ -353,6 +383,25 @@ function resetForm() {
 }
 
 // ---------- HELPERS ----------
+function createRandomTag() {
+    if (globalThis.crypto?.randomUUID) {
+        return globalThis.crypto.randomUUID().replace(/-/g, '').slice(0, 12);
+    }
+    if (globalThis.crypto?.getRandomValues) {
+        const bytes = new Uint8Array(8);
+        globalThis.crypto.getRandomValues(bytes);
+        return Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('').slice(0, 12);
+    }
+    return `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`.slice(0, 12);
+}
+
+function safeName(name) {
+    return name
+        .replace(/[\\/]/g, '_')
+        .replace(/[^\w.\- ()]/g, '_')
+        .slice(0, 160) || 'upload';
+}
+
 function getAllowedContentType(file) {
     if (file.type?.startsWith('image/') || file.type?.startsWith('video/') || file.type === 'application/pdf') {
         return file.type;

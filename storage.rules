@@ -11,13 +11,13 @@ service firebase.storage {
     function isSubmissionJson(fileName) {
       return fileName == '_submission.json'
         && request.resource.contentType == 'application/json'
-        && request.resource.size < 100 * 1024;
+        && request.resource.size <= 100 * 1024;
     }
 
     function isTipMedia(fileName) {
       return fileName != '_submission.json'
         && request.resource.size > 0
-        && request.resource.size < 500 * 1024 * 1024
+        && request.resource.size <= 500 * 1024 * 1024
         && isAllowedMediaType();
     }
 

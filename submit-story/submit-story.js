@@ -52,6 +52,7 @@ const reviewStepIndex = els.steps.length - 1;
 let currentStep = 0;
 let isSubmitting = false;
 let selectedFiles = [];
+let activeUploadTasks = new Set();
 
 els.prevBtn.addEventListener('click', () => {
     if (currentStep > 0) {
@@ -323,7 +324,7 @@ async function submitStoryIdea() {
         const now = new Date();
         const pad = (n) => String(n).padStart(2, '0');
         const ts = `${now.getUTCFullYear()}-${pad(now.getUTCMonth() + 1)}-${pad(now.getUTCDate())}_${pad(now.getUTCHours())}-${pad(now.getUTCMinutes())}-${pad(now.getUTCSeconds())}`;
-        const rand = Math.random().toString(36).slice(2, 8);
+        const rand = createRandomTag();
         const sessionFolder = `tips/submit-story_${ts}_${rand}`;
         const uploadedFiles = await uploadSelectedFiles(sessionFolder, data);
         const uploadedBytes = uploadedFiles.reduce((sum, file) => sum + file.size, 0);
@@ -377,6 +378,8 @@ async function uploadSelectedFiles(sessionFolder, data) {
     const uploaded = [];
     let nextIdx = 0;
     let completed = 0;
+    let uploadAborted = false;
+    activeUploadTasks = new Set();
     const customMetadata = { anonymous: String(data.anonymous), submissionType: 'story_submission' };
     if (!data.anonymous) {
         if (data.senderName) customMetadata.senderName = data.senderName.slice(0, 200);
@@ -393,6 +396,7 @@ async function uploadSelectedFiles(sessionFolder, data) {
             contentType,
             customMetadata,
         });
+        activeUploadTasks.add(task);
 
         task.on(
             'state_changed',
@@ -400,10 +404,20 @@ async function uploadSelectedFiles(sessionFolder, data) {
                 els.submitBtn.textContent = `Uploading ${completed + 1}/${selectedFiles.length}`;
             },
             (error) => {
+                activeUploadTasks.delete(task);
+                if (uploadAborted && error?.code === 'storage/canceled') {
+                    reject(error);
+                    return;
+                }
                 console.error(`Upload failed for ${file.name}:`, error);
+                uploadAborted = true;
+                for (const activeTask of activeUploadTasks) {
+                    activeTask.cancel();
+                }
                 reject(new Error(`Upload failed on "${file.name}". Please try again.`));
             },
             () => {
+                activeUploadTasks.delete(task);
                 completed++;
                 uploaded[idx] = {
                     name: file.name,
@@ -429,7 +443,11 @@ async function uploadSelectedFiles(sessionFolder, data) {
     for (let i = 0; i < concurrency; i++) {
         workers.push(worker());
     }
-    await Promise.all(workers);
+    try {
+        await Promise.all(workers);
+    } finally {
+        activeUploadTasks.clear();
+    }
     return uploaded.filter(Boolean);
 }
 
@@ -460,6 +478,18 @@ function getAllowedContentType(file) {
 
 function safeName(name) {
     return name.replace(/[\\/]/g, '_').replace(/[^\w.\- ()]/g, '_').slice(0, 160) || 'upload';
+}
+
+function createRandomTag() {
+    if (globalThis.crypto?.randomUUID) {
+        return globalThis.crypto.randomUUID().replace(/-/g, '').slice(0, 12);
+    }
+    if (globalThis.crypto?.getRandomValues) {
+        const bytes = new Uint8Array(8);
+        globalThis.crypto.getRandomValues(bytes);
+        return Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('').slice(0, 12);
+    }
+    return `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`.slice(0, 12);
 }
 
 function formatBytes(bytes) {
