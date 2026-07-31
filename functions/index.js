@@ -11,6 +11,7 @@ const admin = require('firebase-admin');
 const {
     buildManifestMap,
     firstDownloadToken,
+    normalizeDriveBridgeResponse,
     validateSubmission,
 } = require('./tipline-helpers');
 
@@ -284,14 +285,7 @@ async function mirrorSessionToDriveBridge({ deliveryId, sessionLabel, files, sub
     if (!res.ok || !payload.ok || payload.error) {
         throw new Error(payload.error || `Drive bridge HTTP ${res.status}`);
     }
-    if (!payload.complete || !payload.folderUrl || !Array.isArray(payload.copied)) {
-        throw new Error('Drive bridge did not confirm a complete, verified copy.');
-    }
-    if (payload.copied.length !== files.length) {
-        throw new Error(`Drive bridge verified ${payload.copied.length} of ${files.length} files.`);
-    }
-
-    return payload;
+    return normalizeDriveBridgeResponse(payload, files);
 }
 
 async function postNtfy(body) {
