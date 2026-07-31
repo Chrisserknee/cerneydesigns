@@ -39,8 +39,36 @@ function validateSubmission(submission, files) {
     return warnings;
 }
 
+function normalizeDriveBridgeResponse(payload, files) {
+    const copiedCount = Array.isArray(payload?.copied)
+        ? payload.copied.length
+        : Number.isInteger(payload?.copied)
+            ? payload.copied
+            : null;
+    const isVerifiedResponse = payload?.complete === true;
+    const isLegacySuccess = payload?.complete == null && payload?.ok === true;
+
+    if ((!isVerifiedResponse && !isLegacySuccess) || !payload?.folderUrl || copiedCount == null) {
+        throw new Error('Drive bridge did not confirm a complete copy.');
+    }
+    if (copiedCount !== files.length) {
+        throw new Error(`Drive bridge copied ${copiedCount} of ${files.length} files.`);
+    }
+
+    const copied = Array.isArray(payload.copied)
+        ? payload.copied
+        : files.map((file) => ({ name: file.name, legacyResponse: true }));
+
+    return {
+        ...payload,
+        complete: true,
+        copied,
+    };
+}
+
 module.exports = {
     buildManifestMap,
     firstDownloadToken,
+    normalizeDriveBridgeResponse,
     validateSubmission,
 };
