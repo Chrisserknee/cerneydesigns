@@ -66,6 +66,33 @@ test('download token parser ignores empty token entries', () => {
     assert.equal(helpers.firstDownloadToken(''), null);
 });
 
+test('Drive bridge accepts the legacy exact-count success response', () => {
+    const files = [{ name: '01_photo.jpg' }, { name: '02_video.mov' }];
+    const result = helpers.normalizeDriveBridgeResponse({
+        ok: true,
+        folderUrl: 'https://drive.google.com/drive/folders/example',
+        copied: 2,
+    }, files);
+
+    assert.equal(result.complete, true);
+    assert.equal(result.copied.length, 2);
+    assert.equal(result.copied[0].legacyResponse, true);
+});
+
+test('Drive bridge rejects a legacy partial copy', () => {
+    const files = [{ name: '01_photo.jpg' }, { name: '02_video.mov' }];
+    for (const copied of [1, 3]) {
+        assert.throws(
+            () => helpers.normalizeDriveBridgeResponse({
+                ok: true,
+                folderUrl: 'https://drive.google.com/drive/folders/example',
+                copied,
+            }, files),
+            new RegExp(`copied ${copied} of 2 files`)
+        );
+    }
+});
+
 test('Drive bridge honors the server Range offset for resumable uploads', () => {
     const context = {
         console,
