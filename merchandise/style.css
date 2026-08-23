@@ -145,6 +145,24 @@ button {
     font-size: clamp(1rem, 2vw, 1.2rem);
 }
 
+.artist-credit {
+    margin-top: 12px;
+    color: var(--text-dim);
+    font-size: 0.88rem;
+}
+
+.artist-credit a {
+    color: var(--blue-bright);
+    text-decoration: none;
+    border-bottom: 1px solid var(--border-strong);
+    transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+.artist-credit a:hover {
+    color: var(--text);
+    border-bottom-color: var(--blue-bright);
+}
+
 .launch-status {
     width: fit-content;
     margin-top: 30px;
