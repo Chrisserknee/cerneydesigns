@@ -310,6 +310,15 @@ button {
     box-shadow: 0 0 0 5px rgba(200, 85, 82, 0.14);
 }
 
+.coverage-support {
+    max-width: 620px;
+    margin-top: 12px;
+    color: #f0c251;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0;
+}
+
 .store-section {
     padding: 46px 0 84px;
 }
