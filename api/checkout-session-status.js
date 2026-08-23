@@ -1,6 +1,6 @@
 'use strict';
 
-const CATALOG_VERSION = 'sticker-drop-7';
+const CATALOG_VERSION = 'sticker-drop-8';
 
 function sendJson(response, status, body) {
     response.setHeader('Cache-Control', 'no-store');

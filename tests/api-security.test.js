@@ -85,7 +85,11 @@ test('checkout rejects Stripe lookalike redirect hosts', { concurrency: false },
     });
     try {
         const response = responseRecorder();
-        await createCheckoutSession(checkoutRequest(), response);
+        await createCheckoutSession(checkoutRequest({
+            body: {
+                items: [{ id: 'sticker-4-inch', variant: 'stay-classy', quantity: 1 }],
+            },
+        }), response);
         assert.equal(response.statusCode, 502);
         assert.equal(response.body.code, 'STRIPE_ERROR');
     } finally {
@@ -103,7 +107,7 @@ test('checkout status confirms only paid sessions from this catalog', { concurre
             mode: 'payment',
             status: 'complete',
             payment_status: 'paid',
-            metadata: { catalog_version: 'sticker-drop-7' },
+            metadata: { catalog_version: 'sticker-drop-8' },
         }),
     });
     try {
@@ -171,7 +175,7 @@ test('supporter bundle uses its Stripe Price and special shipping amount', { con
         assert.equal(response.statusCode, 200);
         assert.equal(stripeParameters.get('line_items[0][price]'), 'price_bundle');
         assert.equal(stripeParameters.get('shipping_options[0][shipping_rate_data][fixed_amount][amount]'), '199');
-        assert.equal(stripeParameters.get('metadata[catalog_version]'), 'sticker-drop-7');
+        assert.equal(stripeParameters.get('metadata[catalog_version]'), 'sticker-drop-8');
     } finally {
         global.fetch = previousFetch;
     }
@@ -220,13 +224,61 @@ test('supporter bundle creates a reusable Stripe product and price when not conf
         assert.equal(requests.length, 3);
         const createPriceParameters = new URLSearchParams(requests[1].options.body);
         assert.equal(createPriceParameters.get('unit_amount'), '2500');
-        assert.equal(createPriceParameters.get('lookup_key'), 'independent_news_supporter_bundle_v1');
-        assert.equal(createPriceParameters.get('product_data[name]'), 'Independent News Supporter Bundle');
+        assert.equal(createPriceParameters.get('lookup_key'), 'independent_news_supporter_bundle_v2');
+        assert.equal(createPriceParameters.get('product_data[name]'), 'Independent News Supporter Bundle - All Four Colorways + 4-Inch Stay Classy');
         const checkoutParameters = new URLSearchParams(requests[2].options.body);
         assert.equal(checkoutParameters.get('line_items[0][price]'), 'price_createdbundle');
         assert.equal(checkoutParameters.get('shipping_options[0][shipping_rate_data][fixed_amount][amount]'), '199');
     } finally {
         global.fetch = previousFetch;
         process.env.STRIPE_PRICE_SUPPORTER_BUNDLE = 'price_bundle';
+    }
+});
+
+test('selected two-inch color is included in the Stripe receipt product name', { concurrency: false }, async () => {
+    configureCheckoutEnvironment();
+    const previousFetch = global.fetch;
+    const requests = [];
+    global.fetch = async (url, options = {}) => {
+        requests.push({ url, options });
+        if (url.includes('/v1/prices?')) {
+            return { ok: true, status: 200, json: async () => ({ data: [] }) };
+        }
+        if (url.endsWith('/v1/prices')) {
+            return {
+                ok: true,
+                status: 200,
+                json: async () => ({
+                    id: 'price_goldreceipt',
+                    active: true,
+                    currency: 'usd',
+                    unit_amount: 600,
+                }),
+            };
+        }
+        return {
+            ok: true,
+            status: 200,
+            json: async () => ({ url: 'https://checkout.stripe.com/c/pay/cs_live_color_receipt' }),
+        };
+    };
+    try {
+        const response = responseRecorder();
+        await createCheckoutSession(checkoutRequest({
+            body: {
+                items: [{ id: 'sticker-2-inch', variant: 'gold-holographic', quantity: 1 }],
+            },
+        }), response);
+        assert.equal(response.statusCode, 200);
+        assert.equal(requests.length, 3);
+        const createPriceParameters = new URLSearchParams(requests[1].options.body);
+        assert.equal(createPriceParameters.get('lookup_key'), 'chris_cerney_2in_gold_holographic_v1');
+        assert.equal(createPriceParameters.get('product_data[name]'), '2-Inch Chris Cerney Sticker - Gold Holographic');
+        const checkoutParameters = new URLSearchParams(requests[2].options.body);
+        assert.equal(checkoutParameters.get('line_items[0][price]'), 'price_goldreceipt');
+        assert.equal(checkoutParameters.get('metadata[item_details]'), '2-Inch Chris Cerney Sticker - Gold Holographic x1');
+        assert.equal(checkoutParameters.get('payment_intent_data[metadata][item_details]'), '2-Inch Chris Cerney Sticker - Gold Holographic x1');
+    } finally {
+        global.fetch = previousFetch;
     }
 });

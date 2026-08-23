@@ -148,6 +148,22 @@
         const description = document.createElement('p');
         description.textContent = product.description;
 
+        let bundleSummary;
+        if (Array.isArray(product.bundleSummary)) {
+            bundleSummary = document.createElement('div');
+            bundleSummary.className = 'bundle-summary';
+            bundleSummary.setAttribute('aria-label', 'Bundle contents');
+            product.bundleSummary.forEach((item) => {
+                const summaryItem = document.createElement('span');
+                const count = document.createElement('strong');
+                count.textContent = item.count;
+                const label = document.createElement('span');
+                label.textContent = item.label;
+                summaryItem.append(count, label);
+                bundleSummary.appendChild(summaryItem);
+            });
+        }
+
         const optionArea = document.createElement('div');
         optionArea.className = 'product-options';
         const optionHeading = document.createElement('div');
@@ -287,6 +303,7 @@
         });
         actionRow.append(priceBlock, addButton);
         body.append(status, title, description);
+        if (bundleSummary) body.append(bundleSummary);
         if (product.hideOptions !== true) body.append(optionArea);
         body.append(actionRow);
         card.append(media, body);

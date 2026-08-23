@@ -8,6 +8,10 @@ window.MERCH_CATALOG = [
         available: true,
         featured: true,
         hideOptions: true,
+        bundleSummary: [
+            { count: '4', label: '2-inch colorways' },
+            { count: '1', label: '4-inch Stay Classy' },
+        ],
         variants: [
             {
                 id: 'complete-five-sticker-set',

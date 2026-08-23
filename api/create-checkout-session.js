@@ -2,13 +2,14 @@
 
 const MAX_ITEM_QUANTITY = 10;
 const MAX_CART_QUANTITY = 25;
-const CATALOG_VERSION = 'sticker-drop-7';
+const CATALOG_VERSION = 'sticker-drop-8';
 const SMALL_ORDER_SHIPPING = 99;
 const BUNDLE_ORDER_SHIPPING = 199;
 const LARGE_ORDER_SHIPPING = 299;
-const SUPPORTER_BUNDLE_LOOKUP_KEY = 'independent_news_supporter_bundle_v1';
+const SUPPORTER_BUNDLE_LOOKUP_KEY = 'independent_news_supporter_bundle_v2';
 
 let cachedSupporterBundlePrice = '';
+const cachedVariantPrices = new Map();
 
 const productPriceEnvironment = {
     'independent-news-supporter-bundle': 'STRIPE_PRICE_SUPPORTER_BUNDLE',
@@ -18,7 +19,7 @@ const productPriceEnvironment = {
 
 const catalog = {
     'independent-news-supporter-bundle': {
-        name: 'Independent News Supporter Bundle',
+        name: 'Independent News Supporter Bundle - All Four Colorways + 4-Inch Stay Classy',
         description: 'One 4-inch Stay Classy sticker and all four 2-inch holographic colorways.',
         unitAmount: 2500,
         variants: {
@@ -204,9 +205,76 @@ async function resolveSupporterBundlePrice(secretKey) {
     throw new Error(`Stripe price creation failed with status ${stripeResponse.status}`);
 }
 
+function smallStickerPriceSpec(item) {
+    if (item.id !== 'sticker-2-inch') return null;
+    const variant = catalog[item.id].variants[item.variant];
+    return {
+        lookupKey: `chris_cerney_2in_${item.variant.replace(/-/g, '_')}_v1`,
+        name: `${catalog[item.id].name} - ${variant.name}`,
+        unitAmount: catalog[item.id].unitAmount,
+    };
+}
+
+function isVariantPrice(price, spec) {
+    return /^price_[A-Za-z0-9]+$/.test(price?.id || '')
+        && price.active === true
+        && price.currency === 'usd'
+        && price.unit_amount === spec.unitAmount;
+}
+
+async function findVariantPrice(secretKey, spec) {
+    const query = new URLSearchParams({ active: 'true', limit: '1' });
+    query.append('lookup_keys[]', spec.lookupKey);
+    const { stripeResponse, body } = await stripeRequest(secretKey, `/v1/prices?${query}`);
+    if (!stripeResponse.ok) {
+        throw new Error(`Stripe variant price lookup failed with status ${stripeResponse.status}`);
+    }
+    return isVariantPrice(body?.data?.[0], spec) ? body.data[0].id : '';
+}
+
+async function resolveVariantPrice(secretKey, spec) {
+    if (cachedVariantPrices.has(spec.lookupKey)) return cachedVariantPrices.get(spec.lookupKey);
+
+    const existingPrice = await findVariantPrice(secretKey, spec);
+    if (existingPrice) {
+        cachedVariantPrices.set(spec.lookupKey, existingPrice);
+        return existingPrice;
+    }
+
+    const parameters = new URLSearchParams({
+        currency: 'usd',
+        unit_amount: String(spec.unitAmount),
+        lookup_key: spec.lookupKey,
+        'product_data[name]': spec.name,
+        'metadata[catalog_version]': CATALOG_VERSION,
+        'metadata[receipt_variant]': 'true',
+    });
+    const { stripeResponse, body } = await stripeRequest(secretKey, '/v1/prices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: parameters,
+    });
+
+    if (stripeResponse.ok && isVariantPrice(body, spec)) {
+        cachedVariantPrices.set(spec.lookupKey, body.id);
+        return body.id;
+    }
+
+    const racedPrice = await findVariantPrice(secretKey, spec);
+    if (racedPrice) {
+        cachedVariantPrices.set(spec.lookupKey, racedPrice);
+        return racedPrice;
+    }
+    throw new Error(`Stripe variant price creation failed with status ${stripeResponse.status}`);
+}
+
 async function resolvePriceItems(items, secretKey) {
     const priceItems = configuredPriceItems(items);
     for (const item of priceItems) {
+        const variantPriceSpec = smallStickerPriceSpec(item);
+        if (variantPriceSpec) {
+            item.price = await resolveVariantPrice(secretKey, variantPriceSpec);
+        }
         if (!item.price && item.id === 'independent-news-supporter-bundle') {
             item.price = await resolveSupporterBundlePrice(secretKey);
         }
@@ -218,6 +286,14 @@ function shippingAmountFor(items) {
     if (items.some((item) => item.id === 'sticker-4-inch')) return LARGE_ORDER_SHIPPING;
     if (items.some((item) => item.id === 'independent-news-supporter-bundle')) return BUNDLE_ORDER_SHIPPING;
     return SMALL_ORDER_SHIPPING;
+}
+
+function itemDetailsFor(items) {
+    return items.map((item) => {
+        const variant = catalog[item.id].variants[item.variant];
+        const variantName = typeof variant === 'string' ? variant : variant.name;
+        return `${catalog[item.id].name} - ${variantName} x${item.quantity}`;
+    }).join(' | ');
 }
 
 module.exports = async function createCheckoutSession(request, response) {
@@ -294,8 +370,10 @@ module.exports = async function createCheckoutSession(request, response) {
     parameters.set('metadata[catalog_version]', CATALOG_VERSION);
     parameters.set('metadata[item_ids]', priceItems.map((item) => item.id).join(','));
     parameters.set('metadata[item_selections]', priceItems.map((item) => `${item.id}:${item.variant}:${item.quantity}`).join('|'));
+    parameters.set('metadata[item_details]', itemDetailsFor(priceItems));
     parameters.set('payment_intent_data[metadata][catalog_version]', CATALOG_VERSION);
     parameters.set('payment_intent_data[metadata][item_selections]', priceItems.map((item) => `${item.id}:${item.variant}:${item.quantity}`).join('|'));
+    parameters.set('payment_intent_data[metadata][item_details]', itemDetailsFor(priceItems));
 
     priceItems.forEach((item, index) => {
         parameters.set(`line_items[${index}][price]`, item.price);
