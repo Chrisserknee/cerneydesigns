@@ -547,6 +547,28 @@ button {
     font-size: 0.92rem;
 }
 
+.product-price-block {
+    min-width: 0;
+    display: grid;
+    gap: 3px;
+}
+
+.product-shipping {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--text-muted);
+    font-size: 0.7rem;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.product-shipping svg {
+    width: 13px;
+    height: 13px;
+    flex: 0 0 auto;
+}
+
 .add-button,
 .checkout-button {
     min-height: 44px;

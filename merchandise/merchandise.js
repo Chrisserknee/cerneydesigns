@@ -52,6 +52,33 @@
         return product.available === true && Number.isInteger(product.price) && product.price > 0;
     }
 
+    function createShippingIcon() {
+        const namespace = 'http://www.w3.org/2000/svg';
+        const icon = document.createElementNS(namespace, 'svg');
+        icon.setAttribute('viewBox', '0 0 24 24');
+        icon.setAttribute('aria-hidden', 'true');
+        icon.setAttribute('fill', 'none');
+        icon.setAttribute('stroke', 'currentColor');
+        icon.setAttribute('stroke-width', '1.8');
+        icon.setAttribute('stroke-linecap', 'round');
+        icon.setAttribute('stroke-linejoin', 'round');
+
+        const body = document.createElementNS(namespace, 'path');
+        body.setAttribute('d', 'M10 17h4V5H2v12h3');
+        const trailer = document.createElementNS(namespace, 'path');
+        trailer.setAttribute('d', 'M14 9h4l4 4v4h-2');
+        const frontWheel = document.createElementNS(namespace, 'circle');
+        frontWheel.setAttribute('cx', '7');
+        frontWheel.setAttribute('cy', '17');
+        frontWheel.setAttribute('r', '2');
+        const backWheel = document.createElementNS(namespace, 'circle');
+        backWheel.setAttribute('cx', '18');
+        backWheel.setAttribute('cy', '17');
+        backWheel.setAttribute('r', '2');
+        icon.append(body, trailer, frontWheel, backWheel);
+        return icon;
+    }
+
     function createProductCard(product) {
         const selected = { variant: product.variants[0], showingReference: false };
         const card = document.createElement('article');
@@ -143,9 +170,15 @@
 
         const actionRow = document.createElement('div');
         actionRow.className = 'product-action-row';
+        const priceBlock = document.createElement('div');
+        priceBlock.className = 'product-price-block';
         const price = document.createElement('strong');
         price.className = 'product-price';
         price.textContent = Number.isInteger(product.price) ? money.format(product.price / 100) : 'Price coming soon';
+        const shipping = document.createElement('span');
+        shipping.className = 'product-shipping';
+        shipping.append(createShippingIcon(), document.createTextNode(`+ ${money.format(product.shipping / 100)} shipping`));
+        priceBlock.append(price, shipping);
         const addButton = document.createElement('button');
         addButton.type = 'button';
         addButton.className = 'add-button';
@@ -160,7 +193,7 @@
                 addButton.classList.remove('added');
             }, 1200);
         });
-        actionRow.append(price, addButton);
+        actionRow.append(priceBlock, addButton);
         body.append(status, title, description, optionArea, actionRow);
         card.append(media, body);
         return card;
