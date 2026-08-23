@@ -347,7 +347,7 @@
             saveCart();
             kicker.textContent = 'Payment successful';
             title.textContent = 'Your sticker order is confirmed.';
-            body.textContent = 'A Stripe receipt will be sent to the email used at checkout. Your order will now be prepared for shipping.';
+            body.textContent = 'A Stripe receipt will be sent to the email used at checkout. Your order will now be prepared for shipping. Due to high demand, shipping times may vary.';
             renderCart();
         } else {
             kicker.textContent = 'Checkout cancelled';
