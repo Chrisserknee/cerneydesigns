@@ -123,6 +123,74 @@ button {
     color: #fff;
 }
 
+.nav-cart {
+    min-height: 44px;
+    padding: 7px 10px 7px 13px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid var(--blue-bright);
+    border-radius: 4px;
+    background: var(--blue-bright);
+    color: #071019;
+    cursor: pointer;
+    font-size: 0.78rem;
+    font-weight: 800;
+    transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.nav-cart[hidden] {
+    display: none;
+}
+
+.nav-cart:hover {
+    border-color: #c6dcf0;
+    background: #c6dcf0;
+}
+
+.nav-cart-label {
+    text-transform: uppercase;
+}
+
+.nav-cart-count {
+    min-width: 24px;
+    height: 24px;
+    padding: 0 6px;
+    display: inline-grid;
+    place-items: center;
+    border-radius: 12px;
+    background: #071019;
+    color: #fff;
+    font-size: 0.72rem;
+}
+
+.nav-cart-total {
+    padding-left: 8px;
+    border-left: 1px solid rgba(7, 16, 25, 0.24);
+    font-variant-numeric: tabular-nums;
+}
+
+.nav-cart.attention {
+    animation: cart-attention 0.55s ease-out;
+}
+
+@keyframes cart-attention {
+    0% {
+        box-shadow: 0 0 0 0 rgba(155, 187, 214, 0.6);
+        transform: scale(0.94);
+    }
+
+    55% {
+        box-shadow: 0 0 0 7px rgba(155, 187, 214, 0.18);
+        transform: scale(1.04);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(155, 187, 214, 0);
+        transform: scale(1);
+    }
+}
+
 .store-header {
     padding: 78px 0 52px;
     border-bottom: 1px solid var(--border);
@@ -506,6 +574,7 @@ button {
 .cart-panel {
     position: sticky;
     top: 100px;
+    scroll-margin-top: calc(88px + env(safe-area-inset-top));
     padding: 24px;
     border: 1px solid var(--border-strong);
     border-radius: 6px;
@@ -738,6 +807,14 @@ a:focus-visible {
 
     .store-nav-links a:first-child,
     .store-nav-links .store-tipline {
+        display: none;
+    }
+
+    .store-nav-links a[aria-current='page'] {
+        display: none;
+    }
+
+    .nav-cart-total {
         display: none;
     }
 

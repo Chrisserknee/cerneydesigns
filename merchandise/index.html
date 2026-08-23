@@ -30,6 +30,11 @@
                 <a href="/portfolio">Portfolio</a>
                 <a href="/merchandise" aria-current="page">Merchandise</a>
                 <a href="/upload" class="store-tipline">Tipline</a>
+                <button type="button" class="nav-cart" id="navCartButton" aria-label="View your cart" hidden>
+                    <span class="nav-cart-label">Cart</span>
+                    <span class="nav-cart-count" id="navCartCount" aria-hidden="true">0</span>
+                    <span class="nav-cart-total" id="navCartTotal">$0.00</span>
+                </button>
             </div>
         </div>
     </nav>
@@ -68,7 +73,7 @@
                     <div class="product-grid" id="productGrid"></div>
                 </div>
 
-                <aside class="cart-panel" aria-labelledby="cartHeading">
+                <aside class="cart-panel" aria-labelledby="cartHeading" tabindex="-1">
                     <div class="cart-heading-row">
                         <h2 id="cartHeading">Your order</h2>
                         <span class="cart-count" id="cartCount">0</span>

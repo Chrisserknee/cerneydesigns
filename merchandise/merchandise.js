@@ -33,8 +33,12 @@
     const catalogCount = document.getElementById('catalogCount');
     const cartItems = document.getElementById('cartItems');
     const cartEmpty = document.getElementById('cartEmpty');
+    const cartPanel = document.querySelector('.cart-panel');
     const cartCount = document.getElementById('cartCount');
     const cartSubtotal = document.getElementById('cartSubtotal');
+    const navCartButton = document.getElementById('navCartButton');
+    const navCartCount = document.getElementById('navCartCount');
+    const navCartTotal = document.getElementById('navCartTotal');
     const checkoutButton = document.getElementById('checkoutButton');
     const checkoutLabel = document.getElementById('checkoutLabel');
     const checkoutMessage = document.getElementById('checkoutMessage');
@@ -172,6 +176,8 @@
         cart.set(key, Math.min((cart.get(key) || 0) + 1, 10));
         saveCart();
         renderCart();
+        navCartButton.classList.remove('attention');
+        window.requestAnimationFrame(() => navCartButton.classList.add('attention'));
     }
 
     function changeQuantity(key, change) {
@@ -245,6 +251,10 @@
         cartCount.textContent = itemCount;
         cartCount.setAttribute('aria-label', `${itemCount} item${itemCount === 1 ? '' : 's'} in cart`);
         cartSubtotal.textContent = money.format(subtotal / 100);
+        navCartButton.hidden = entries.length === 0;
+        navCartCount.textContent = itemCount;
+        navCartTotal.textContent = money.format(subtotal / 100);
+        navCartButton.setAttribute('aria-label', `View your cart, ${itemCount} item${itemCount === 1 ? '' : 's'}, ${money.format(subtotal / 100)}`);
         checkoutButton.disabled = entries.length === 0;
     }
 
@@ -299,6 +309,12 @@
         section.hidden = false;
     }
 
+    navCartButton.addEventListener('animationend', () => navCartButton.classList.remove('attention'));
+    navCartButton.addEventListener('click', () => {
+        const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+        cartPanel.scrollIntoView({ behavior, block: 'start' });
+        cartPanel.focus({ preventScroll: true });
+    });
     checkoutButton.addEventListener('click', startCheckout);
     renderCatalog();
     renderCart();
