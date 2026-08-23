@@ -1,22 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <rect width="100" height="100" fill="#fff"/>
-  <text
-    x="4"
-    y="76"
-    fill="#0b0b0c"
-    font-family="Georgia, 'Times New Roman', serif"
-    font-size="76"
-    font-weight="400"
-  >C</text>
-  <text
-    x="29"
-    y="89"
-    fill="#0b0b0c"
-    stroke="#fff"
-    stroke-width="2.5"
-    paint-order="stroke fill"
-    font-family="Georgia, 'Times New Roman', serif"
-    font-size="76"
-    font-weight="400"
-  >C</text>
+  <rect width="100" height="100" rx="20" fill="#0b1118"/>
+  <path
+    d="M48 33 A24 24 0 1 0 48 67"
+    fill="none"
+    stroke="#f4f7fa"
+    stroke-width="10"
+    stroke-linecap="round"
+  />
+  <path
+    d="M86 33 A24 24 0 1 0 86 67"
+    fill="none"
+    stroke="#9bbbd6"
+    stroke-width="10"
+    stroke-linecap="round"
+  />
 </svg>
