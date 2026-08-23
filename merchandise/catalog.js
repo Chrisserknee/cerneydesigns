@@ -26,6 +26,12 @@ window.MERCH_CATALOG = [
         available: true,
         variants: [
             {
+                id: 'black-gold-holographic',
+                name: 'Black and Gold Holographic',
+                image: '/images/merchandise/chris-cerney-black-gold-holographic.webp',
+                imageAlt: 'Black and gold holographic Chris Cerney portrait sticker',
+            },
+            {
                 id: 'gold-holographic',
                 name: 'Gold Holographic',
                 image: '/images/merchandise/chris-cerney-gold-holographic.webp',
@@ -42,12 +48,6 @@ window.MERCH_CATALOG = [
                 name: 'Silver Holographic',
                 image: '/images/merchandise/chris-cerney-silver-holographic.webp',
                 imageAlt: 'Silver holographic and gold Chris Cerney portrait sticker',
-            },
-            {
-                id: 'black-gold-holographic',
-                name: 'Black and Gold Holographic',
-                image: '/images/merchandise/chris-cerney-black-gold-holographic.webp',
-                imageAlt: 'Black and gold holographic Chris Cerney portrait sticker',
             },
         ],
     },

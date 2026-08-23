@@ -26,6 +26,10 @@ const catalog = {
         description: 'Round holographic Chris Cerney portrait sticker.',
         unitAmount: 500,
         variants: {
+            'black-gold-holographic': {
+                name: 'Black and Gold Holographic',
+                imagePath: '/images/merchandise/chris-cerney-black-gold-holographic.webp',
+            },
             'gold-holographic': {
                 name: 'Gold Holographic',
                 imagePath: '/images/merchandise/chris-cerney-gold-holographic.webp',
@@ -37,10 +41,6 @@ const catalog = {
             'silver-holographic': {
                 name: 'Silver Holographic',
                 imagePath: '/images/merchandise/chris-cerney-silver-holographic.webp',
-            },
-            'black-gold-holographic': {
-                name: 'Black and Gold Holographic',
-                imagePath: '/images/merchandise/chris-cerney-black-gold-holographic.webp',
             },
         },
     },
