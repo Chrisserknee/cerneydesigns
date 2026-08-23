@@ -2,7 +2,7 @@ window.MERCH_CATALOG = [
     {
         id: 'sticker-4-inch',
         name: '4-Inch Stay Classy Sticker',
-        description: 'A holographic die-cut sticker featuring the Stay Classy Central Coast design.',
+        description: 'A holographic die-cut Stay Classy Central Coast design. Each sticker is layered by hand with premium, heavy-duty, weather-resistant vinyl and color built into the material for a fade-resistant finish.',
         price: 1000,
         shipping: 299,
         sizeReference: '/images/merchandise/stay-classy-4-inch-size.webp',
@@ -20,7 +20,7 @@ window.MERCH_CATALOG = [
     {
         id: 'sticker-2-inch',
         name: '2-Inch Chris Cerney Sticker',
-        description: 'A compact round portrait sticker available in four holographic colorways.',
+        description: 'A round portrait design in four special holographic colorways. Each sticker is layered by hand with premium, heavy-duty, weather-resistant vinyl and color built into the material for a fade-resistant finish.',
         price: 500,
         shipping: 99,
         sizeReference: '/images/merchandise/chris-cerney-2-inch-size.webp',
