@@ -33,10 +33,19 @@
     contain: strict;
 }
 
+.merchandise-page .holographic-sheen {
+    opacity: 0.121;
+    filter: saturate(1.1);
+}
+
 @media (max-width: 700px) {
     .holographic-sheen {
         inset: -38vmax;
         opacity: 0.085;
+    }
+
+    .merchandise-page .holographic-sheen {
+        opacity: 0.094;
     }
 }
 
@@ -46,5 +55,9 @@
         opacity: 0.07;
         transform: none;
         will-change: auto;
+    }
+
+    .merchandise-page .holographic-sheen {
+        opacity: 0.077;
     }
 }
