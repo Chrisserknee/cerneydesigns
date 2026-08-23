@@ -2,7 +2,7 @@ window.MERCH_CATALOG = [
     {
         id: 'sticker-4-inch',
         name: '4-Inch Stay Classy Sticker',
-        description: 'A large holographic die-cut sticker featuring the Stay Classy Central Coast design.',
+        description: 'A holographic die-cut sticker featuring the Stay Classy Central Coast design.',
         price: 1000,
         sizeReference: '/images/merchandise/stay-classy-4-inch-size.webp',
         sizeReferenceAlt: 'Four-inch Stay Classy sticker shown with a measurement overlay',

@@ -14,7 +14,7 @@ const productPriceEnvironment = {
 const catalog = {
     'sticker-4-inch': {
         name: '4-Inch Stay Classy Sticker',
-        description: 'Large holographic Stay Classy Central Coast sticker.',
+        description: 'Holographic Stay Classy Central Coast sticker.',
         unitAmount: 1000,
         imagePath: '/images/merchandise/stay-classy-4-inch.webp',
         variants: {
