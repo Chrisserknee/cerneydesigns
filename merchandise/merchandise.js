@@ -295,7 +295,7 @@
         addButton.textContent = isPurchasable(product) ? 'Add to cart' : 'Checkout coming soon';
         addButton.disabled = !isPurchasable(product);
         addButton.addEventListener('click', () => {
-            addToCart(product.id, selected.variant.id);
+            addToCart(product.id, selected.variant.id, addButton);
             addButton.textContent = 'Added';
             addButton.classList.add('added');
             window.setTimeout(() => {
@@ -318,17 +318,86 @@
         catalogCount.textContent = `${catalog.length} product${catalog.length === 1 ? '' : 's'}`;
     }
 
-    function addToCart(productId, variantId) {
-        const product = productsById.get(productId);
-        if (!product || !variantFor(product, variantId) || !isPurchasable(product)) return;
-        const key = `${productId}::${variantId}`;
-        cart.set(key, Math.min((cart.get(key) || 0) + 1, 10));
-        saveCart();
-        renderCart();
+    function pulseCartButtons() {
         [navCartButton, mobileCartButton].forEach((button) => button.classList.remove('attention'));
         window.requestAnimationFrame(() => {
             [navCartButton, mobileCartButton].forEach((button) => button.classList.add('attention'));
         });
+    }
+
+    function createCartFlight(variant) {
+        const flight = document.createElement('div');
+        flight.className = 'cart-flight';
+        flight.setAttribute('aria-hidden', 'true');
+
+        const imageSources = Array.isArray(variant.images) ? variant.images : [variant.image];
+        if (imageSources.length > 1) flight.classList.add('bundle-cart-flight');
+        imageSources.forEach((source) => {
+            const image = new Image();
+            image.src = source;
+            image.alt = '';
+            flight.appendChild(image);
+        });
+        return flight;
+    }
+
+    function animateProductToCart(sourceElement, variant) {
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || typeof sourceElement?.animate !== 'function') {
+            pulseCartButtons();
+            return;
+        }
+
+        mobileCartButton.classList.remove('cart-in-view');
+        const target = window.matchMedia('(max-width: 680px)').matches ? mobileCartButton : navCartButton;
+        const sourceBounds = sourceElement.getBoundingClientRect();
+        const targetBounds = target.getBoundingClientRect();
+        if (!sourceBounds.width || !sourceBounds.height || !targetBounds.width || !targetBounds.height) {
+            pulseCartButtons();
+            return;
+        }
+
+        const size = window.innerWidth <= 680 ? 58 : 64;
+        const startX = sourceBounds.left + (sourceBounds.width - size) / 2;
+        const startY = sourceBounds.top + (sourceBounds.height - size) / 2;
+        const endX = targetBounds.left + (targetBounds.width - size) / 2;
+        const endY = targetBounds.top + (targetBounds.height - size) / 2;
+        const deltaX = endX - startX;
+        const deltaY = endY - startY;
+        const lift = Math.min(120, Math.max(52, Math.abs(deltaX) * 0.14));
+        const flight = createCartFlight(variant);
+        flight.style.width = `${size}px`;
+        flight.style.height = `${size}px`;
+        flight.style.left = `${startX}px`;
+        flight.style.top = `${startY}px`;
+        document.body.appendChild(flight);
+
+        const animation = flight.animate([
+            { transform: 'translate3d(0, 0, 0) scale(0.78)', opacity: 0.25, offset: 0 },
+            { transform: 'translate3d(0, -8px, 0) scale(1)', opacity: 1, offset: 0.16 },
+            { transform: `translate3d(${deltaX * 0.58}px, ${(deltaY * 0.48) - lift}px, 0) scale(0.72) rotate(3deg)`, opacity: 0.96, offset: 0.62 },
+            { transform: `translate3d(${deltaX}px, ${deltaY}px, 0) scale(0.18) rotate(7deg)`, opacity: 0.18, offset: 1 },
+        ], {
+            duration: 720,
+            easing: 'cubic-bezier(0.22, 0.8, 0.2, 1)',
+            fill: 'forwards',
+        });
+
+        const finish = () => {
+            flight.remove();
+            pulseCartButtons();
+        };
+        animation.finished.then(finish, finish);
+    }
+
+    function addToCart(productId, variantId, sourceElement) {
+        const product = productsById.get(productId);
+        const variant = variantFor(product, variantId);
+        if (!product || !variant || !isPurchasable(product)) return;
+        const key = `${productId}::${variantId}`;
+        cart.set(key, Math.min((cart.get(key) || 0) + 1, 10));
+        saveCart();
+        renderCart();
+        window.requestAnimationFrame(() => animateProductToCart(sourceElement, variant));
     }
 
     function changeQuantity(key, change) {
