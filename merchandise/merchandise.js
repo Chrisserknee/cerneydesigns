@@ -240,6 +240,12 @@
         const { product, variant } = cartSelection(key);
         const item = document.createElement('div');
         item.className = 'cart-item';
+        const overview = document.createElement('div');
+        overview.className = 'cart-item-overview';
+        const thumbnail = new Image();
+        thumbnail.className = 'cart-item-image';
+        thumbnail.src = variant.image;
+        thumbnail.alt = variant.imageAlt;
         const details = document.createElement('div');
         details.className = 'cart-item-details';
         const identity = document.createElement('div');
@@ -261,14 +267,16 @@
         count.setAttribute('aria-label', `Quantity ${quantity}`);
         const increase = createQuantityButton('+', `Increase ${variant.name} quantity`, () => changeQuantity(key, 1));
         increase.disabled = quantity >= 10;
-        const remove = createQuantityButton('\u00d7', `Remove ${variant.name} from cart`, () => {
+        const remove = createQuantityButton('\u2715', `Remove ${variant.name} from cart`, () => {
             cart.delete(key);
             saveCart();
             renderCart();
         });
+        remove.title = `Remove ${variant.name}`;
         remove.classList.add('remove-button');
         controls.append(decrease, count, increase, remove);
-        item.append(details, controls);
+        overview.append(thumbnail, details);
+        item.append(overview, controls);
         return item;
     }
 
