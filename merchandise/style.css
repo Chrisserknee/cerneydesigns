@@ -192,7 +192,7 @@ button {
 }
 
 .store-header {
-    padding: 78px 0 52px;
+    padding: 62px 0 42px;
     border-bottom: 1px solid var(--border);
     background: var(--bg-elev);
 }
@@ -209,7 +209,7 @@ button {
 .store-header h1 {
     margin-top: 8px;
     font-family: 'Barlow Condensed', sans-serif;
-    font-size: 6.8rem;
+    font-size: 5.45rem;
     font-weight: 800;
     line-height: 0.95;
     text-transform: uppercase;
@@ -217,19 +217,19 @@ button {
 
 .store-lede {
     max-width: 620px;
-    margin-top: 22px;
+    margin-top: 18px;
     color: var(--text-dim);
-    font-size: 1.2rem;
+    font-size: 1.05rem;
 }
 
 .artist-credit {
     width: fit-content;
     max-width: 100%;
-    margin-top: 24px;
-    padding: 9px 20px 9px 9px;
+    margin-top: 19px;
+    padding: 7px 16px 7px 7px;
     display: inline-flex;
     align-items: center;
-    gap: 17px;
+    gap: 14px;
     overflow: hidden;
     border: 1px solid #9f7418;
     border-left: 4px solid #d3a319;
@@ -244,8 +244,8 @@ button {
 }
 
 .artist-credit img {
-    width: 96px;
-    height: 72px;
+    width: 78px;
+    height: 58px;
     flex: 0 0 auto;
     display: block;
     border: 1px solid rgba(240, 194, 81, 0.4);
@@ -270,7 +270,7 @@ button {
 .artist-credit strong {
     color: #f0c251;
     font-family: 'Barlow Condensed', sans-serif;
-    font-size: 1.75rem;
+    font-size: 1.45rem;
     line-height: 1;
     text-transform: uppercase;
 }
@@ -278,7 +278,7 @@ button {
 .artist-credit-link {
     margin-top: 3px;
     color: var(--blue-bright);
-    font-size: 0.82rem;
+    font-size: 0.76rem;
     font-weight: 700;
 }
 
@@ -294,12 +294,12 @@ button {
 
 .launch-status {
     width: fit-content;
-    margin-top: 30px;
+    margin-top: 24px;
     display: flex;
     align-items: center;
     gap: 10px;
     color: var(--text);
-    font-size: 0.88rem;
+    font-size: 0.82rem;
 }
 
 .status-mark {
@@ -311,7 +311,7 @@ button {
 }
 
 .store-section {
-    padding: 58px 0 84px;
+    padding: 46px 0 84px;
 }
 
 .store-layout {
@@ -994,34 +994,35 @@ a:focus-visible {
     }
 
     .store-header {
-        padding: 56px 0 40px;
+        padding: 44px 0 32px;
     }
 
     .store-header h1 {
-        font-size: 3.8rem;
+        font-size: 3.15rem;
     }
 
     .store-lede {
-        font-size: 1rem;
+        margin-top: 14px;
+        font-size: 0.92rem;
     }
 
     .artist-credit {
         width: 100%;
-        padding-right: 14px;
-        gap: 13px;
+        padding-right: 12px;
+        gap: 10px;
     }
 
     .artist-credit img {
-        width: 82px;
-        height: 62px;
+        width: 66px;
+        height: 50px;
     }
 
     .artist-credit strong {
-        font-size: 1.5rem;
+        font-size: 1.25rem;
     }
 
     .store-section {
-        padding: 42px 0 60px;
+        padding: 34px 0 60px;
     }
 
     .product-grid {
@@ -1097,24 +1098,24 @@ a:focus-visible {
 
 @media (max-width: 360px) {
     .store-header {
-        padding-top: 44px;
+        padding-top: 36px;
     }
 
     .store-header h1 {
-        font-size: 3.35rem;
+        font-size: 2.85rem;
     }
 
     .artist-credit img {
-        width: 74px;
-        height: 56px;
+        width: 60px;
+        height: 46px;
     }
 
     .artist-credit strong {
-        font-size: 1.35rem;
+        font-size: 1.15rem;
     }
 
     .artist-credit-link {
-        font-size: 0.76rem;
+        font-size: 0.7rem;
     }
 
     .variant-list {
