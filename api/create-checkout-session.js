@@ -167,6 +167,8 @@ module.exports = async function createCheckoutSession(request, response) {
                 status: stripeResponse.status,
                 type: session?.error?.type,
                 code: session?.error?.code,
+                param: session?.error?.param,
+                message: session?.error?.message,
             });
             return sendJson(response, 502, { error: 'Checkout is temporarily unavailable.', code: 'STRIPE_ERROR' });
         }
