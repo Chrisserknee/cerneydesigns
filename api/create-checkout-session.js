@@ -2,14 +2,16 @@
 
 const MAX_ITEM_QUANTITY = 10;
 const MAX_CART_QUANTITY = 25;
-const CATALOG_VERSION = 'sticker-drop-1';
+const CATALOG_VERSION = 'sticker-drop-2';
 
 const productPriceEnvironment = {
-    'sticker-1': 'STRIPE_PRICE_STICKER_1',
-    'sticker-2': 'STRIPE_PRICE_STICKER_2',
-    'sticker-3': 'STRIPE_PRICE_STICKER_3',
-    'sticker-4': 'STRIPE_PRICE_STICKER_4',
-    'sticker-5': 'STRIPE_PRICE_STICKER_5',
+    'sticker-4-inch': 'STRIPE_PRICE_STICKER_4_INCH',
+    'sticker-2-inch': 'STRIPE_PRICE_STICKER_2_INCH',
+};
+
+const productVariants = {
+    'sticker-4-inch': new Set(['stay-classy']),
+    'sticker-2-inch': new Set(['gold-holographic', 'coastal-blue', 'silver-holographic']),
 };
 
 function sendJson(response, status, body) {
@@ -39,11 +41,16 @@ function validateItems(value) {
     const merged = new Map();
     for (const item of value) {
         if (!item || !Object.hasOwn(productPriceEnvironment, item.id)) return null;
+        if (typeof item.variant !== 'string' || !productVariants[item.id].has(item.variant)) return null;
         if (!Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > MAX_ITEM_QUANTITY) return null;
-        merged.set(item.id, (merged.get(item.id) || 0) + item.quantity);
+        const key = `${item.id}::${item.variant}`;
+        merged.set(key, (merged.get(key) || 0) + item.quantity);
     }
 
-    const items = Array.from(merged, ([id, quantity]) => ({ id, quantity }));
+    const items = Array.from(merged, ([key, quantity]) => {
+        const [id, variant] = key.split('::');
+        return { id, variant, quantity };
+    });
     const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
     if (items.some((item) => item.quantity > MAX_ITEM_QUANTITY) || totalQuantity > MAX_CART_QUANTITY) {
         return null;
@@ -118,7 +125,9 @@ module.exports = async function createCheckoutSession(request, response) {
     parameters.set('submit_type', 'pay');
     parameters.set('metadata[catalog_version]', CATALOG_VERSION);
     parameters.set('metadata[item_ids]', priceItems.map((item) => item.id).join(','));
+    parameters.set('metadata[item_selections]', priceItems.map((item) => `${item.id}:${item.variant}:${item.quantity}`).join('|'));
     parameters.set('payment_intent_data[metadata][catalog_version]', CATALOG_VERSION);
+    parameters.set('payment_intent_data[metadata][item_selections]', priceItems.map((item) => `${item.id}:${item.variant}:${item.quantity}`).join('|'));
 
     priceItems.forEach((item, index) => {
         parameters.set(`line_items[${index}][price]`, item.price);

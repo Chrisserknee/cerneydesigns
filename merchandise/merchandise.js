@@ -3,9 +3,32 @@
 
     const catalog = Array.isArray(window.MERCH_CATALOG) ? window.MERCH_CATALOG : [];
     const productsById = new Map(catalog.map((product) => [product.id, product]));
-    const storageKey = 'chris-cerney-merch-cart-v1';
-    const cart = loadCart();
+    const storageKey = 'chris-cerney-merch-cart-v2';
 
+    function variantFor(product, variantId) {
+        return product?.variants?.find((variant) => variant.id === variantId) || null;
+    }
+
+    function cartSelection(key) {
+        const [productId, variantId] = key.split('::');
+        const product = productsById.get(productId);
+        const variant = variantFor(product, variantId);
+        return product && variant ? { product, variant } : null;
+    }
+
+    function loadCart() {
+        try {
+            const saved = JSON.parse(localStorage.getItem(storageKey));
+            if (!saved || typeof saved !== 'object') return new Map();
+            return new Map(Object.entries(saved)
+                .filter(([key, quantity]) => cartSelection(key) && Number.isInteger(quantity) && quantity > 0)
+                .map(([key, quantity]) => [key, Math.min(quantity, 10)]));
+        } catch {
+            return new Map();
+        }
+    }
+
+    const cart = loadCart();
     const productGrid = document.getElementById('productGrid');
     const catalogCount = document.getElementById('catalogCount');
     const cartItems = document.getElementById('cartItems');
@@ -15,24 +38,7 @@
     const checkoutButton = document.getElementById('checkoutButton');
     const checkoutLabel = document.getElementById('checkoutLabel');
     const checkoutMessage = document.getElementById('checkoutMessage');
-
-    const money = new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-    });
-
-    function loadCart() {
-        try {
-            const saved = JSON.parse(localStorage.getItem(storageKey));
-            if (!saved || typeof saved !== 'object') return new Map();
-
-            return new Map(Object.entries(saved)
-                .filter(([id, quantity]) => productsById.has(id) && Number.isInteger(quantity) && quantity > 0)
-                .map(([id, quantity]) => [id, Math.min(quantity, 10)]));
-        } catch {
-            return new Map();
-        }
-    }
+    const money = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
 
     function saveCart() {
         localStorage.setItem(storageKey, JSON.stringify(Object.fromEntries(cart)));
@@ -42,90 +48,128 @@
         return product.available === true && Number.isInteger(product.price) && product.price > 0;
     }
 
-    function createProductMedia(product, index) {
-        const media = document.createElement('div');
-        media.className = 'product-media';
-
-        if (product.image) {
-            const image = new Image();
-            image.src = product.image;
-            image.alt = product.imageAlt || product.name;
-            image.loading = 'lazy';
-            media.appendChild(image);
-        } else {
-            const number = document.createElement('span');
-            number.className = 'product-placeholder-number';
-            number.textContent = String(index + 1).padStart(2, '0');
-
-            const label = document.createElement('span');
-            label.className = 'product-placeholder-label';
-            label.textContent = 'Artwork coming soon';
-
-            media.append(number, label);
-        }
-
-        return media;
-    }
-
-    function createProductCard(product, index) {
+    function createProductCard(product) {
+        const selected = { variant: product.variants[0], showingReference: false };
         const card = document.createElement('article');
         card.className = 'product-card';
 
-        const media = createProductMedia(product, index);
+        const media = document.createElement('div');
+        media.className = 'product-media';
+        const image = new Image();
+        image.src = selected.variant.image;
+        image.alt = selected.variant.imageAlt;
+        image.loading = 'lazy';
+        media.appendChild(image);
+
         const body = document.createElement('div');
         body.className = 'product-body';
-
         const status = document.createElement('span');
         status.className = `product-status${isPurchasable(product) ? ' available' : ''}`;
-        status.textContent = isPurchasable(product) ? 'Available' : 'Coming soon';
-
+        status.textContent = isPurchasable(product) ? 'Available' : 'Checkout setup';
         const title = document.createElement('h3');
         title.textContent = product.name;
-
         const description = document.createElement('p');
         description.textContent = product.description;
 
+        const optionArea = document.createElement('div');
+        optionArea.className = 'product-options';
+        const optionHeading = document.createElement('div');
+        optionHeading.className = 'option-heading';
+        const optionLabel = document.createElement('span');
+        optionLabel.textContent = product.variants.length > 1 ? 'Choose a finish' : 'Design';
+        const optionName = document.createElement('strong');
+        optionName.textContent = selected.variant.name;
+        optionHeading.append(optionLabel, optionName);
+
+        const controls = document.createElement('div');
+        controls.className = 'product-controls';
+        let referenceButton;
+
+        if (product.variants.length > 1) {
+            const variantList = document.createElement('div');
+            variantList.className = 'variant-list';
+            variantList.setAttribute('role', 'group');
+            variantList.setAttribute('aria-label', `${product.name} finish`);
+
+            product.variants.forEach((variant, index) => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = `variant-button${index === 0 ? ' selected' : ''}`;
+                button.setAttribute('aria-label', variant.name);
+                button.setAttribute('aria-pressed', index === 0 ? 'true' : 'false');
+                button.title = variant.name;
+                const thumbnail = new Image();
+                thumbnail.src = variant.image;
+                thumbnail.alt = '';
+                button.appendChild(thumbnail);
+                button.addEventListener('click', () => {
+                    selected.variant = variant;
+                    selected.showingReference = false;
+                    image.src = variant.image;
+                    image.alt = variant.imageAlt;
+                    optionName.textContent = variant.name;
+                    variantList.querySelectorAll('.variant-button').forEach((candidate) => {
+                        const isSelected = candidate === button;
+                        candidate.classList.toggle('selected', isSelected);
+                        candidate.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
+                    });
+                    referenceButton.classList.remove('active');
+                    referenceButton.textContent = 'Size reference';
+                });
+                variantList.appendChild(button);
+            });
+            controls.appendChild(variantList);
+        }
+
+        referenceButton = document.createElement('button');
+        referenceButton.type = 'button';
+        referenceButton.className = 'reference-button';
+        referenceButton.textContent = 'Size reference';
+        referenceButton.addEventListener('click', () => {
+            selected.showingReference = !selected.showingReference;
+            image.src = selected.showingReference ? product.sizeReference : selected.variant.image;
+            image.alt = selected.showingReference ? product.sizeReferenceAlt : selected.variant.imageAlt;
+            referenceButton.classList.toggle('active', selected.showingReference);
+            referenceButton.textContent = selected.showingReference ? 'Back to design' : 'Size reference';
+        });
+        controls.appendChild(referenceButton);
+        optionArea.append(optionHeading, controls);
+
         const actionRow = document.createElement('div');
         actionRow.className = 'product-action-row';
-
         const price = document.createElement('strong');
         price.className = 'product-price';
-        price.textContent = isPurchasable(product) ? money.format(product.price / 100) : 'Price coming soon';
-
+        price.textContent = Number.isInteger(product.price) ? money.format(product.price / 100) : 'Price coming soon';
         const addButton = document.createElement('button');
         addButton.type = 'button';
         addButton.className = 'add-button';
-        addButton.textContent = isPurchasable(product) ? 'Add to cart' : 'Not yet available';
+        addButton.textContent = isPurchasable(product) ? 'Add to cart' : 'Checkout coming soon';
         addButton.disabled = !isPurchasable(product);
-        addButton.addEventListener('click', () => addToCart(product.id));
-
+        addButton.addEventListener('click', () => addToCart(product.id, selected.variant.id));
         actionRow.append(price, addButton);
-        body.append(status, title, description, actionRow);
+        body.append(status, title, description, optionArea, actionRow);
         card.append(media, body);
         return card;
     }
 
     function renderCatalog() {
         productGrid.replaceChildren(...catalog.map(createProductCard));
-        catalogCount.textContent = `${catalog.length} design${catalog.length === 1 ? '' : 's'}`;
+        catalogCount.textContent = `${catalog.length} product${catalog.length === 1 ? '' : 's'}`;
     }
 
-    function addToCart(id) {
-        const product = productsById.get(id);
-        if (!product || !isPurchasable(product)) return;
-
-        cart.set(id, Math.min((cart.get(id) || 0) + 1, 10));
+    function addToCart(productId, variantId) {
+        const product = productsById.get(productId);
+        if (!product || !variantFor(product, variantId) || !isPurchasable(product)) return;
+        const key = `${productId}::${variantId}`;
+        cart.set(key, Math.min((cart.get(key) || 0) + 1, 10));
         saveCart();
         renderCart();
     }
 
-    function changeQuantity(id, change) {
-        const quantity = (cart.get(id) || 0) + change;
-        if (quantity <= 0) {
-            cart.delete(id);
-        } else {
-            cart.set(id, Math.min(quantity, 10));
-        }
+    function changeQuantity(key, change) {
+        const quantity = (cart.get(key) || 0) + change;
+        if (quantity <= 0) cart.delete(key);
+        else cart.set(key, Math.min(quantity, 10));
         saveCart();
         renderCart();
     }
@@ -140,60 +184,53 @@
         return button;
     }
 
-    function createCartItem([id, quantity]) {
-        const product = productsById.get(id);
+    function createCartItem([key, quantity]) {
+        const { product, variant } = cartSelection(key);
         const item = document.createElement('div');
         item.className = 'cart-item';
-
         const details = document.createElement('div');
         details.className = 'cart-item-details';
-
+        const identity = document.createElement('div');
+        identity.className = 'cart-item-identity';
         const name = document.createElement('strong');
         name.textContent = product.name;
-
+        const variantName = document.createElement('small');
+        variantName.textContent = variant.name;
+        identity.append(name, variantName);
         const linePrice = document.createElement('span');
         linePrice.textContent = money.format((product.price * quantity) / 100);
-        details.append(name, linePrice);
+        details.append(identity, linePrice);
 
         const controls = document.createElement('div');
         controls.className = 'quantity-controls';
-        const decrease = createQuantityButton('&minus;', `Decrease ${product.name} quantity`, () => changeQuantity(id, -1));
-        decrease.innerHTML = '&minus;';
-
+        const decrease = createQuantityButton('\u2212', `Decrease ${variant.name} quantity`, () => changeQuantity(key, -1));
         const count = document.createElement('span');
         count.textContent = quantity;
         count.setAttribute('aria-label', `Quantity ${quantity}`);
-
-        const increase = createQuantityButton('+', `Increase ${product.name} quantity`, () => changeQuantity(id, 1));
+        const increase = createQuantityButton('+', `Increase ${variant.name} quantity`, () => changeQuantity(key, 1));
         increase.disabled = quantity >= 10;
-
-        const remove = createQuantityButton('&times;', `Remove ${product.name} from cart`, () => {
-            cart.delete(id);
+        const remove = createQuantityButton('\u00d7', `Remove ${variant.name} from cart`, () => {
+            cart.delete(key);
             saveCart();
             renderCart();
         });
-        remove.innerHTML = '&times;';
         remove.classList.add('remove-button');
-
         controls.append(decrease, count, increase, remove);
         item.append(details, controls);
         return item;
     }
 
     function validCartEntries() {
-        return Array.from(cart.entries()).filter(([id]) => {
-            const product = productsById.get(id);
-            return product && isPurchasable(product);
+        return Array.from(cart.entries()).filter(([key]) => {
+            const selection = cartSelection(key);
+            return selection && isPurchasable(selection.product);
         });
     }
 
     function renderCart() {
         const entries = validCartEntries();
         const itemCount = entries.reduce((sum, [, quantity]) => sum + quantity, 0);
-        const subtotal = entries.reduce((sum, [id, quantity]) => {
-            return sum + (productsById.get(id).price * quantity);
-        }, 0);
-
+        const subtotal = entries.reduce((sum, [key, quantity]) => sum + (cartSelection(key).product.price * quantity), 0);
         cartItems.replaceChildren(...entries.map(createCartItem));
         cartItems.hidden = entries.length === 0;
         cartEmpty.hidden = entries.length > 0;
@@ -204,9 +241,11 @@
     }
 
     async function startCheckout() {
-        const items = validCartEntries().map(([id, quantity]) => ({ id, quantity }));
+        const items = validCartEntries().map(([key, quantity]) => {
+            const { product, variant } = cartSelection(key);
+            return { id: product.id, variant: variant.id, quantity };
+        });
         if (items.length === 0 || checkoutButton.disabled) return;
-
         checkoutButton.disabled = true;
         checkoutButton.classList.add('loading');
         checkoutLabel.textContent = 'Opening secure checkout';
@@ -219,11 +258,7 @@
                 body: JSON.stringify({ items }),
             });
             const result = await response.json();
-
-            if (!response.ok || !result.url) {
-                throw new Error(result.code || 'CHECKOUT_UNAVAILABLE');
-            }
-
+            if (!response.ok || !result.url) throw new Error(result.code || 'CHECKOUT_UNAVAILABLE');
             window.location.assign(result.url);
         } catch {
             checkoutMessage.textContent = 'Checkout is not open yet. Please check back soon.';
@@ -236,7 +271,6 @@
     function showOrderStatus() {
         const status = new URLSearchParams(window.location.search).get('checkout');
         if (!['success', 'cancelled'].includes(status)) return;
-
         const section = document.getElementById('orderStatus');
         const kicker = document.getElementById('orderStatusKicker');
         const title = document.getElementById('orderStatusTitle');
@@ -254,7 +288,6 @@
             title.textContent = 'Your cart is still here.';
             body.textContent = 'No payment was completed. You can return to checkout whenever you are ready.';
         }
-
         section.hidden = false;
     }
 

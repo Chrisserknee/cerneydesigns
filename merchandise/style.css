@@ -245,6 +245,7 @@ button {
     background: #101720;
     color: var(--text-muted);
     text-align: center;
+    overflow: hidden;
 }
 
 .product-media img {
@@ -297,6 +298,94 @@ button {
     margin-top: 10px;
     color: var(--text-dim);
     font-size: 0.88rem;
+}
+
+.product-options {
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+}
+
+.option-heading {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    color: var(--text-dim);
+    font-size: 0.72rem;
+}
+
+.option-heading span {
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 700;
+}
+
+.option-heading strong {
+    min-width: 0;
+    color: var(--text);
+    text-align: right;
+    font-size: 0.76rem;
+}
+
+.product-controls {
+    min-height: 54px;
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.variant-list {
+    display: flex;
+    gap: 8px;
+}
+
+.variant-button {
+    width: 52px;
+    height: 52px;
+    padding: 3px;
+    overflow: hidden;
+    border: 1px solid var(--border-strong);
+    border-radius: 3px;
+    background: #0c1219;
+    cursor: pointer;
+}
+
+.variant-button img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+}
+
+.variant-button:hover,
+.variant-button.selected {
+    border-color: var(--blue-bright);
+}
+
+.variant-button.selected {
+    box-shadow: 0 0 0 2px rgba(155, 187, 214, 0.2);
+}
+
+.reference-button {
+    min-height: 34px;
+    margin-left: auto;
+    padding: 6px 9px;
+    border: 1px solid var(--border-strong);
+    border-radius: 3px;
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+.reference-button:hover,
+.reference-button.active {
+    border-color: var(--blue);
+    color: var(--text);
 }
 
 .product-action-row {
@@ -411,6 +500,17 @@ button {
 
 .cart-item-details span {
     color: var(--text-dim);
+}
+
+.cart-item-identity {
+    min-width: 0;
+    display: grid;
+    gap: 3px;
+}
+
+.cart-item-identity small {
+    color: var(--text-dim);
+    font-size: 0.7rem;
 }
 
 .quantity-controls {
@@ -586,6 +686,10 @@ a:focus-visible {
 
     .product-body > p {
         min-height: auto;
+    }
+
+    .product-controls {
+        flex-wrap: wrap;
     }
 
     .store-footer-inner {
