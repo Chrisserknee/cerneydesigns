@@ -39,6 +39,8 @@
     const navCartButton = document.getElementById('navCartButton');
     const navCartCount = document.getElementById('navCartCount');
     const navCartTotal = document.getElementById('navCartTotal');
+    const mobileCartButton = document.getElementById('mobileCartButton');
+    const mobileCartCount = document.getElementById('mobileCartCount');
     const checkoutButton = document.getElementById('checkoutButton');
     const checkoutLabel = document.getElementById('checkoutLabel');
     const checkoutMessage = document.getElementById('checkoutMessage');
@@ -323,8 +325,10 @@
         cart.set(key, Math.min((cart.get(key) || 0) + 1, 10));
         saveCart();
         renderCart();
-        navCartButton.classList.remove('attention');
-        window.requestAnimationFrame(() => navCartButton.classList.add('attention'));
+        [navCartButton, mobileCartButton].forEach((button) => button.classList.remove('attention'));
+        window.requestAnimationFrame(() => {
+            [navCartButton, mobileCartButton].forEach((button) => button.classList.add('attention'));
+        });
     }
 
     function changeQuantity(key, change) {
@@ -351,10 +355,25 @@
         item.className = 'cart-item';
         const overview = document.createElement('div');
         overview.className = 'cart-item-overview';
-        const thumbnail = new Image();
-        thumbnail.className = 'cart-item-image';
-        thumbnail.src = variant.image;
-        thumbnail.alt = variant.imageAlt;
+        const thumbnail = document.createElement('div');
+        thumbnail.className = 'cart-item-thumbnail';
+        if (Array.isArray(variant.images)) {
+            thumbnail.classList.add('bundle-cart-thumbnail');
+            thumbnail.setAttribute('role', 'img');
+            thumbnail.setAttribute('aria-label', variant.imageAlt);
+            variant.images.forEach((source) => {
+                const bundleImage = new Image();
+                bundleImage.src = source;
+                bundleImage.alt = '';
+                thumbnail.appendChild(bundleImage);
+            });
+        } else {
+            const itemImage = new Image();
+            itemImage.className = 'cart-item-image';
+            itemImage.src = variant.image;
+            itemImage.alt = variant.imageAlt;
+            thumbnail.appendChild(itemImage);
+        }
         const details = document.createElement('div');
         details.className = 'cart-item-details';
         const identity = document.createElement('div');
@@ -409,7 +428,11 @@
         navCartButton.hidden = entries.length === 0;
         navCartCount.textContent = itemCount;
         navCartTotal.textContent = money.format(subtotal / 100);
-        navCartButton.setAttribute('aria-label', `View your cart, ${itemCount} item${itemCount === 1 ? '' : 's'}, ${money.format(subtotal / 100)}`);
+        mobileCartButton.hidden = entries.length === 0;
+        mobileCartCount.textContent = itemCount;
+        const cartLabel = `View your cart, ${itemCount} item${itemCount === 1 ? '' : 's'}, ${money.format(subtotal / 100)}`;
+        navCartButton.setAttribute('aria-label', cartLabel);
+        mobileCartButton.setAttribute('aria-label', cartLabel);
         checkoutButton.disabled = entries.length === 0;
     }
 
@@ -503,12 +526,26 @@
         window.requestAnimationFrame(() => orderStatus.focus({ preventScroll: true }));
     }
 
-    navCartButton.addEventListener('animationend', () => navCartButton.classList.remove('attention'));
-    navCartButton.addEventListener('click', () => {
+    let cartReturnEnabled = false;
+    const openCart = () => {
         const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+        cartReturnEnabled = false;
+        mobileCartButton.classList.add('cart-in-view');
         cartPanel.scrollIntoView({ behavior, block: 'start' });
         cartPanel.focus({ preventScroll: true });
+        window.setTimeout(() => { cartReturnEnabled = true; }, behavior === 'smooth' ? 750 : 0);
+    };
+    [navCartButton, mobileCartButton].forEach((button) => {
+        button.addEventListener('animationend', () => button.classList.remove('attention'));
+        button.addEventListener('click', openCart);
     });
+    window.addEventListener('scroll', () => {
+        if (!cartReturnEnabled || !mobileCartButton.classList.contains('cart-in-view')) return;
+        const cartBounds = cartPanel.getBoundingClientRect();
+        if (cartBounds.bottom < 0 || cartBounds.top > window.innerHeight) {
+            mobileCartButton.classList.remove('cart-in-view');
+        }
+    }, { passive: true });
     checkoutButton.addEventListener('click', startCheckout);
     orderStatusClose.addEventListener('click', dismissOrderStatus);
     orderStatusContinue.addEventListener('click', dismissOrderStatus);
