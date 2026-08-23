@@ -145,7 +145,15 @@
         addButton.className = 'add-button';
         addButton.textContent = isPurchasable(product) ? 'Add to cart' : 'Checkout coming soon';
         addButton.disabled = !isPurchasable(product);
-        addButton.addEventListener('click', () => addToCart(product.id, selected.variant.id));
+        addButton.addEventListener('click', () => {
+            addToCart(product.id, selected.variant.id);
+            addButton.textContent = 'Added';
+            addButton.classList.add('added');
+            window.setTimeout(() => {
+                addButton.textContent = 'Add to cart';
+                addButton.classList.remove('added');
+            }, 1200);
+        });
         actionRow.append(price, addButton);
         body.append(status, title, description, optionArea, actionRow);
         card.append(media, body);
