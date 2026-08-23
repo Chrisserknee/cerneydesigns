@@ -2,7 +2,9 @@
 
 const MAX_ITEM_QUANTITY = 10;
 const MAX_CART_QUANTITY = 25;
-const CATALOG_VERSION = 'sticker-drop-2';
+const CATALOG_VERSION = 'sticker-drop-3';
+const SMALL_ORDER_SHIPPING = 99;
+const LARGE_ORDER_SHIPPING = 299;
 
 const productPriceEnvironment = {
     'sticker-4-inch': 'STRIPE_PRICE_STICKER_4_INCH',
@@ -99,6 +101,12 @@ function configuredPriceItems(items) {
     }));
 }
 
+function shippingAmountFor(items) {
+    return items.some((item) => item.id === 'sticker-4-inch')
+        ? LARGE_ORDER_SHIPPING
+        : SMALL_ORDER_SHIPPING;
+}
+
 module.exports = async function createCheckoutSession(request, response) {
     if (request.method !== 'POST') {
         response.setHeader('Allow', 'POST');
@@ -126,19 +134,13 @@ module.exports = async function createCheckoutSession(request, response) {
     }
 
     const secretKey = (process.env.STRIPE_SECRET_KEY || '').trim();
-    const shippingRateIds = commaSeparatedEnvironment('STRIPE_SHIPPING_RATE_IDS');
     const priceItems = configuredPriceItems(items);
 
-    if (!secretKey || shippingRateIds.length === 0 || priceItems.some((item) => !item.price)) {
+    if (!secretKey || priceItems.some((item) => !item.price)) {
         return sendJson(response, 503, { error: 'Checkout is not configured.', code: 'CHECKOUT_NOT_CONFIGURED' });
     }
 
-    if (shippingRateIds.length > 5) {
-        return sendJson(response, 500, { error: 'Checkout configuration is invalid.', code: 'INVALID_CONFIGURATION' });
-    }
-
-    if (priceItems.some((item) => !/^price_[A-Za-z0-9]+$/.test(item.price))
-        || shippingRateIds.some((id) => !/^shr_[A-Za-z0-9]+$/.test(id))) {
+    if (priceItems.some((item) => !/^price_[A-Za-z0-9]+$/.test(item.price))) {
         return sendJson(response, 500, { error: 'Checkout configuration is invalid.', code: 'INVALID_CONFIGURATION' });
     }
 
@@ -173,9 +175,13 @@ module.exports = async function createCheckoutSession(request, response) {
         parameters.set(`shipping_address_collection[allowed_countries][${index}]`, country);
     });
 
-    shippingRateIds.forEach((shippingRateId, index) => {
-        parameters.set(`shipping_options[${index}][shipping_rate]`, shippingRateId);
-    });
+    const shippingAmount = shippingAmountFor(priceItems);
+    parameters.set('shipping_options[0][shipping_rate_data][type]', 'fixed_amount');
+    parameters.set('shipping_options[0][shipping_rate_data][fixed_amount][amount]', String(shippingAmount));
+    parameters.set('shipping_options[0][shipping_rate_data][fixed_amount][currency]', 'usd');
+    parameters.set('shipping_options[0][shipping_rate_data][display_name]', 'USPS sticker shipping');
+    parameters.set('shipping_options[0][shipping_rate_data][metadata][catalog_version]', CATALOG_VERSION);
+    parameters.set('shipping_options[0][shipping_rate_data][metadata][order_size]', shippingAmount === LARGE_ORDER_SHIPPING ? 'includes-4-inch' : '2-inch-only');
 
     if (process.env.STRIPE_AUTOMATIC_TAX === 'true') {
         parameters.set('automatic_tax[enabled]', 'true');
