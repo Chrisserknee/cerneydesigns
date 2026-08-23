@@ -146,21 +146,73 @@ button {
 }
 
 .artist-credit {
-    margin-top: 12px;
-    color: var(--text-dim);
-    font-size: 0.88rem;
-}
-
-.artist-credit a {
-    color: var(--blue-bright);
-    text-decoration: none;
-    border-bottom: 1px solid var(--border-strong);
-    transition: color 0.2s ease, border-color 0.2s ease;
-}
-
-.artist-credit a:hover {
+    width: fit-content;
+    max-width: 100%;
+    margin-top: 24px;
+    padding: 9px 20px 9px 9px;
+    display: inline-flex;
+    align-items: center;
+    gap: 17px;
+    overflow: hidden;
+    border: 1px solid #9f7418;
+    border-left: 4px solid #d3a319;
+    border-radius: 6px;
+    background: #24171b;
     color: var(--text);
-    border-bottom-color: var(--blue-bright);
+    text-decoration: none;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24);
+    user-select: none;
+    -webkit-user-select: none;
+    transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.artist-credit img {
+    width: 96px;
+    height: 72px;
+    flex: 0 0 auto;
+    display: block;
+    border: 1px solid rgba(240, 194, 81, 0.4);
+    border-radius: 3px;
+    object-fit: cover;
+}
+
+.artist-credit-copy {
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+}
+
+.artist-credit-label {
+    color: #c9bfae;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.artist-credit strong {
+    color: #f0c251;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 1.75rem;
+    line-height: 1;
+    text-transform: uppercase;
+}
+
+.artist-credit-link {
+    margin-top: 3px;
+    color: var(--blue-bright);
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+.artist-credit:hover {
+    border-color: #e0b13c;
+    background: #321b20;
+    transform: translateY(-2px);
+}
+
+.artist-credit:hover .artist-credit-link {
+    color: #c6dcf0;
 }
 
 .launch-status {
@@ -670,6 +722,21 @@ a:focus-visible {
 
     .store-header {
         padding: 56px 0 40px;
+    }
+
+    .artist-credit {
+        width: 100%;
+        padding-right: 14px;
+        gap: 13px;
+    }
+
+    .artist-credit img {
+        width: 82px;
+        height: 62px;
+    }
+
+    .artist-credit strong {
+        font-size: 1.5rem;
     }
 
     .store-section {
