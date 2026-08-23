@@ -1,0 +1,50 @@
+.holographic-sheen {
+    --holo-shift: 0;
+    position: fixed;
+    inset: -24vmax;
+    z-index: 9000;
+    pointer-events: none;
+    user-select: none;
+    opacity: 0.11;
+    background:
+        linear-gradient(
+            112deg,
+            transparent 34%,
+            rgba(100, 205, 220, 0.12) 41%,
+            rgba(142, 126, 205, 0.1) 46%,
+            rgba(215, 116, 151, 0.09) 51%,
+            rgba(225, 190, 106, 0.09) 56%,
+            transparent 64%
+        ),
+        linear-gradient(
+            68deg,
+            transparent 42%,
+            rgba(122, 191, 215, 0.06) 48%,
+            rgba(215, 139, 173, 0.05) 52%,
+            transparent 58%
+        );
+    transform: translate3d(
+        calc(var(--holo-shift) * 1px),
+        calc(var(--holo-shift) * -0.28px),
+        0
+    );
+    mix-blend-mode: screen;
+    will-change: transform;
+    contain: strict;
+}
+
+@media (max-width: 700px) {
+    .holographic-sheen {
+        inset: -38vmax;
+        opacity: 0.085;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .holographic-sheen {
+        --holo-shift: 0 !important;
+        opacity: 0.07;
+        transform: none;
+        will-change: auto;
+    }
+}
