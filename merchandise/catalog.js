@@ -19,7 +19,7 @@ window.MERCH_CATALOG = [
     {
         id: 'sticker-2-inch',
         name: '2-Inch Chris Cerney Sticker',
-        description: 'A compact round portrait sticker available in three holographic colorways.',
+        description: 'A compact round portrait sticker available in four holographic colorways.',
         price: 500,
         sizeReference: '/images/merchandise/chris-cerney-2-inch-size.webp',
         sizeReferenceAlt: 'Two-inch Chris Cerney sticker shown with a measurement overlay',
@@ -42,6 +42,12 @@ window.MERCH_CATALOG = [
                 name: 'Silver Holographic',
                 image: '/images/merchandise/chris-cerney-silver-holographic.webp',
                 imageAlt: 'Silver holographic and gold Chris Cerney portrait sticker',
+            },
+            {
+                id: 'black-gold-holographic',
+                name: 'Black and Gold Holographic',
+                image: '/images/merchandise/chris-cerney-black-gold-holographic.webp',
+                imageAlt: 'Black and gold holographic Chris Cerney portrait sticker',
             },
         ],
     },

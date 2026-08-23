@@ -2,7 +2,7 @@
 
 const MAX_ITEM_QUANTITY = 10;
 const MAX_CART_QUANTITY = 25;
-const CATALOG_VERSION = 'sticker-drop-3';
+const CATALOG_VERSION = 'sticker-drop-4';
 const SMALL_ORDER_SHIPPING = 99;
 const LARGE_ORDER_SHIPPING = 299;
 
@@ -37,6 +37,10 @@ const catalog = {
             'silver-holographic': {
                 name: 'Silver Holographic',
                 imagePath: '/images/merchandise/chris-cerney-silver-holographic.webp',
+            },
+            'black-gold-holographic': {
+                name: 'Black and Gold Holographic',
+                imagePath: '/images/merchandise/chris-cerney-black-gold-holographic.webp',
             },
         },
     },
