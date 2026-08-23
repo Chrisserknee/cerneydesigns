@@ -98,7 +98,8 @@
                             <span>Subtotal</span>
                             <strong id="cartSubtotal">$0.00</strong>
                         </div>
-                        <p class="shipping-note">Shipping is shown with each product and combined automatically at checkout. Applicable tax is calculated securely by Stripe.</p>
+                        <p class="shipping-note">Shipping is combined automatically. Applicable tax is calculated securely by Stripe.</p>
+                        <p class="cart-guarantee"><span aria-hidden="true">&#10003;</span> 30-day satisfaction guarantee</p>
                         <button type="button" class="checkout-button" id="checkoutButton" disabled>
                             <span id="checkoutLabel">Secure checkout</span>
                             <span aria-hidden="true">&rarr;</span>
@@ -109,15 +110,26 @@
             </div>
         </section>
 
-        <section class="store-policy" aria-labelledby="returnsHeading">
-            <div class="store-shell store-policy-inner">
-                <p>Orders are packed and mailed in protective envelopes through USPS. Most orders are mailed within 3&ndash;7 business days. Due to high demand, processing and delivery times may vary. Standard envelope shipping may not include tracking.</p>
-                <div class="returns-policy">
-                    <h2 id="returnsHeading">Returns &amp; Satisfaction Guarantee</h2>
-                    <p>We want you to be happy with your stickers. If your order arrives damaged, is incorrect, or you are not satisfied with your purchase, email <strong><a href="mailto:chrisserknee@gmail.com">chrisserknee@gmail.com</a></strong> within 30 days of receiving it.</p>
-                    <p>Include your order number and, when applicable, a photo of the issue. We will make it right with a replacement or refund. You normally will not need to mail the sticker back.</p>
-                    <p>Refunds are returned to the original payment method. Depending on your bank, refunds may take approximately 5&ndash;10 business days to appear.</p>
-                </div>
+        <section class="store-policy" aria-label="Shipping and returns">
+            <div class="store-shell">
+                <details class="policy-accordion">
+                    <summary>
+                        <span class="policy-summary-copy">
+                            <strong>Shipping &amp; returns</strong>
+                            <span>USPS envelopes &middot; 3&ndash;7 business days &middot; 30-day satisfaction guarantee</span>
+                        </span>
+                        <span class="policy-toggle-icon" aria-hidden="true"></span>
+                    </summary>
+                    <div class="policy-content">
+                        <p>Orders are packed and mailed in protective envelopes through USPS. Most orders are mailed within 3&ndash;7 business days. Due to high demand, processing and delivery times may vary. Standard envelope shipping may not include tracking.</p>
+                        <div class="returns-policy">
+                            <h2>Returns &amp; Satisfaction Guarantee</h2>
+                            <p>We want you to be happy with your stickers. If your order arrives damaged, is incorrect, or you are not satisfied with your purchase, email <strong><a href="mailto:chrisserknee@gmail.com">chrisserknee@gmail.com</a></strong> within 30 days of receiving it.</p>
+                            <p>Include your order number and, when applicable, a photo of the issue. We will make it right with a replacement or refund. You normally will not need to mail the sticker back.</p>
+                            <p>Refunds are returned to the original payment method. Depending on your bank, refunds may take approximately 5&ndash;10 business days to appear.</p>
+                        </div>
+                    </div>
+                </details>
             </div>
         </section>
 

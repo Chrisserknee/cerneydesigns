@@ -2,7 +2,8 @@ window.MERCH_CATALOG = [
     {
         id: 'independent-news-supporter-bundle',
         name: 'Independent News Supporter Bundle',
-        description: 'A limited-release five-sticker set with one 4-inch Stay Classy sticker and all four 2-inch Chris Cerney holographic colorways. Every purchase helps fund independent news coverage on the Central Coast.',
+        description: 'All four 2-inch holographic colorways plus one 4-inch Stay Classy sticker.',
+        details: 'A limited-release set, layered by hand with premium weather-resistant vinyl and fade-resistant color.',
         price: 2999,
         shipping: 199,
         available: true,
@@ -31,7 +32,8 @@ window.MERCH_CATALOG = [
     {
         id: 'sticker-4-inch',
         name: '4-Inch Stay Classy Sticker',
-        description: 'A holographic die-cut Stay Classy Central Coast design. Each sticker is layered by hand with premium, heavy-duty, weather-resistant vinyl and color built into the material for a fade-resistant finish.',
+        description: 'A 4-inch holographic die-cut Stay Classy Central Coast sticker.',
+        details: 'Layered by hand with premium, heavy-duty, weather-resistant vinyl and color built into the material for a fade-resistant finish.',
         price: 1300,
         shipping: 299,
         sizeReference: '/images/merchandise/stay-classy-4-inch-size.webp',
@@ -49,7 +51,8 @@ window.MERCH_CATALOG = [
     {
         id: 'sticker-2-inch',
         name: '2-Inch Chris Cerney Sticker',
-        description: 'A round portrait design in four special holographic colorways. Each sticker is layered by hand with premium, heavy-duty, weather-resistant vinyl and color built into the material for a fade-resistant finish.',
+        description: 'A 2-inch round portrait sticker available in four holographic colorways.',
+        details: 'Layered by hand with premium, heavy-duty, weather-resistant vinyl and color built into the material for a fade-resistant finish.',
         price: 600,
         shipping: 99,
         sizeReference: '/images/merchandise/chris-cerney-2-inch-size.webp',

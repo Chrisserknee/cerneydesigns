@@ -148,6 +148,16 @@
         title.textContent = product.name;
         const description = document.createElement('p');
         description.textContent = product.description;
+        let productDetails;
+        if (product.details) {
+            productDetails = document.createElement('details');
+            productDetails.className = 'product-details';
+            const detailsSummary = document.createElement('summary');
+            detailsSummary.textContent = 'Product details';
+            const detailsCopy = document.createElement('p');
+            detailsCopy.textContent = product.details;
+            productDetails.append(detailsSummary, detailsCopy);
+        }
 
         let bundleSummary;
         if (Array.isArray(product.bundleSummary)) {
@@ -304,6 +314,7 @@
         });
         actionRow.append(priceBlock, addButton);
         body.append(status, title, description);
+        if (productDetails) body.append(productDetails);
         if (bundleSummary) body.append(bundleSummary);
         if (product.hideOptions !== true) body.append(optionArea);
         body.append(actionRow);
