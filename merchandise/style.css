@@ -770,19 +770,126 @@ button {
 }
 
 .order-status {
-    padding: 50px 0;
-    border-top: 1px solid var(--border);
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    padding: 18px;
+    display: grid;
+    place-items: center;
+    background: rgba(4, 8, 15, 0.82);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.order-status[hidden] {
+    display: none;
+}
+
+.order-status-panel {
+    position: relative;
+    width: min(560px, 100%);
+    max-height: calc(100dvh - 36px);
+    overflow: auto;
+    padding: 38px 34px 32px;
+    border: 1px solid rgba(82, 154, 224, 0.42);
+    border-radius: 6px;
     background: var(--bg-elev);
+    box-shadow: 0 28px 80px rgba(0, 0, 0, 0.55);
+    text-align: center;
+}
+
+.order-status-close {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 44px;
+    height: 44px;
+    border: 0;
+    background: transparent;
+    color: var(--text-dim);
+    font-size: 1.8rem;
+    line-height: 1;
+}
+
+.order-status-close:hover {
+    color: var(--text);
+}
+
+.order-status-mark {
+    position: relative;
+    width: 62px;
+    height: 62px;
+    margin: 0 auto 22px;
+    display: block;
+    border-radius: 50%;
+    background: var(--blue-bright);
+    box-shadow: 0 0 0 8px rgba(82, 154, 224, 0.12);
+}
+
+.order-status-mark::after {
+    content: '';
+    position: absolute;
+    top: 17px;
+    left: 22px;
+    width: 14px;
+    height: 24px;
+    border-right: 4px solid #08111d;
+    border-bottom: 4px solid #08111d;
+    transform: rotate(45deg);
+}
+
+.order-status[data-status="cancelled"] .order-status-mark {
+    background: var(--salmon);
+    box-shadow: 0 0 0 8px rgba(200, 85, 82, 0.12);
+}
+
+.order-status[data-status="cancelled"] .order-status-mark::before,
+.order-status[data-status="cancelled"] .order-status-mark::after {
+    content: '';
+    position: absolute;
+    top: 18px;
+    left: 29px;
+    width: 0;
+    height: 26px;
+    border: 0;
+    border-left: 4px solid #08111d;
+    transform: rotate(45deg);
+    box-shadow: 0 0 0 transparent;
+}
+
+.order-status[data-status="cancelled"] .order-status-mark::before {
+    transform: rotate(-45deg);
 }
 
 .order-status h2 {
-    margin-top: 6px;
+    margin-top: 8px;
+    font-size: clamp(2rem, 7vw, 3rem);
 }
 
-.order-status p:last-child {
-    max-width: 650px;
-    margin-top: 10px;
+.order-status-panel > p:last-of-type {
+    max-width: 460px;
+    margin: 14px auto 0;
     color: var(--text-dim);
+    line-height: 1.65;
+}
+
+.order-status-continue {
+    min-width: 190px;
+    min-height: 46px;
+    margin-top: 26px;
+    padding: 11px 18px;
+    border-color: var(--blue-bright);
+    background: var(--blue-bright);
+    color: #08111d;
+    font-weight: 700;
+}
+
+.order-status-continue:hover {
+    background: #73b8f5;
+}
+
+body.order-status-open {
+    overflow: hidden;
 }
 
 .store-footer {
@@ -922,6 +1029,36 @@ a:focus-visible {
     .store-footer-inner {
         flex-direction: column;
         gap: 8px;
+    }
+
+    .order-status {
+        padding: 12px;
+    }
+
+    .order-status-panel {
+        max-height: calc(100dvh - 24px);
+        padding: 36px 20px 24px;
+    }
+
+    .order-status-mark {
+        width: 56px;
+        height: 56px;
+        margin-bottom: 18px;
+    }
+
+    .order-status-mark::after {
+        top: 14px;
+        left: 20px;
+    }
+
+    .order-status[data-status="cancelled"] .order-status-mark::before,
+    .order-status[data-status="cancelled"] .order-status-mark::after {
+        top: 15px;
+        left: 26px;
+    }
+
+    .order-status-continue {
+        width: 100%;
     }
 }
 

@@ -42,6 +42,9 @@
     const checkoutButton = document.getElementById('checkoutButton');
     const checkoutLabel = document.getElementById('checkoutLabel');
     const checkoutMessage = document.getElementById('checkoutMessage');
+    const orderStatus = document.getElementById('orderStatus');
+    const orderStatusClose = document.getElementById('orderStatusClose');
+    const orderStatusContinue = document.getElementById('orderStatusContinue');
     const money = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
 
     function saveCart() {
@@ -321,10 +324,20 @@
         }
     }
 
+    function dismissOrderStatus() {
+        if (orderStatus.hidden) return;
+        orderStatus.hidden = true;
+        document.body.classList.remove('order-status-open');
+
+        const url = new URL(window.location.href);
+        url.searchParams.delete('checkout');
+        url.searchParams.delete('session_id');
+        window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
+    }
+
     function showOrderStatus() {
         const status = new URLSearchParams(window.location.search).get('checkout');
         if (!['success', 'cancelled'].includes(status)) return;
-        const section = document.getElementById('orderStatus');
         const kicker = document.getElementById('orderStatusKicker');
         const title = document.getElementById('orderStatusTitle');
         const body = document.getElementById('orderStatusBody');
@@ -332,16 +345,19 @@
         if (status === 'success') {
             cart.clear();
             saveCart();
-            kicker.textContent = 'Thank you';
-            title.textContent = 'Stripe is confirming your order.';
-            body.textContent = 'Your receipt and final order details will be sent to the email used at checkout.';
+            kicker.textContent = 'Payment successful';
+            title.textContent = 'Your sticker order is confirmed.';
+            body.textContent = 'A Stripe receipt will be sent to the email used at checkout. Your order will now be prepared for shipping.';
             renderCart();
         } else {
             kicker.textContent = 'Checkout cancelled';
             title.textContent = 'Your cart is still here.';
             body.textContent = 'No payment was completed. You can return to checkout whenever you are ready.';
         }
-        section.hidden = false;
+        orderStatus.dataset.status = status;
+        orderStatus.hidden = false;
+        document.body.classList.add('order-status-open');
+        window.requestAnimationFrame(() => orderStatus.focus({ preventScroll: true }));
     }
 
     navCartButton.addEventListener('animationend', () => navCartButton.classList.remove('attention'));
@@ -351,6 +367,14 @@
         cartPanel.focus({ preventScroll: true });
     });
     checkoutButton.addEventListener('click', startCheckout);
+    orderStatusClose.addEventListener('click', dismissOrderStatus);
+    orderStatusContinue.addEventListener('click', dismissOrderStatus);
+    orderStatus.addEventListener('click', (event) => {
+        if (event.target === orderStatus) dismissOrderStatus();
+    });
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && !orderStatus.hidden) dismissOrderStatus();
+    });
     renderCatalog();
     renderCart();
     showOrderStatus();

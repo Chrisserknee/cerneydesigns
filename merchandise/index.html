@@ -99,11 +99,14 @@
             </div>
         </section>
 
-        <section class="order-status" id="orderStatus" hidden aria-live="polite">
-            <div class="store-shell">
+        <section class="order-status" id="orderStatus" hidden role="dialog" aria-modal="true" aria-live="polite" aria-labelledby="orderStatusTitle" tabindex="-1">
+            <div class="order-status-panel">
+                <button type="button" class="order-status-close" id="orderStatusClose" aria-label="Close order confirmation">&times;</button>
+                <span class="order-status-mark" aria-hidden="true"></span>
                 <p class="section-kicker" id="orderStatusKicker"></p>
                 <h2 id="orderStatusTitle"></h2>
                 <p id="orderStatusBody"></p>
+                <button type="button" class="order-status-continue" id="orderStatusContinue">Continue shopping</button>
             </div>
         </section>
     </main>
