@@ -62,7 +62,7 @@ function validateItems(value) {
 function configuredPriceItems(items) {
     return items.map((item) => ({
         ...item,
-        price: process.env[productPriceEnvironment[item.id]],
+        price: (process.env[productPriceEnvironment[item.id]] || '').trim(),
     }));
 }
 
@@ -95,7 +95,11 @@ module.exports = async function createCheckoutSession(request, response) {
         return sendJson(response, 400, { error: 'Invalid cart.', code: 'INVALID_CART' });
     }
 
-    const secretKey = process.env.STRIPE_SECRET_KEY;
+    if (process.env.CHECKOUT_ENABLED !== 'true') {
+        return sendJson(response, 503, { error: 'Checkout is not open.', code: 'CHECKOUT_DISABLED' });
+    }
+
+    const secretKey = (process.env.STRIPE_SECRET_KEY || '').trim();
     const shippingRateIds = commaSeparatedEnvironment('STRIPE_SHIPPING_RATE_IDS');
     const priceItems = configuredPriceItems(items);
 
@@ -104,6 +108,11 @@ module.exports = async function createCheckoutSession(request, response) {
     }
 
     if (shippingRateIds.length > 5) {
+        return sendJson(response, 500, { error: 'Checkout configuration is invalid.', code: 'INVALID_CONFIGURATION' });
+    }
+
+    if (priceItems.some((item) => !/^price_[A-Za-z0-9]+$/.test(item.price))
+        || shippingRateIds.some((id) => !/^shr_[A-Za-z0-9]+$/.test(id))) {
         return sendJson(response, 500, { error: 'Checkout configuration is invalid.', code: 'INVALID_CONFIGURATION' });
     }
 
