@@ -102,7 +102,7 @@ test('checkout status confirms only paid sessions from this catalog', { concurre
             mode: 'payment',
             status: 'complete',
             payment_status: 'paid',
-            metadata: { catalog_version: 'sticker-drop-4' },
+            metadata: { catalog_version: 'sticker-drop-5' },
         }),
     });
     try {
@@ -143,4 +143,3 @@ test('checkout status does not confirm unpaid or foreign-catalog sessions', { co
         global.fetch = previousFetch;
     }
 });
-

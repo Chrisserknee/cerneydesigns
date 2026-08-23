@@ -2,7 +2,7 @@
 
 const MAX_ITEM_QUANTITY = 10;
 const MAX_CART_QUANTITY = 25;
-const CATALOG_VERSION = 'sticker-drop-4';
+const CATALOG_VERSION = 'sticker-drop-5';
 const SMALL_ORDER_SHIPPING = 99;
 const LARGE_ORDER_SHIPPING = 299;
 
@@ -15,7 +15,7 @@ const catalog = {
     'sticker-4-inch': {
         name: '4-Inch Stay Classy Sticker',
         description: 'Holographic Stay Classy Central Coast sticker.',
-        unitAmount: 1000,
+        unitAmount: 1300,
         imagePath: '/images/merchandise/stay-classy-4-inch.webp',
         variants: {
             'stay-classy': 'Stay Classy Central Coast',
@@ -24,7 +24,7 @@ const catalog = {
     'sticker-2-inch': {
         name: '2-Inch Chris Cerney Sticker',
         description: 'Round holographic Chris Cerney portrait sticker.',
-        unitAmount: 500,
+        unitAmount: 600,
         variants: {
             'black-gold-holographic': {
                 name: 'Black and Gold Holographic',
