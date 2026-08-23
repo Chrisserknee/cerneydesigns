@@ -4,14 +4,35 @@ const MAX_ITEM_QUANTITY = 10;
 const MAX_CART_QUANTITY = 25;
 const CATALOG_VERSION = 'sticker-drop-2';
 
-const productPriceEnvironment = {
-    'sticker-4-inch': 'STRIPE_PRICE_STICKER_4_INCH',
-    'sticker-2-inch': 'STRIPE_PRICE_STICKER_2_INCH',
-};
-
-const productVariants = {
-    'sticker-4-inch': new Set(['stay-classy']),
-    'sticker-2-inch': new Set(['gold-holographic', 'coastal-blue', 'silver-holographic']),
+const catalog = {
+    'sticker-4-inch': {
+        name: '4-Inch Stay Classy Sticker',
+        description: 'Large holographic Stay Classy Central Coast sticker.',
+        unitAmount: 1000,
+        imagePath: '/images/merchandise/stay-classy-4-inch.webp',
+        variants: {
+            'stay-classy': 'Stay Classy Central Coast',
+        },
+    },
+    'sticker-2-inch': {
+        name: '2-Inch Chris Cerney Sticker',
+        description: 'Round holographic Chris Cerney portrait sticker.',
+        unitAmount: 500,
+        variants: {
+            'gold-holographic': {
+                name: 'Gold Holographic',
+                imagePath: '/images/merchandise/chris-cerney-gold-holographic.webp',
+            },
+            'coastal-blue': {
+                name: 'Coastal Blue',
+                imagePath: '/images/merchandise/chris-cerney-coastal-blue.webp',
+            },
+            'silver-holographic': {
+                name: 'Silver Holographic',
+                imagePath: '/images/merchandise/chris-cerney-silver-holographic.webp',
+            },
+        },
+    },
 };
 
 function sendJson(response, status, body) {
@@ -40,8 +61,8 @@ function validateItems(value) {
 
     const merged = new Map();
     for (const item of value) {
-        if (!item || !Object.hasOwn(productPriceEnvironment, item.id)) return null;
-        if (typeof item.variant !== 'string' || !productVariants[item.id].has(item.variant)) return null;
+        if (!item || !Object.hasOwn(catalog, item.id)) return null;
+        if (typeof item.variant !== 'string' || !Object.hasOwn(catalog[item.id].variants, item.variant)) return null;
         if (!Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > MAX_ITEM_QUANTITY) return null;
         const key = `${item.id}::${item.variant}`;
         merged.set(key, (merged.get(key) || 0) + item.quantity);
@@ -57,13 +78,6 @@ function validateItems(value) {
     }
 
     return items;
-}
-
-function configuredPriceItems(items) {
-    return items.map((item) => ({
-        ...item,
-        price: (process.env[productPriceEnvironment[item.id]] || '').trim(),
-    }));
 }
 
 function commaSeparatedEnvironment(name, fallback = '') {
@@ -100,20 +114,9 @@ module.exports = async function createCheckoutSession(request, response) {
     }
 
     const secretKey = (process.env.STRIPE_SECRET_KEY || '').trim();
-    const shippingRateIds = commaSeparatedEnvironment('STRIPE_SHIPPING_RATE_IDS');
-    const priceItems = configuredPriceItems(items);
 
-    if (!secretKey || shippingRateIds.length === 0 || priceItems.some((item) => !item.price)) {
+    if (!secretKey) {
         return sendJson(response, 503, { error: 'Checkout is not configured.', code: 'CHECKOUT_NOT_CONFIGURED' });
-    }
-
-    if (shippingRateIds.length > 5) {
-        return sendJson(response, 500, { error: 'Checkout configuration is invalid.', code: 'INVALID_CONFIGURATION' });
-    }
-
-    if (priceItems.some((item) => !/^price_[A-Za-z0-9]+$/.test(item.price))
-        || shippingRateIds.some((id) => !/^shr_[A-Za-z0-9]+$/.test(id))) {
-        return sendJson(response, 500, { error: 'Checkout configuration is invalid.', code: 'INVALID_CONFIGURATION' });
     }
 
     const siteUrl = (process.env.SITE_URL || 'https://www.chriscerney.org').replace(/\/$/, '');
@@ -133,13 +136,24 @@ module.exports = async function createCheckoutSession(request, response) {
     parameters.set('billing_address_collection', 'auto');
     parameters.set('submit_type', 'pay');
     parameters.set('metadata[catalog_version]', CATALOG_VERSION);
-    parameters.set('metadata[item_ids]', priceItems.map((item) => item.id).join(','));
-    parameters.set('metadata[item_selections]', priceItems.map((item) => `${item.id}:${item.variant}:${item.quantity}`).join('|'));
+    parameters.set('metadata[item_ids]', items.map((item) => item.id).join(','));
+    parameters.set('metadata[item_selections]', items.map((item) => `${item.id}:${item.variant}:${item.quantity}`).join('|'));
     parameters.set('payment_intent_data[metadata][catalog_version]', CATALOG_VERSION);
-    parameters.set('payment_intent_data[metadata][item_selections]', priceItems.map((item) => `${item.id}:${item.variant}:${item.quantity}`).join('|'));
+    parameters.set('payment_intent_data[metadata][item_selections]', items.map((item) => `${item.id}:${item.variant}:${item.quantity}`).join('|'));
 
-    priceItems.forEach((item, index) => {
-        parameters.set(`line_items[${index}][price]`, item.price);
+    items.forEach((item, index) => {
+        const product = catalog[item.id];
+        const variant = product.variants[item.variant];
+        const variantName = typeof variant === 'string' ? variant : variant.name;
+        const imagePath = typeof variant === 'string' ? product.imagePath : variant.imagePath;
+
+        parameters.set(`line_items[${index}][price_data][currency]`, 'usd');
+        parameters.set(`line_items[${index}][price_data][unit_amount]`, String(product.unitAmount));
+        parameters.set(`line_items[${index}][price_data][product_data][name]`, `${product.name} - ${variantName}`);
+        parameters.set(`line_items[${index}][price_data][product_data][description]`, product.description);
+        parameters.set(`line_items[${index}][price_data][product_data][images][0]`, `${siteUrl}${imagePath}`);
+        parameters.set(`line_items[${index}][price_data][product_data][metadata][product_id]`, item.id);
+        parameters.set(`line_items[${index}][price_data][product_data][metadata][variant]`, item.variant);
         parameters.set(`line_items[${index}][quantity]`, String(item.quantity));
     });
 
@@ -147,9 +161,10 @@ module.exports = async function createCheckoutSession(request, response) {
         parameters.set(`shipping_address_collection[allowed_countries][${index}]`, country);
     });
 
-    shippingRateIds.forEach((shippingRateId, index) => {
-        parameters.set(`shipping_options[${index}][shipping_rate]`, shippingRateId);
-    });
+    parameters.set('shipping_options[0][shipping_rate_data][type]', 'fixed_amount');
+    parameters.set('shipping_options[0][shipping_rate_data][fixed_amount][amount]', '99');
+    parameters.set('shipping_options[0][shipping_rate_data][fixed_amount][currency]', 'usd');
+    parameters.set('shipping_options[0][shipping_rate_data][display_name]', 'USPS sticker shipping');
 
     if (process.env.STRIPE_AUTOMATIC_TAX === 'true') {
         parameters.set('automatic_tax[enabled]', 'true');
