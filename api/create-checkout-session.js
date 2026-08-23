@@ -109,7 +109,7 @@ module.exports = async function createCheckoutSession(request, response) {
         return sendJson(response, 400, { error: 'Invalid cart.', code: 'INVALID_CART' });
     }
 
-    if (process.env.CHECKOUT_ENABLED !== 'true') {
+    if (process.env.CHECKOUT_ENABLED !== 'true' || process.env.CHECKOUT_ACCOUNT_APPROVED !== 'true') {
         return sendJson(response, 503, { error: 'Checkout is not open.', code: 'CHECKOUT_DISABLED' });
     }
 
