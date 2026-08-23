@@ -2,16 +2,32 @@
 
 const MAX_ITEM_QUANTITY = 10;
 const MAX_CART_QUANTITY = 25;
-const CATALOG_VERSION = 'sticker-drop-5';
+const CATALOG_VERSION = 'sticker-drop-6';
 const SMALL_ORDER_SHIPPING = 99;
+const BUNDLE_ORDER_SHIPPING = 199;
 const LARGE_ORDER_SHIPPING = 299;
+const SUPPORTER_BUNDLE_LOOKUP_KEY = 'independent_news_supporter_bundle_v1';
+
+let cachedSupporterBundlePrice = '';
 
 const productPriceEnvironment = {
+    'independent-news-supporter-bundle': 'STRIPE_PRICE_SUPPORTER_BUNDLE',
     'sticker-4-inch': 'STRIPE_PRICE_STICKER_4_INCH',
     'sticker-2-inch': 'STRIPE_PRICE_STICKER_2_INCH',
 };
 
 const catalog = {
+    'independent-news-supporter-bundle': {
+        name: 'Independent News Supporter Bundle',
+        description: 'One 4-inch Stay Classy sticker and three 2-inch holographic stickers.',
+        unitAmount: 2500,
+        variants: {
+            'black-gold-gold-coastal': 'Black & Gold, Gold, Coastal Blue',
+            'black-gold-gold-silver': 'Black & Gold, Gold, Silver',
+            'black-gold-coastal-silver': 'Black & Gold, Coastal Blue, Silver',
+            'gold-coastal-silver': 'Gold, Coastal Blue, Silver',
+        },
+    },
     'sticker-4-inch': {
         name: '4-Inch Stay Classy Sticker',
         description: 'Holographic Stay Classy Central Coast sticker.',
@@ -123,10 +139,90 @@ function configuredPriceItems(items) {
     }));
 }
 
+async function stripeRequest(secretKey, path, options = {}) {
+    const stripeResponse = await fetch(`https://api.stripe.com${path}`, {
+        ...options,
+        headers: {
+            Authorization: `Bearer ${secretKey}`,
+            ...(options.headers || {}),
+        },
+        signal: AbortSignal.timeout(12000),
+    });
+    const body = await stripeResponse.json();
+    return { stripeResponse, body };
+}
+
+function isSupporterBundlePrice(price) {
+    return /^price_[A-Za-z0-9]+$/.test(price?.id || '')
+        && price.active === true
+        && price.currency === 'usd'
+        && price.unit_amount === catalog['independent-news-supporter-bundle'].unitAmount;
+}
+
+async function findSupporterBundlePrice(secretKey) {
+    const query = new URLSearchParams({ active: 'true', limit: '1' });
+    query.append('lookup_keys[]', SUPPORTER_BUNDLE_LOOKUP_KEY);
+    const { stripeResponse, body } = await stripeRequest(secretKey, `/v1/prices?${query}`);
+    if (!stripeResponse.ok) {
+        throw new Error(`Stripe price lookup failed with status ${stripeResponse.status}`);
+    }
+    return isSupporterBundlePrice(body?.data?.[0]) ? body.data[0].id : '';
+}
+
+async function resolveSupporterBundlePrice(secretKey) {
+    if (cachedSupporterBundlePrice) return cachedSupporterBundlePrice;
+
+    const existingPrice = await findSupporterBundlePrice(secretKey);
+    if (existingPrice) {
+        cachedSupporterBundlePrice = existingPrice;
+        return existingPrice;
+    }
+
+    const product = catalog['independent-news-supporter-bundle'];
+    const parameters = new URLSearchParams({
+        currency: 'usd',
+        unit_amount: String(product.unitAmount),
+        lookup_key: SUPPORTER_BUNDLE_LOOKUP_KEY,
+        'product_data[name]': product.name,
+        'product_data[description]': product.description,
+        'product_data[metadata][catalog_version]': CATALOG_VERSION,
+        'metadata[catalog_version]': CATALOG_VERSION,
+        'metadata[shipping_cents]': String(BUNDLE_ORDER_SHIPPING),
+    });
+    const { stripeResponse, body } = await stripeRequest(secretKey, '/v1/prices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: parameters,
+    });
+
+    if (stripeResponse.ok && isSupporterBundlePrice(body)) {
+        cachedSupporterBundlePrice = body.id;
+        return body.id;
+    }
+
+    // A simultaneous cold start may have created the lookup key first.
+    const racedPrice = await findSupporterBundlePrice(secretKey);
+    if (racedPrice) {
+        cachedSupporterBundlePrice = racedPrice;
+        return racedPrice;
+    }
+    throw new Error(`Stripe price creation failed with status ${stripeResponse.status}`);
+}
+
+async function resolvePriceItems(items, secretKey) {
+    const priceItems = configuredPriceItems(items);
+    for (const item of priceItems) {
+        if (!item.price && item.id === 'independent-news-supporter-bundle') {
+            item.price = await resolveSupporterBundlePrice(secretKey);
+        }
+    }
+    return priceItems;
+}
+
 function shippingAmountFor(items) {
-    return items.some((item) => item.id === 'sticker-4-inch')
-        ? LARGE_ORDER_SHIPPING
-        : SMALL_ORDER_SHIPPING;
+    if (items.some((item) => item.id === 'sticker-4-inch')) return LARGE_ORDER_SHIPPING;
+    if (items.some((item) => item.id === 'independent-news-supporter-bundle')) return BUNDLE_ORDER_SHIPPING;
+    return SMALL_ORDER_SHIPPING;
 }
 
 module.exports = async function createCheckoutSession(request, response) {
@@ -165,9 +261,19 @@ module.exports = async function createCheckoutSession(request, response) {
     }
 
     const secretKey = (process.env.STRIPE_SECRET_KEY || '').trim();
-    const priceItems = configuredPriceItems(items);
+    if (!secretKey) {
+        return sendJson(response, 503, { error: 'Checkout is not configured.', code: 'CHECKOUT_NOT_CONFIGURED' });
+    }
 
-    if (!secretKey || priceItems.some((item) => !item.price)) {
+    let priceItems;
+    try {
+        priceItems = await resolvePriceItems(items, secretKey);
+    } catch (error) {
+        console.error('Stripe catalog resolution failed', { name: error?.name, message: error?.message });
+        return sendJson(response, 502, { error: 'Checkout is temporarily unavailable.', code: 'STRIPE_UNAVAILABLE' });
+    }
+
+    if (priceItems.some((item) => !item.price)) {
         return sendJson(response, 503, { error: 'Checkout is not configured.', code: 'CHECKOUT_NOT_CONFIGURED' });
     }
 
@@ -211,7 +317,10 @@ module.exports = async function createCheckoutSession(request, response) {
     parameters.set('shipping_options[0][shipping_rate_data][fixed_amount][currency]', 'usd');
     parameters.set('shipping_options[0][shipping_rate_data][display_name]', 'USPS sticker shipping');
     parameters.set('shipping_options[0][shipping_rate_data][metadata][catalog_version]', CATALOG_VERSION);
-    parameters.set('shipping_options[0][shipping_rate_data][metadata][order_size]', shippingAmount === LARGE_ORDER_SHIPPING ? 'includes-4-inch' : '2-inch-only');
+    const orderSize = shippingAmount === LARGE_ORDER_SHIPPING
+        ? 'includes-4-inch'
+        : shippingAmount === BUNDLE_ORDER_SHIPPING ? 'supporter-bundle' : '2-inch-only';
+    parameters.set('shipping_options[0][shipping_rate_data][metadata][order_size]', orderSize);
 
     if (process.env.STRIPE_AUTOMATIC_TAX === 'true') {
         parameters.set('automatic_tax[enabled]', 'true');

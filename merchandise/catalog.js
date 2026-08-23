@@ -1,5 +1,65 @@
 window.MERCH_CATALOG = [
     {
+        id: 'independent-news-supporter-bundle',
+        name: 'Independent News Supporter Bundle',
+        description: 'A limited-release set with one 4-inch Stay Classy sticker and three distinct 2-inch Chris Cerney holographic stickers. Every purchase helps fund independent news coverage on the Central Coast.',
+        price: 2500,
+        shipping: 199,
+        available: true,
+        featured: true,
+        optionLabel: 'Choose your three finishes',
+        variants: [
+            {
+                id: 'black-gold-gold-coastal',
+                name: 'Black & Gold, Gold, Coastal Blue',
+                image: '/images/merchandise/chris-cerney-black-gold-holographic.webp',
+                imageAlt: 'Independent News Supporter Bundle with Black and Gold, Gold, Coastal Blue, and Stay Classy stickers',
+                images: [
+                    '/images/merchandise/chris-cerney-black-gold-holographic.webp',
+                    '/images/merchandise/chris-cerney-gold-holographic.webp',
+                    '/images/merchandise/chris-cerney-coastal-blue.webp',
+                    '/images/merchandise/stay-classy-4-inch.webp',
+                ],
+            },
+            {
+                id: 'black-gold-gold-silver',
+                name: 'Black & Gold, Gold, Silver',
+                image: '/images/merchandise/chris-cerney-black-gold-holographic.webp',
+                imageAlt: 'Independent News Supporter Bundle with Black and Gold, Gold, Silver, and Stay Classy stickers',
+                images: [
+                    '/images/merchandise/chris-cerney-black-gold-holographic.webp',
+                    '/images/merchandise/chris-cerney-gold-holographic.webp',
+                    '/images/merchandise/chris-cerney-silver-holographic.webp',
+                    '/images/merchandise/stay-classy-4-inch.webp',
+                ],
+            },
+            {
+                id: 'black-gold-coastal-silver',
+                name: 'Black & Gold, Coastal Blue, Silver',
+                image: '/images/merchandise/chris-cerney-black-gold-holographic.webp',
+                imageAlt: 'Independent News Supporter Bundle with Black and Gold, Coastal Blue, Silver, and Stay Classy stickers',
+                images: [
+                    '/images/merchandise/chris-cerney-black-gold-holographic.webp',
+                    '/images/merchandise/chris-cerney-coastal-blue.webp',
+                    '/images/merchandise/chris-cerney-silver-holographic.webp',
+                    '/images/merchandise/stay-classy-4-inch.webp',
+                ],
+            },
+            {
+                id: 'gold-coastal-silver',
+                name: 'Gold, Coastal Blue, Silver',
+                image: '/images/merchandise/chris-cerney-gold-holographic.webp',
+                imageAlt: 'Independent News Supporter Bundle with Gold, Coastal Blue, Silver, and Stay Classy stickers',
+                images: [
+                    '/images/merchandise/chris-cerney-gold-holographic.webp',
+                    '/images/merchandise/chris-cerney-coastal-blue.webp',
+                    '/images/merchandise/chris-cerney-silver-holographic.webp',
+                    '/images/merchandise/stay-classy-4-inch.webp',
+                ],
+            },
+        ],
+    },
+    {
         id: 'sticker-4-inch',
         name: '4-Inch Stay Classy Sticker',
         description: 'A holographic die-cut Stay Classy Central Coast design. Each sticker is layered by hand with premium, heavy-duty, weather-resistant vinyl and color built into the material for a fade-resistant finish.',

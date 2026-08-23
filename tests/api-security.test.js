@@ -45,6 +45,7 @@ function configureCheckoutEnvironment() {
     process.env.STRIPE_SECRET_KEY = 'sk_test_example';
     process.env.STRIPE_PRICE_STICKER_2_INCH = 'price_small';
     process.env.STRIPE_PRICE_STICKER_4_INCH = 'price_large';
+    process.env.STRIPE_PRICE_SUPPORTER_BUNDLE = 'price_bundle';
     process.env.SITE_URL = 'https://www.chriscerney.org';
 }
 
@@ -102,7 +103,7 @@ test('checkout status confirms only paid sessions from this catalog', { concurre
             mode: 'payment',
             status: 'complete',
             payment_status: 'paid',
-            metadata: { catalog_version: 'sticker-drop-5' },
+            metadata: { catalog_version: 'sticker-drop-6' },
         }),
     });
     try {
@@ -141,5 +142,91 @@ test('checkout status does not confirm unpaid or foreign-catalog sessions', { co
         assert.equal(response.body.confirmed, false);
     } finally {
         global.fetch = previousFetch;
+    }
+});
+
+test('supporter bundle uses its Stripe Price and special shipping amount', { concurrency: false }, async () => {
+    configureCheckoutEnvironment();
+    const previousFetch = global.fetch;
+    let stripeParameters;
+    global.fetch = async (_url, options) => {
+        stripeParameters = new URLSearchParams(options.body);
+        return {
+            ok: true,
+            status: 200,
+            json: async () => ({ url: 'https://checkout.stripe.com/c/pay/cs_live_example' }),
+        };
+    };
+    try {
+        const response = responseRecorder();
+        await createCheckoutSession(checkoutRequest({
+            body: {
+                items: [{
+                    id: 'independent-news-supporter-bundle',
+                    variant: 'black-gold-gold-coastal',
+                    quantity: 1,
+                }],
+            },
+        }), response);
+        assert.equal(response.statusCode, 200);
+        assert.equal(stripeParameters.get('line_items[0][price]'), 'price_bundle');
+        assert.equal(stripeParameters.get('shipping_options[0][shipping_rate_data][fixed_amount][amount]'), '199');
+        assert.equal(stripeParameters.get('metadata[catalog_version]'), 'sticker-drop-6');
+    } finally {
+        global.fetch = previousFetch;
+    }
+});
+
+test('supporter bundle creates a reusable Stripe product and price when not configured yet', { concurrency: false }, async () => {
+    configureCheckoutEnvironment();
+    delete process.env.STRIPE_PRICE_SUPPORTER_BUNDLE;
+    const previousFetch = global.fetch;
+    const requests = [];
+    global.fetch = async (url, options = {}) => {
+        requests.push({ url, options });
+        if (url.includes('/v1/prices?')) {
+            return { ok: true, status: 200, json: async () => ({ data: [] }) };
+        }
+        if (url.endsWith('/v1/prices')) {
+            return {
+                ok: true,
+                status: 200,
+                json: async () => ({
+                    id: 'price_createdbundle',
+                    active: true,
+                    currency: 'usd',
+                    unit_amount: 2500,
+                }),
+            };
+        }
+        return {
+            ok: true,
+            status: 200,
+            json: async () => ({ url: 'https://checkout.stripe.com/c/pay/cs_live_bundle_created' }),
+        };
+    };
+    try {
+        const response = responseRecorder();
+        await createCheckoutSession(checkoutRequest({
+            body: {
+                items: [{
+                    id: 'independent-news-supporter-bundle',
+                    variant: 'black-gold-gold-coastal',
+                    quantity: 1,
+                }],
+            },
+        }), response);
+        assert.equal(response.statusCode, 200);
+        assert.equal(requests.length, 3);
+        const createPriceParameters = new URLSearchParams(requests[1].options.body);
+        assert.equal(createPriceParameters.get('unit_amount'), '2500');
+        assert.equal(createPriceParameters.get('lookup_key'), 'independent_news_supporter_bundle_v1');
+        assert.equal(createPriceParameters.get('product_data[name]'), 'Independent News Supporter Bundle');
+        const checkoutParameters = new URLSearchParams(requests[2].options.body);
+        assert.equal(checkoutParameters.get('line_items[0][price]'), 'price_createdbundle');
+        assert.equal(checkoutParameters.get('shipping_options[0][shipping_rate_data][fixed_amount][amount]'), '199');
+    } finally {
+        global.fetch = previousFetch;
+        process.env.STRIPE_PRICE_SUPPORTER_BUNDLE = 'price_bundle';
     }
 });

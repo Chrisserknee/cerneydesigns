@@ -85,7 +85,7 @@
     function createProductCard(product) {
         const selected = { variant: product.variants[0], mediaMode: 'variant' };
         const card = document.createElement('article');
-        card.className = 'product-card';
+        card.className = `product-card${product.featured ? ' bundle-product' : ''}`;
 
         const media = document.createElement('div');
         media.className = 'product-media';
@@ -93,7 +93,14 @@
         image.src = selected.variant.image;
         image.alt = selected.variant.imageAlt;
         image.loading = 'lazy';
-        media.appendChild(image);
+        let bundleImageGrid;
+        if (Array.isArray(selected.variant.images)) {
+            bundleImageGrid = document.createElement('div');
+            bundleImageGrid.className = 'bundle-image-grid';
+            media.appendChild(bundleImageGrid);
+        } else {
+            media.appendChild(image);
+        }
 
         let designPhotoButton;
         let designPhotoThumbnail;
@@ -146,7 +153,7 @@
         const optionHeading = document.createElement('div');
         optionHeading.className = 'option-heading';
         const optionLabel = document.createElement('span');
-        optionLabel.textContent = product.variants.length > 1 ? 'Choose a finish' : 'Design';
+        optionLabel.textContent = product.optionLabel || (product.variants.length > 1 ? 'Choose a finish' : 'Design');
         const optionName = document.createElement('strong');
         optionName.textContent = selected.variant.name;
         optionHeading.append(optionLabel, optionName);
@@ -159,7 +166,17 @@
             const showingReference = selected.mediaMode === 'reference';
             const showingLifestyle = selected.mediaMode === 'lifestyle';
 
-            if (showingReference) {
+            if (bundleImageGrid) {
+                bundleImageGrid.replaceChildren(...selected.variant.images.map((source, index) => {
+                    const bundleImage = new Image();
+                    bundleImage.src = source;
+                    bundleImage.alt = index === selected.variant.images.length - 1
+                        ? 'Four-inch Stay Classy sticker included in the bundle'
+                        : `Two-inch sticker option ${index + 1} included in the bundle`;
+                    bundleImage.loading = 'lazy';
+                    return bundleImage;
+                }));
+            } else if (showingReference) {
                 image.src = product.sizeReference;
                 image.alt = product.sizeReferenceAlt;
             } else if (showingLifestyle) {
@@ -205,10 +222,14 @@
                 button.setAttribute('aria-label', variant.name);
                 button.setAttribute('aria-pressed', index === 0 ? 'true' : 'false');
                 button.title = variant.name;
-                const thumbnail = new Image();
-                thumbnail.src = variant.image;
-                thumbnail.alt = '';
-                button.appendChild(thumbnail);
+                const thumbnailSources = Array.isArray(variant.images) ? variant.images.slice(0, 3) : [variant.image];
+                if (thumbnailSources.length > 1) button.classList.add('bundle-variant-button');
+                button.append(...thumbnailSources.map((source) => {
+                    const thumbnail = new Image();
+                    thumbnail.src = source;
+                    thumbnail.alt = '';
+                    return thumbnail;
+                }));
                 button.addEventListener('click', () => {
                     selected.variant = variant;
                     selected.mediaMode = 'variant';
@@ -226,15 +247,17 @@
             controls.appendChild(variantList);
         }
 
-        referenceButton = document.createElement('button');
-        referenceButton.type = 'button';
-        referenceButton.className = 'reference-button';
-        referenceButton.textContent = 'Size reference';
-        referenceButton.addEventListener('click', () => {
-            selected.mediaMode = selected.mediaMode === 'reference' ? 'variant' : 'reference';
-            updateMedia();
-        });
-        controls.appendChild(referenceButton);
+        if (product.sizeReference) {
+            referenceButton = document.createElement('button');
+            referenceButton.type = 'button';
+            referenceButton.className = 'reference-button';
+            referenceButton.textContent = 'Size reference';
+            referenceButton.addEventListener('click', () => {
+                selected.mediaMode = selected.mediaMode === 'reference' ? 'variant' : 'reference';
+                updateMedia();
+            });
+            controls.appendChild(referenceButton);
+        }
         optionArea.append(optionHeading, controls);
 
         const actionRow = document.createElement('div');
@@ -265,6 +288,7 @@
         actionRow.append(priceBlock, addButton);
         body.append(status, title, description, optionArea, actionRow);
         card.append(media, body);
+        updateMedia();
         return card;
     }
 
