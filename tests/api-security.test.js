@@ -103,7 +103,7 @@ test('checkout status confirms only paid sessions from this catalog', { concurre
             mode: 'payment',
             status: 'complete',
             payment_status: 'paid',
-            metadata: { catalog_version: 'sticker-drop-6' },
+            metadata: { catalog_version: 'sticker-drop-7' },
         }),
     });
     try {
@@ -163,7 +163,7 @@ test('supporter bundle uses its Stripe Price and special shipping amount', { con
             body: {
                 items: [{
                     id: 'independent-news-supporter-bundle',
-                    variant: 'black-gold-gold-coastal',
+                    variant: 'complete-five-sticker-set',
                     quantity: 1,
                 }],
             },
@@ -171,7 +171,7 @@ test('supporter bundle uses its Stripe Price and special shipping amount', { con
         assert.equal(response.statusCode, 200);
         assert.equal(stripeParameters.get('line_items[0][price]'), 'price_bundle');
         assert.equal(stripeParameters.get('shipping_options[0][shipping_rate_data][fixed_amount][amount]'), '199');
-        assert.equal(stripeParameters.get('metadata[catalog_version]'), 'sticker-drop-6');
+        assert.equal(stripeParameters.get('metadata[catalog_version]'), 'sticker-drop-7');
     } finally {
         global.fetch = previousFetch;
     }
@@ -211,7 +211,7 @@ test('supporter bundle creates a reusable Stripe product and price when not conf
             body: {
                 items: [{
                     id: 'independent-news-supporter-bundle',
-                    variant: 'black-gold-gold-coastal',
+                    variant: 'complete-five-sticker-set',
                     quantity: 1,
                 }],
             },

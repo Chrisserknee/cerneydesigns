@@ -2,7 +2,7 @@
 
 const MAX_ITEM_QUANTITY = 10;
 const MAX_CART_QUANTITY = 25;
-const CATALOG_VERSION = 'sticker-drop-6';
+const CATALOG_VERSION = 'sticker-drop-7';
 const SMALL_ORDER_SHIPPING = 99;
 const BUNDLE_ORDER_SHIPPING = 199;
 const LARGE_ORDER_SHIPPING = 299;
@@ -19,13 +19,10 @@ const productPriceEnvironment = {
 const catalog = {
     'independent-news-supporter-bundle': {
         name: 'Independent News Supporter Bundle',
-        description: 'One 4-inch Stay Classy sticker and three 2-inch holographic stickers.',
+        description: 'One 4-inch Stay Classy sticker and all four 2-inch holographic colorways.',
         unitAmount: 2500,
         variants: {
-            'black-gold-gold-coastal': 'Black & Gold, Gold, Coastal Blue',
-            'black-gold-gold-silver': 'Black & Gold, Gold, Silver',
-            'black-gold-coastal-silver': 'Black & Gold, Coastal Blue, Silver',
-            'gold-coastal-silver': 'Gold, Coastal Blue, Silver',
+            'complete-five-sticker-set': 'Complete five-sticker set',
         },
     },
     'sticker-4-inch': {

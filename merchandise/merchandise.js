@@ -286,7 +286,9 @@
             }, 1200);
         });
         actionRow.append(priceBlock, addButton);
-        body.append(status, title, description, optionArea, actionRow);
+        body.append(status, title, description);
+        if (product.hideOptions !== true) body.append(optionArea);
+        body.append(actionRow);
         card.append(media, body);
         updateMedia();
         return card;
