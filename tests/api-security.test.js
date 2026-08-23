@@ -149,11 +149,27 @@ test('checkout status does not confirm unpaid or foreign-catalog sessions', { co
     }
 });
 
-test('supporter bundle uses its Stripe Price and special shipping amount', { concurrency: false }, async () => {
+test('supporter bundle resolves its current Stripe Price and special shipping amount', { concurrency: false }, async () => {
     configureCheckoutEnvironment();
     const previousFetch = global.fetch;
+    const requests = [];
     let stripeParameters;
-    global.fetch = async (_url, options) => {
+    global.fetch = async (url, options = {}) => {
+        requests.push({ url, options });
+        if (url.includes('/v1/prices?')) {
+            return {
+                ok: true,
+                status: 200,
+                json: async () => ({
+                    data: [{
+                        id: 'price_bundle2999',
+                        active: true,
+                        currency: 'usd',
+                        unit_amount: 2999,
+                    }],
+                }),
+            };
+        }
         stripeParameters = new URLSearchParams(options.body);
         return {
             ok: true,
@@ -173,7 +189,9 @@ test('supporter bundle uses its Stripe Price and special shipping amount', { con
             },
         }), response);
         assert.equal(response.statusCode, 200);
-        assert.equal(stripeParameters.get('line_items[0][price]'), 'price_bundle');
+        assert.equal(requests.length, 2);
+        assert.match(requests[0].url, /independent_news_supporter_bundle_v3/);
+        assert.equal(stripeParameters.get('line_items[0][price]'), 'price_bundle2999');
         assert.equal(stripeParameters.get('shipping_options[0][shipping_rate_data][fixed_amount][amount]'), '199');
         assert.equal(stripeParameters.get('metadata[catalog_version]'), 'sticker-drop-8');
     } finally {
@@ -199,7 +217,7 @@ test('supporter bundle creates a reusable Stripe product and price when not conf
                     id: 'price_createdbundle',
                     active: true,
                     currency: 'usd',
-                    unit_amount: 2500,
+                    unit_amount: 2999,
                 }),
             };
         }
@@ -223,8 +241,8 @@ test('supporter bundle creates a reusable Stripe product and price when not conf
         assert.equal(response.statusCode, 200);
         assert.equal(requests.length, 3);
         const createPriceParameters = new URLSearchParams(requests[1].options.body);
-        assert.equal(createPriceParameters.get('unit_amount'), '2500');
-        assert.equal(createPriceParameters.get('lookup_key'), 'independent_news_supporter_bundle_v2');
+        assert.equal(createPriceParameters.get('unit_amount'), '2999');
+        assert.equal(createPriceParameters.get('lookup_key'), 'independent_news_supporter_bundle_v3');
         assert.equal(createPriceParameters.get('product_data[name]'), 'Independent News Supporter Bundle - All Four Colorways + 4-Inch Stay Classy');
         const checkoutParameters = new URLSearchParams(requests[2].options.body);
         assert.equal(checkoutParameters.get('line_items[0][price]'), 'price_createdbundle');

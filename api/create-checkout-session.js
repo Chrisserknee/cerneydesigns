@@ -6,9 +6,8 @@ const CATALOG_VERSION = 'sticker-drop-8';
 const SMALL_ORDER_SHIPPING = 99;
 const BUNDLE_ORDER_SHIPPING = 199;
 const LARGE_ORDER_SHIPPING = 299;
-const SUPPORTER_BUNDLE_LOOKUP_KEY = 'independent_news_supporter_bundle_v2';
+const SUPPORTER_BUNDLE_LOOKUP_KEY = 'independent_news_supporter_bundle_v3';
 
-let cachedSupporterBundlePrice = '';
 const cachedVariantPrices = new Map();
 
 const productPriceEnvironment = {
@@ -21,7 +20,7 @@ const catalog = {
     'independent-news-supporter-bundle': {
         name: 'Independent News Supporter Bundle - All Four Colorways + 4-Inch Stay Classy',
         description: 'One 4-inch Stay Classy sticker and all four 2-inch holographic colorways.',
-        unitAmount: 2500,
+        unitAmount: 2999,
         variants: {
             'complete-five-sticker-set': 'Complete five-sticker set',
         },
@@ -133,7 +132,9 @@ function commaSeparatedEnvironment(name, fallback = '') {
 function configuredPriceItems(items) {
     return items.map((item) => ({
         ...item,
-        price: (process.env[productPriceEnvironment[item.id]] || '').trim(),
+        price: item.id === 'independent-news-supporter-bundle'
+            ? ''
+            : (process.env[productPriceEnvironment[item.id]] || '').trim(),
     }));
 }
 
@@ -168,13 +169,8 @@ async function findSupporterBundlePrice(secretKey) {
 }
 
 async function resolveSupporterBundlePrice(secretKey) {
-    if (cachedSupporterBundlePrice) return cachedSupporterBundlePrice;
-
     const existingPrice = await findSupporterBundlePrice(secretKey);
-    if (existingPrice) {
-        cachedSupporterBundlePrice = existingPrice;
-        return existingPrice;
-    }
+    if (existingPrice) return existingPrice;
 
     const product = catalog['independent-news-supporter-bundle'];
     const parameters = new URLSearchParams({
@@ -192,16 +188,12 @@ async function resolveSupporterBundlePrice(secretKey) {
     });
 
     if (stripeResponse.ok && isSupporterBundlePrice(body)) {
-        cachedSupporterBundlePrice = body.id;
         return body.id;
     }
 
     // A simultaneous cold start may have created the lookup key first.
     const racedPrice = await findSupporterBundlePrice(secretKey);
-    if (racedPrice) {
-        cachedSupporterBundlePrice = racedPrice;
-        return racedPrice;
-    }
+    if (racedPrice) return racedPrice;
     throw new Error(`Stripe price creation failed with status ${stripeResponse.status}`);
 }
 

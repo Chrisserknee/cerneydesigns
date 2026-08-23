@@ -3,7 +3,7 @@ window.MERCH_CATALOG = [
         id: 'independent-news-supporter-bundle',
         name: 'Independent News Supporter Bundle',
         description: 'A limited-release five-sticker set with one 4-inch Stay Classy sticker and all four 2-inch Chris Cerney holographic colorways. Every purchase helps fund independent news coverage on the Central Coast.',
-        price: 2500,
+        price: 2999,
         shipping: 199,
         available: true,
         featured: true,
