@@ -264,7 +264,7 @@
             checkoutMessage.textContent = 'Checkout is not open yet. Please check back soon.';
             checkoutButton.disabled = false;
             checkoutButton.classList.remove('loading');
-            checkoutLabel.textContent = 'Checkout with Stripe';
+            checkoutLabel.textContent = 'Test checkout with Stripe';
         }
     }
 
