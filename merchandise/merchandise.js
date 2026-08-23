@@ -261,10 +261,10 @@
             if (!response.ok || !result.url) throw new Error(result.code || 'CHECKOUT_UNAVAILABLE');
             window.location.assign(result.url);
         } catch {
-            checkoutMessage.textContent = 'Checkout is not open yet. Please check back soon.';
+            checkoutMessage.textContent = 'Checkout is temporarily unavailable. Please try again.';
             checkoutButton.disabled = false;
             checkoutButton.classList.remove('loading');
-            checkoutLabel.textContent = 'Test checkout with Stripe';
+            checkoutLabel.textContent = 'Secure checkout';
         }
     }
 
