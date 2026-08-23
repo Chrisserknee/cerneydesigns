@@ -254,7 +254,7 @@ button {
 }
 
 .store-header {
-    padding: 62px 0 42px;
+    padding: 46px 0 30px;
     border-bottom: 1px solid var(--border);
     background: var(--bg-elev);
 }
@@ -269,9 +269,9 @@ button {
 }
 
 .store-header h1 {
-    margin-top: 8px;
+    margin-top: 6px;
     font-family: 'Barlow Condensed', sans-serif;
-    font-size: 5.45rem;
+    font-size: 4.7rem;
     font-weight: 800;
     line-height: 0.95;
     text-transform: uppercase;
@@ -279,7 +279,7 @@ button {
 
 .store-lede {
     max-width: 620px;
-    margin-top: 18px;
+    margin-top: 12px;
     color: var(--text-dim);
     font-size: 1.05rem;
 }
@@ -287,7 +287,7 @@ button {
 .artist-credit {
     width: fit-content;
     max-width: 100%;
-    margin-top: 19px;
+    margin-top: 14px;
     padding: 7px 16px 7px 7px;
     display: inline-flex;
     align-items: center;
@@ -356,7 +356,7 @@ button {
 
 .launch-status {
     width: fit-content;
-    margin-top: 24px;
+    margin-top: 16px;
     display: flex;
     align-items: center;
     gap: 10px;
@@ -374,7 +374,7 @@ button {
 
 .coverage-support {
     max-width: 620px;
-    margin-top: 12px;
+    margin-top: 8px;
     color: #f0c251;
     font-size: 0.82rem;
     font-weight: 700;
@@ -1329,35 +1329,55 @@ a:focus-visible {
     }
 
     .store-header {
-        padding: 44px 0 32px;
+        padding: 28px 0 22px;
     }
 
     .store-header h1 {
-        font-size: 3.15rem;
+        font-size: 2.85rem;
     }
 
     .store-lede {
-        margin-top: 14px;
-        font-size: 0.92rem;
+        margin-top: 9px;
+        font-size: 0.88rem;
     }
 
     .artist-credit {
         width: 100%;
-        padding-right: 12px;
-        gap: 10px;
+        padding: 6px 10px 6px 6px;
+        gap: 9px;
     }
 
     .artist-credit img {
-        width: 66px;
-        height: 50px;
+        width: 58px;
+        height: 44px;
     }
 
     .artist-credit strong {
-        font-size: 1.25rem;
+        font-size: 1.16rem;
+    }
+
+    .artist-credit-label {
+        font-size: 0.62rem;
+    }
+
+    .artist-credit-link {
+        margin-top: 1px;
+        font-size: 0.7rem;
+    }
+
+    .launch-status {
+        margin-top: 13px;
+        gap: 8px;
+        font-size: 0.76rem;
+    }
+
+    .coverage-support {
+        margin-top: 7px;
+        font-size: 0.76rem;
     }
 
     .store-section {
-        padding: 34px 0 60px;
+        padding: 28px 0 60px;
     }
 
     .product-grid {
@@ -1469,7 +1489,7 @@ a:focus-visible {
 
 @media (max-width: 360px) {
     .store-header {
-        padding-top: 36px;
+        padding-top: 24px;
     }
 
     .store-header h1 {
@@ -1477,8 +1497,8 @@ a:focus-visible {
     }
 
     .artist-credit img {
-        width: 60px;
-        height: 46px;
+        width: 54px;
+        height: 42px;
     }
 
     .artist-credit strong {
