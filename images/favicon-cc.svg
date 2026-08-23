@@ -1,17 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <rect width="100" height="100" rx="20" fill="#0b1118"/>
+  <rect width="100" height="100" rx="18" fill="#0b1118"/>
   <path
-    d="M48 33 A24 24 0 1 0 48 67"
-    fill="none"
-    stroke="#f4f7fa"
-    stroke-width="10"
-    stroke-linecap="round"
-  />
-  <path
-    d="M86 33 A24 24 0 1 0 86 67"
-    fill="none"
-    stroke="#9bbbd6"
-    stroke-width="10"
-    stroke-linecap="round"
+    d="M27 197V504Q27 598 84 653Q141 708 236 708Q331 708 388.5 653Q446 598 446 504V495Q446 490 442.5 486.5Q439 483 434 483L292 477Q280 477 280 489V516Q280 539 268 552.5Q256 566 236 566Q217 566 205 552.5Q193 539 193 516V183Q193 161 205 147.5Q217 134 236 134Q256 134 268 147.5Q280 161 280 183V212Q280 217 283.5 220.5Q287 224 292 224L434 218Q439 218 442.5 214.5Q446 211 446 206V197Q446 104 388.5 48Q331 -8 236 -8Q141 -8 84 48Q27 104 27 197Z"
+    transform="translate(24.9 87.15) scale(.10615 -.10615)"
+    fill="#f4f7fa"
   />
 </svg>
