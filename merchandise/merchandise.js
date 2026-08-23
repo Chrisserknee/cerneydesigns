@@ -111,6 +111,7 @@
                     selected.showingReference = false;
                     image.src = variant.image;
                     image.alt = variant.imageAlt;
+                    media.classList.remove('showing-reference');
                     optionName.textContent = variant.name;
                     variantList.querySelectorAll('.variant-button').forEach((candidate) => {
                         const isSelected = candidate === button;
@@ -133,6 +134,7 @@
             selected.showingReference = !selected.showingReference;
             image.src = selected.showingReference ? product.sizeReference : selected.variant.image;
             image.alt = selected.showingReference ? product.sizeReferenceAlt : selected.variant.imageAlt;
+            media.classList.toggle('showing-reference', selected.showingReference);
             referenceButton.classList.toggle('active', selected.showingReference);
             referenceButton.textContent = selected.showingReference ? 'Back to design' : 'Size reference';
         });
