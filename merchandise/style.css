@@ -392,15 +392,6 @@ button {
     align-items: start;
 }
 
-.catalog-heading {
-    margin-bottom: 24px;
-    display: flex;
-    align-items: end;
-    justify-content: space-between;
-    gap: 20px;
-}
-
-.catalog-heading h2,
 .cart-panel h2,
 .order-status h2 {
     margin-top: 4px;
@@ -408,11 +399,6 @@ button {
     font-size: 2rem;
     line-height: 1.1;
     text-transform: uppercase;
-}
-
-.catalog-count {
-    color: var(--text-dim);
-    font-size: 0.86rem;
 }
 
 .product-grid {
@@ -1419,10 +1405,6 @@ a:focus-visible {
         inset: 20px;
         width: calc(100% - 40px);
         height: calc(100% - 40px);
-    }
-
-    .catalog-heading {
-        align-items: start;
     }
 
     .product-body > p {

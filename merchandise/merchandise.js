@@ -30,7 +30,6 @@
 
     const cart = loadCart();
     const productGrid = document.getElementById('productGrid');
-    const catalogCount = document.getElementById('catalogCount');
     const cartItems = document.getElementById('cartItems');
     const cartEmpty = document.getElementById('cartEmpty');
     const cartPanel = document.querySelector('.cart-panel');
@@ -315,7 +314,6 @@
 
     function renderCatalog() {
         productGrid.replaceChildren(...catalog.map(createProductCard));
-        catalogCount.textContent = `${catalog.length} product${catalog.length === 1 ? '' : 's'}`;
     }
 
     function pulseCartButtons() {
