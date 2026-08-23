@@ -6,7 +6,7 @@ window.MERCH_CATALOG = [
         price: 1000,
         sizeReference: '/images/merchandise/stay-classy-4-inch-size.webp',
         sizeReferenceAlt: 'Four-inch Stay Classy sticker shown with a measurement overlay',
-        available: true,
+        available: false,
         variants: [
             {
                 id: 'stay-classy',
@@ -23,7 +23,7 @@ window.MERCH_CATALOG = [
         price: 500,
         sizeReference: '/images/merchandise/chris-cerney-2-inch-size.webp',
         sizeReferenceAlt: 'Two-inch Chris Cerney sticker shown with a measurement overlay',
-        available: true,
+        available: false,
         variants: [
             {
                 id: 'gold-holographic',
