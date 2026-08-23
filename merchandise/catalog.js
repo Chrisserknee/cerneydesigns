@@ -25,6 +25,8 @@ window.MERCH_CATALOG = [
         shipping: 99,
         sizeReference: '/images/merchandise/chris-cerney-2-inch-size.webp',
         sizeReferenceAlt: 'Two-inch Chris Cerney sticker shown with a measurement overlay',
+        lifestyleImage: '/images/merchandise/chris-cerney-2-inch-in-hand.webp',
+        lifestyleImageAlt: 'Two-inch holographic Chris Cerney sticker held in a hand for scale',
         available: true,
         variants: [
             {

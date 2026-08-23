@@ -83,7 +83,7 @@
     }
 
     function createProductCard(product) {
-        const selected = { variant: product.variants[0], showingReference: false };
+        const selected = { variant: product.variants[0], mediaMode: 'variant' };
         const card = document.createElement('article');
         card.className = 'product-card';
 
@@ -94,6 +94,42 @@
         image.alt = selected.variant.imageAlt;
         image.loading = 'lazy';
         media.appendChild(image);
+
+        let designPhotoButton;
+        let designPhotoThumbnail;
+        let lifestylePhotoButton;
+
+        if (product.lifestyleImage) {
+            const gallery = document.createElement('div');
+            gallery.className = 'product-gallery';
+            gallery.setAttribute('role', 'group');
+            gallery.setAttribute('aria-label', `${product.name} photos`);
+
+            designPhotoButton = document.createElement('button');
+            designPhotoButton.type = 'button';
+            designPhotoButton.className = 'product-photo-button selected';
+            designPhotoButton.setAttribute('aria-label', 'Show sticker design');
+            designPhotoButton.setAttribute('aria-pressed', 'true');
+            designPhotoButton.title = 'Sticker design';
+            designPhotoThumbnail = new Image();
+            designPhotoThumbnail.src = selected.variant.image;
+            designPhotoThumbnail.alt = '';
+            designPhotoButton.appendChild(designPhotoThumbnail);
+
+            lifestylePhotoButton = document.createElement('button');
+            lifestylePhotoButton.type = 'button';
+            lifestylePhotoButton.className = 'product-photo-button';
+            lifestylePhotoButton.setAttribute('aria-label', 'Show sticker held in hand for scale');
+            lifestylePhotoButton.setAttribute('aria-pressed', 'false');
+            lifestylePhotoButton.title = 'In hand';
+            const lifestyleThumbnail = new Image();
+            lifestyleThumbnail.src = product.lifestyleImage;
+            lifestyleThumbnail.alt = '';
+            lifestylePhotoButton.appendChild(lifestyleThumbnail);
+
+            gallery.append(designPhotoButton, lifestylePhotoButton);
+            media.appendChild(gallery);
+        }
 
         const body = document.createElement('div');
         body.className = 'product-body';
@@ -119,6 +155,43 @@
         controls.className = 'product-controls';
         let referenceButton;
 
+        const updateMedia = () => {
+            const showingReference = selected.mediaMode === 'reference';
+            const showingLifestyle = selected.mediaMode === 'lifestyle';
+
+            if (showingReference) {
+                image.src = product.sizeReference;
+                image.alt = product.sizeReferenceAlt;
+            } else if (showingLifestyle) {
+                image.src = product.lifestyleImage;
+                image.alt = product.lifestyleImageAlt;
+            } else {
+                image.src = selected.variant.image;
+                image.alt = selected.variant.imageAlt;
+            }
+
+            media.classList.toggle('showing-reference', showingReference);
+            media.classList.toggle('showing-lifestyle', showingLifestyle);
+            referenceButton?.classList.toggle('active', showingReference);
+            if (referenceButton) {
+                referenceButton.textContent = showingReference ? 'Back to design' : 'Size reference';
+            }
+            designPhotoButton?.classList.toggle('selected', !showingLifestyle && !showingReference);
+            designPhotoButton?.setAttribute('aria-pressed', !showingLifestyle && !showingReference ? 'true' : 'false');
+            lifestylePhotoButton?.classList.toggle('selected', showingLifestyle);
+            lifestylePhotoButton?.setAttribute('aria-pressed', showingLifestyle ? 'true' : 'false');
+        };
+
+        designPhotoButton?.addEventListener('click', () => {
+            selected.mediaMode = 'variant';
+            updateMedia();
+        });
+
+        lifestylePhotoButton?.addEventListener('click', () => {
+            selected.mediaMode = 'lifestyle';
+            updateMedia();
+        });
+
         if (product.variants.length > 1) {
             const variantList = document.createElement('div');
             variantList.className = 'variant-list';
@@ -138,18 +211,15 @@
                 button.appendChild(thumbnail);
                 button.addEventListener('click', () => {
                     selected.variant = variant;
-                    selected.showingReference = false;
-                    image.src = variant.image;
-                    image.alt = variant.imageAlt;
-                    media.classList.remove('showing-reference');
+                    selected.mediaMode = 'variant';
+                    if (designPhotoThumbnail) designPhotoThumbnail.src = variant.image;
                     optionName.textContent = variant.name;
                     variantList.querySelectorAll('.variant-button').forEach((candidate) => {
                         const isSelected = candidate === button;
                         candidate.classList.toggle('selected', isSelected);
                         candidate.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
                     });
-                    referenceButton.classList.remove('active');
-                    referenceButton.textContent = 'Size reference';
+                    updateMedia();
                 });
                 variantList.appendChild(button);
             });
@@ -161,12 +231,8 @@
         referenceButton.className = 'reference-button';
         referenceButton.textContent = 'Size reference';
         referenceButton.addEventListener('click', () => {
-            selected.showingReference = !selected.showingReference;
-            image.src = selected.showingReference ? product.sizeReference : selected.variant.image;
-            image.alt = selected.showingReference ? product.sizeReferenceAlt : selected.variant.imageAlt;
-            media.classList.toggle('showing-reference', selected.showingReference);
-            referenceButton.classList.toggle('active', selected.showingReference);
-            referenceButton.textContent = selected.showingReference ? 'Back to design' : 'Size reference';
+            selected.mediaMode = selected.mediaMode === 'reference' ? 'variant' : 'reference';
+            updateMedia();
         });
         controls.appendChild(referenceButton);
         optionArea.append(optionHeading, controls);
