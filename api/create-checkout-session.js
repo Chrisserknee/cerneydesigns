@@ -184,8 +184,6 @@ async function resolveSupporterBundlePrice(secretKey) {
         unit_amount: String(product.unitAmount),
         lookup_key: SUPPORTER_BUNDLE_LOOKUP_KEY,
         'product_data[name]': product.name,
-        'product_data[description]': product.description,
-        'product_data[metadata][catalog_version]': CATALOG_VERSION,
         'metadata[catalog_version]': CATALOG_VERSION,
         'metadata[shipping_cents]': String(BUNDLE_ORDER_SHIPPING),
     });
