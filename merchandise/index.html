@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; base-uri 'self'; form-action 'self'">
+    <meta name="theme-color" content="#0b1118">
+    <title>Merchandise &mdash; Chris Cerney</title>
+    <meta name="description" content="Shop Chris Cerney stickers and merchandise.">
+
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Merchandise &mdash; Chris Cerney">
+    <meta property="og:description" content="Shop Chris Cerney stickers and merchandise.">
+    <meta property="og:url" content="https://www.chriscerney.org/merchandise">
+
+    <link rel="icon" type="image/svg+xml" href="/images/favicon-cc.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/merchandise/style.css">
+</head>
+<body>
+    <nav class="store-nav" aria-label="Primary navigation">
+        <div class="store-nav-inner">
+            <a href="/" class="store-brand" aria-label="Chris Cerney home">
+                <span>Chris</span><strong>Cerney</strong>
+            </a>
+            <div class="store-nav-links">
+                <a href="/portfolio">Portfolio</a>
+                <a href="/merchandise" aria-current="page">Merchandise</a>
+                <a href="/upload" class="store-tipline">Tipline</a>
+            </div>
+        </div>
+    </nav>
+
+    <main>
+        <header class="store-header">
+            <div class="store-shell">
+                <p class="store-eyebrow">Chris Cerney Merchandise</p>
+                <h1>Stickers</h1>
+                <p class="store-lede">Original sticker designs from independent reporter Chris Cerney.</p>
+                <div class="launch-status" role="status">
+                    <span class="status-mark" aria-hidden="true"></span>
+                    <span>New sticker designs are being prepared for sale.</span>
+                </div>
+            </div>
+        </header>
+
+        <section class="store-section" aria-labelledby="catalogHeading">
+            <div class="store-shell store-layout">
+                <div class="catalog-column">
+                    <div class="catalog-heading">
+                        <div>
+                            <p class="section-kicker">The first drop</p>
+                            <h2 id="catalogHeading">Sticker collection</h2>
+                        </div>
+                        <p id="catalogCount" class="catalog-count">5 designs</p>
+                    </div>
+                    <div class="product-grid" id="productGrid"></div>
+                </div>
+
+                <aside class="cart-panel" aria-labelledby="cartHeading">
+                    <div class="cart-heading-row">
+                        <h2 id="cartHeading">Your order</h2>
+                        <span class="cart-count" id="cartCount">0</span>
+                    </div>
+                    <div id="cartItems" class="cart-items"></div>
+                    <div id="cartEmpty" class="cart-empty">
+                        <p>Your cart is empty.</p>
+                        <span>Available stickers will appear here.</span>
+                    </div>
+                    <div class="cart-summary">
+                        <div class="summary-row">
+                            <span>Subtotal</span>
+                            <strong id="cartSubtotal">$0.00</strong>
+                        </div>
+                        <p class="shipping-note">Shipping and applicable tax are calculated securely by Stripe at checkout.</p>
+                        <button type="button" class="checkout-button" id="checkoutButton" disabled>
+                            <span id="checkoutLabel">Checkout with Stripe</span>
+                            <span aria-hidden="true">&rarr;</span>
+                        </button>
+                        <p class="checkout-message" id="checkoutMessage" role="status" aria-live="polite"></p>
+                    </div>
+                </aside>
+            </div>
+        </section>
+
+        <section class="order-status" id="orderStatus" hidden aria-live="polite">
+            <div class="store-shell">
+                <p class="section-kicker" id="orderStatusKicker"></p>
+                <h2 id="orderStatusTitle"></h2>
+                <p id="orderStatusBody"></p>
+            </div>
+        </section>
+    </main>
+
+    <footer class="store-footer">
+        <div class="store-shell store-footer-inner">
+            <p>&copy; 2026 Chris Cerney. All rights reserved.</p>
+            <a href="mailto:chrisserknee@gmail.com">Order support</a>
+        </div>
+    </footer>
+
+    <script src="/merchandise/catalog.js"></script>
+    <script src="/merchandise/merchandise.js"></script>
+</body>
+</html>
