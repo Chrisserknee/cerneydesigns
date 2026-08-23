@@ -21,6 +21,12 @@ const storage = getStorage(app);
 const MAX_FILE_BYTES = 500 * 1024 * 1024;
 const MAX_TOTAL_BYTES = 750 * 1024 * 1024;
 const MAX_FILES_PER_SUBMISSION = 10;
+const ALLOWED_CONTENT_TYPES = new Set([
+    'application/pdf', 'image/avif', 'image/bmp', 'image/gif', 'image/heic',
+    'image/heif', 'image/jpeg', 'image/png', 'image/tiff', 'image/webp',
+    'video/3gpp', 'video/3gpp2', 'video/mp4', 'video/mpeg', 'video/quicktime',
+    'video/webm', 'video/x-m4v', 'video/x-msvideo',
+]);
 const CONCURRENCY = 2;
 
 const els = {
@@ -182,7 +188,7 @@ function addFiles(files) {
 }
 
 function renderFileList() {
-    els.fileList.innerHTML = '';
+    els.fileList.replaceChildren();
     selectedFiles.forEach((file, idx) => {
         const item = document.createElement('li');
         item.className = 'file-item';
@@ -295,7 +301,7 @@ function renderReview() {
         ['Extra context', data.extraContext || 'Not provided'],
     ];
 
-    els.reviewCard.innerHTML = '';
+    els.reviewCard.replaceChildren();
     for (const [label, value] of items) {
         const item = document.createElement('div');
         item.className = 'review-item';
@@ -456,8 +462,9 @@ function getRadioValue(name) {
 }
 
 function getAllowedContentType(file) {
-    if (file.type?.startsWith('image/') || file.type?.startsWith('video/') || file.type === 'application/pdf') {
-        return file.type;
+    const reportedType = String(file.type || '').toLowerCase();
+    if (ALLOWED_CONTENT_TYPES.has(reportedType)) {
+        return reportedType;
     }
 
     const ext = file.name.split('.').pop()?.toLowerCase();

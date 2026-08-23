@@ -65,6 +65,24 @@ function parseBody(request) {
     return request.body;
 }
 
+function requestBodyIsTooLarge(request) {
+    const contentLength = Number(request.headers['content-length'] || 0);
+    if (Number.isFinite(contentLength) && contentLength > 16 * 1024) return true;
+    if (Buffer.isBuffer(request.body)) return request.body.length > 16 * 1024;
+    if (typeof request.body === 'string') return Buffer.byteLength(request.body, 'utf8') > 16 * 1024;
+    return false;
+}
+
+function isAllowedBrowserOrigin(request, siteUrl) {
+    const origin = String(request.headers.origin || '').trim();
+    if (!origin) return true;
+    try {
+        return new URL(origin).origin === new URL(siteUrl).origin;
+    } catch {
+        return false;
+    }
+}
+
 function validateItems(value) {
     if (!Array.isArray(value) || value.length === 0 || value.length > 5) {
         return null;
@@ -121,6 +139,15 @@ module.exports = async function createCheckoutSession(request, response) {
         return sendJson(response, 415, { error: 'JSON request required.', code: 'INVALID_CONTENT_TYPE' });
     }
 
+    if (requestBodyIsTooLarge(request)) {
+        return sendJson(response, 413, { error: 'Request is too large.', code: 'REQUEST_TOO_LARGE' });
+    }
+
+    const siteUrl = (process.env.SITE_URL || 'https://www.chriscerney.org').replace(/\/$/, '');
+    if (!isAllowedBrowserOrigin(request, siteUrl)) {
+        return sendJson(response, 403, { error: 'Request origin is not allowed.', code: 'INVALID_ORIGIN' });
+    }
+
     let body;
     try {
         body = parseBody(request);
@@ -148,7 +175,6 @@ module.exports = async function createCheckoutSession(request, response) {
         return sendJson(response, 500, { error: 'Checkout configuration is invalid.', code: 'INVALID_CONFIGURATION' });
     }
 
-    const siteUrl = (process.env.SITE_URL || 'https://www.chriscerney.org').replace(/\/$/, '');
     const countries = commaSeparatedEnvironment('STRIPE_SHIPPING_COUNTRIES', 'US')
         .map((country) => country.toUpperCase())
         .filter((country) => /^[A-Z]{2}$/.test(country));
@@ -207,7 +233,14 @@ module.exports = async function createCheckoutSession(request, response) {
         });
         const session = await stripeResponse.json();
 
-        if (!stripeResponse.ok || typeof session.url !== 'string' || !session.url.startsWith('https://checkout.stripe.com/')) {
+        let checkoutUrl;
+        try {
+            checkoutUrl = new URL(session.url);
+        } catch {
+            checkoutUrl = null;
+        }
+
+        if (!stripeResponse.ok || !checkoutUrl || checkoutUrl.protocol !== 'https:' || checkoutUrl.hostname !== 'checkout.stripe.com') {
             console.error('Stripe Checkout session creation failed', {
                 status: stripeResponse.status,
                 type: session?.error?.type,
@@ -218,7 +251,7 @@ module.exports = async function createCheckoutSession(request, response) {
             return sendJson(response, 502, { error: 'Checkout is temporarily unavailable.', code: 'STRIPE_ERROR' });
         }
 
-        return sendJson(response, 200, { url: session.url });
+        return sendJson(response, 200, { url: checkoutUrl.href });
     } catch (error) {
         console.error('Stripe Checkout request failed', { name: error?.name });
         return sendJson(response, 502, { error: 'Checkout is temporarily unavailable.', code: 'STRIPE_UNAVAILABLE' });

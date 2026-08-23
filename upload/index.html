@@ -69,15 +69,15 @@
                 <div class="details-body">
                     <label class="field">
                         <span class="field-label">Your name</span>
-                        <input type="text" id="senderName" autocomplete="name" placeholder="Jane Doe">
+                        <input type="text" id="senderName" autocomplete="name" maxlength="180" placeholder="Jane Doe">
                     </label>
                     <label class="field">
                         <span class="field-label">Contact (email or phone)</span>
-                        <input type="text" id="senderContact" autocomplete="email" placeholder="you@example.com">
+                        <input type="text" id="senderContact" autocomplete="email" maxlength="220" placeholder="you@example.com">
                     </label>
                     <label class="field">
                         <span class="field-label">What happened? Where? When?</span>
-                        <textarea id="description" rows="3" placeholder="What happened? Where did it happen? When was this taken?"></textarea>
+                        <textarea id="description" rows="3" maxlength="1800" placeholder="What happened? Where did it happen? When was this taken?"></textarea>
                     </label>
                     <label class="checkbox">
                         <input type="checkbox" id="anonymous">

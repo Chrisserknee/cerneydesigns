@@ -8,7 +8,7 @@
 
 const PARENT_FOLDER_ID = '1bYqiGoCQ9cyx4OHIoM3rJADvkAUh6TIQ';
 const CHUNK_SIZE = 16 * 1024 * 1024; // 16 MB: fewer requests, below Apps Script's 50 MB UrlFetch limit.
-const MAX_FILES = 30;
+const MAX_FILES = 10;
 const MAX_TOTAL_BYTES = 750 * 1024 * 1024;
 const MAX_RETRIES = 4;
 const SOFT_RUNTIME_LIMIT_MS = 4.5 * 60 * 1000;
@@ -237,7 +237,7 @@ function buildTipInfoText_(submission, files, sessionLabel) {
 
 function mirrorFile_(file, folderId, sessionLabel, startedAt) {
   if (!file || !file.url) throw new Error('File is missing a download URL.');
-  if (!String(file.url).startsWith('https://firebasestorage.googleapis.com/')) {
+  if (!/^https:\/\/firebasestorage\.googleapis\.com\/v0\/b\/tip-line-8c2d7\.firebasestorage\.app\/o\//.test(String(file.url))) {
     throw new Error('Rejected non-Firebase download URL.');
   }
 

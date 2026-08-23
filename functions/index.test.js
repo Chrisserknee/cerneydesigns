@@ -66,6 +66,59 @@ test('download token parser ignores empty token entries', () => {
     assert.equal(helpers.firstDownloadToken(''), null);
 });
 
+test('anonymous submissions are sanitized without retaining identifying data', () => {
+    const sanitized = helpers.sanitizeSubmission({
+        anonymous: true,
+        senderName: 'Private Name',
+        senderContact: 'private@example.com',
+        userAgent: 'identifying browser data',
+        description: '  Useful information  ',
+    });
+
+    assert.equal(sanitized.senderName, '');
+    assert.equal(sanitized.senderContact, '');
+    assert.equal(sanitized.userAgent, '');
+    assert.equal(sanitized.description, 'Useful information');
+});
+
+test('processing validation accepts a complete supported upload', () => {
+    const errors = helpers.validateSubmissionForProcessing(
+        { fileCount: 1, totalBytes: 42 },
+        [{ name: '01_photo.jpg', sizeBytes: 42, mimeType: 'image/jpeg' }]
+    );
+
+    assert.deepEqual(errors, []);
+});
+
+test('processing validation rejects count, size, and content-type mismatches', () => {
+    const errors = helpers.validateSubmissionForProcessing(
+        { fileCount: 2, totalBytes: 99 },
+        [{ name: '01_payload.svg', sizeBytes: 42, mimeType: 'image/svg+xml' }]
+    );
+
+    assert.match(errors.join('\n'), /file count does not match/i);
+    assert.match(errors.join('\n'), /byte count does not match/i);
+    assert.match(errors.join('\n'), /unsupported file type/i);
+});
+
+test('push notifications do not expose submission details or file URLs', () => {
+    const notification = helpers.buildPrivacySafeNotification(
+        {
+            type: 'story_submission',
+            senderName: 'Private Name',
+            senderContact: 'private@example.com',
+            description: 'Sensitive allegation',
+        },
+        [{ originalName: 'private-document.pdf', url: 'https://example.com/private-token' }],
+        [],
+        'https://console.firebase.google.com/project/example'
+    );
+    const serialized = JSON.stringify(notification);
+
+    assert.match(notification.message, /1 file attached/);
+    assert.doesNotMatch(serialized, /Private Name|private@example\.com|Sensitive allegation|private-document|private-token/);
+});
+
 test('Drive bridge accepts the legacy exact-count success response', () => {
     const files = [{ name: '01_photo.jpg' }, { name: '02_video.mov' }];
     const result = helpers.normalizeDriveBridgeResponse({

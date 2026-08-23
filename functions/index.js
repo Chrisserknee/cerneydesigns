@@ -7,15 +7,19 @@ const { randomUUID } = require('node:crypto');
 const { onObjectFinalized } = require('firebase-functions/v2/storage');
 const { defineSecret } = require('firebase-functions/params');
 const { logger } = require('firebase-functions');
-const admin = require('firebase-admin');
+const { initializeApp } = require('firebase-admin/app');
+const { getStorage } = require('firebase-admin/storage');
 const {
     buildManifestMap,
+    buildPrivacySafeNotification,
     firstDownloadToken,
     normalizeDriveBridgeResponse,
+    sanitizeSubmission,
     validateSubmission,
+    validateSubmissionForProcessing,
 } = require('./tipline-helpers');
 
-admin.initializeApp();
+initializeApp();
 
 const ntfyTopic = defineSecret('NTFY_TOPIC');
 const driveBridgeUrl = defineSecret('DRIVE_BRIDGE_URL');
@@ -38,7 +42,7 @@ exports.notifyOnTip = onObjectFinalized(
         }
 
         const folder = filePath.substring(0, filePath.lastIndexOf('/'));
-        const bucket = admin.storage().bucket(object.bucket);
+        const bucket = getStorage().bucket(object.bucket);
         const submissionFile = bucket.file(filePath);
         const sessionLabel = folder.split('/').pop() || 'tip';
         const deliveryId = event.id || `${object.bucket}:${filePath}:${object.generation || 'unknown'}`;
@@ -46,7 +50,12 @@ exports.notifyOnTip = onObjectFinalized(
         let submission;
         try {
             const [buf] = await submissionFile.download();
-            submission = JSON.parse(buf.toString('utf8'));
+            const parsedSubmission = JSON.parse(buf.toString('utf8'));
+            if (!parsedSubmission || typeof parsedSubmission !== 'object' || Array.isArray(parsedSubmission)) {
+                logger.error(`Rejected malformed submission manifest for ${folder}`);
+                return null;
+            }
+            submission = sanitizeSubmission(parsedSubmission);
         } catch (err) {
             logger.error('Failed to read submission JSON', err);
             throw err;
@@ -54,17 +63,24 @@ exports.notifyOnTip = onObjectFinalized(
 
         const [files] = await bucket.getFiles({ prefix: folder + '/' });
         const tipFiles = files.filter((file) => !file.name.endsWith('/_submission.json'));
+        const fileMetadata = tipFiles.map(fileMetadataForValidation);
+        const processingErrors = validateSubmissionForProcessing(submission, fileMetadata);
+        if (processingErrors.length) {
+            logger.error(`Rejected invalid submission for ${folder}`, { processingErrors });
+            return null;
+        }
+        const integrityWarnings = validateSubmission(submission, fileMetadata);
+        if (integrityWarnings.length) {
+            logger.error(`Rejected submission with an integrity mismatch for ${folder}`, { integrityWarnings });
+            return null;
+        }
         const manifestByStoredName = buildManifestMap(submission);
         const fileLinks = await Promise.all(
             tipFiles.map((file) => buildFileLink(file, object.bucket, manifestByStoredName))
         );
-        const integrityWarnings = validateSubmission(submission, fileLinks);
-        if (integrityWarnings.length) {
-            logger.warn(`Submission integrity warning for ${folder}`, { integrityWarnings });
-        }
 
         const consoleUrl = `https://console.firebase.google.com/project/${process.env.GCLOUD_PROJECT}/storage/${object.bucket}/files/~2F${encodeURIComponent(folder).replace(/%2F/g, '~2F')}`;
-        const notification = buildNotification(submission, fileLinks, integrityWarnings, consoleUrl);
+        const notification = buildPrivacySafeNotification(submission, fileLinks, integrityWarnings, consoleUrl);
         let workflow = await getWorkflowMetadata(submissionFile);
         let driveFolderUrl = workflow.driveFolderUrl || null;
 
@@ -94,9 +110,11 @@ exports.notifyOnTip = onObjectFinalized(
                     folderUrl: driveFolderUrl,
                     copied: driveMirror.copied.length,
                 });
+                await revokeDownloadTokens(tipFiles);
             } catch (err) {
                 logger.error('Drive mirror failed; Eventarc will retry', err);
-                if (workflow.driveFailureNotified !== 'true') {
+                workflow = await getWorkflowMetadata(submissionFile);
+                if (workflow.driveCopyStatus !== 'complete' && workflow.driveFailureNotified !== 'true') {
                     try {
                         await postNtfy(buildNtfyBody({
                             ...notification,
@@ -116,6 +134,7 @@ exports.notifyOnTip = onObjectFinalized(
             }
         } else if (workflow.driveCopyStatus === 'complete') {
             logger.info(`Drive mirror already complete for ${folder}; skipping duplicate copy`);
+            await revokeDownloadTokens(tipFiles);
         }
 
         workflow = await getWorkflowMetadata(submissionFile);
@@ -168,42 +187,23 @@ async function buildFileLink(file, bucketName, manifestByStoredName) {
     };
 }
 
-function buildNotification(submission, fileLinks, integrityWarnings, consoleUrl) {
-    const lines = [];
-    if (submission.anonymous) {
-        lines.push('Anonymous submission');
-    } else {
-        if (submission.senderName) lines.push(`From: ${submission.senderName}`);
-        if (submission.senderContact) lines.push(`Contact: ${submission.senderContact}`);
-    }
-    if (submission.description) {
-        lines.push('');
-        lines.push(submission.description.length > 500
-            ? submission.description.slice(0, 497) + '...'
-            : submission.description);
-    }
-    if (fileLinks.length) {
-        lines.push('');
-        lines.push(`Files (${fileLinks.length}):`);
-        fileLinks.forEach((file) => lines.push(`• ${file.originalName} (${formatBytes(file.sizeBytes)})`));
-    }
-    if (integrityWarnings.length) {
-        lines.push('');
-        lines.push('Upload check needs attention:');
-        integrityWarnings.forEach((warning) => lines.push(`• ${warning}`));
-    }
-
-    const isStorySubmission = submission.type === 'story_submission';
+function fileMetadataForValidation(file) {
+    const metadata = file.metadata || {};
     return {
-        title: isStorySubmission
-            ? `New Story Submission${submission.anonymous ? ' (anon)' : ''}`
-            : `New Tip: ${fileLinks.length} file${fileLinks.length === 1 ? '' : 's'}${submission.anonymous ? ' (anon)' : ''}`,
-        message: lines.join('\n') || (isStorySubmission
-            ? 'New story submission received.'
-            : 'New tip received.'),
-        consoleUrl,
-        firstDownloadUrl: fileLinks[0]?.url || null,
+        name: file.name.split('/').pop(),
+        sizeBytes: Number(metadata.size || 0),
+        mimeType: metadata.contentType || 'application/octet-stream',
     };
+}
+
+async function revokeDownloadTokens(files) {
+    await Promise.all(files.map(async (file) => {
+        const [metadata] = await file.getMetadata();
+        const customMetadata = { ...(metadata.metadata || {}) };
+        if (!customMetadata.firebaseStorageDownloadTokens) return;
+        delete customMetadata.firebaseStorageDownloadTokens;
+        await file.setMetadata({ metadata: customMetadata });
+    }));
 }
 
 function buildNtfyBody({
@@ -212,17 +212,12 @@ function buildNtfyBody({
     consoleUrl,
     clickUrl,
     driveFolderUrl = null,
-    firstDownloadUrl = null,
 }) {
     const actions = [];
     if (driveFolderUrl) {
         actions.push({ action: 'view', label: 'Open Drive Folder', url: driveFolderUrl, clear: true });
     }
     actions.push({ action: 'view', label: 'Open Firebase Folder', url: consoleUrl, clear: true });
-    if (firstDownloadUrl && actions.length < 3) {
-        actions.push({ action: 'view', label: 'Download First', url: firstDownloadUrl, clear: true });
-    }
-
     return {
         topic: ntfyTopic.value(),
         title,
@@ -258,7 +253,7 @@ async function mergeWorkflowMetadata(file, updates) {
  */
 async function mirrorSessionToDriveBridge({ deliveryId, sessionLabel, files, submission }) {
     const url = driveBridgeUrl.value();
-    if (!url || !url.startsWith('https://script.google.com/')) {
+    if (!isApprovedDriveBridgeUrl(url)) {
         throw new Error('DRIVE_BRIDGE_URL is not configured.');
     }
 
@@ -288,6 +283,19 @@ async function mirrorSessionToDriveBridge({ deliveryId, sessionLabel, files, sub
     return normalizeDriveBridgeResponse(payload, files);
 }
 
+function isApprovedDriveBridgeUrl(value) {
+    try {
+        const url = new URL(value);
+        return url.protocol === 'https:'
+            && url.hostname === 'script.google.com'
+            && /^\/macros\/s\/[A-Za-z0-9_-]+\/exec$/.test(url.pathname)
+            && !url.username
+            && !url.password;
+    } catch {
+        return false;
+    }
+}
+
 async function postNtfy(body) {
     const res = await fetch('https://ntfy.sh', {
         method: 'POST',
@@ -299,11 +307,4 @@ async function postNtfy(body) {
         throw new Error(`ntfy ${res.status}: ${text}`);
     }
     logger.info('ntfy notification sent');
-}
-
-function formatBytes(bytes) {
-    if (bytes < 1024) return Math.round(bytes) + ' B';
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-    if (bytes < 1024 * 1024 * 1024) return (bytes / 1024 / 1024).toFixed(1) + ' MB';
-    return (bytes / 1024 / 1024 / 1024).toFixed(2) + ' GB';
 }

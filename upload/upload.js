@@ -28,6 +28,12 @@ const storage = getStorage(app);
 const MAX_FILE_BYTES = 500 * 1024 * 1024; // 500 MB
 const MAX_TOTAL_BYTES = 750 * 1024 * 1024; // 750 MB per submission
 const MAX_FILES_PER_SUBMISSION = 10;
+const ALLOWED_CONTENT_TYPES = new Set([
+    'application/pdf', 'image/avif', 'image/bmp', 'image/gif', 'image/heic',
+    'image/heif', 'image/jpeg', 'image/png', 'image/tiff', 'image/webp',
+    'video/3gpp', 'video/3gpp2', 'video/mp4', 'video/mpeg', 'video/quicktime',
+    'video/webm', 'video/x-m4v', 'video/x-msvideo',
+]);
 
 // How many files to upload in parallel. Firebase Storage comfortably handles
 // multiple concurrent streams; 2 is a safe sweet spot for most connections.
@@ -132,18 +138,29 @@ function addFiles(files) {
 }
 
 function renderFileList() {
-    els.fileList.innerHTML = '';
+    els.fileList.replaceChildren();
     selectedFiles.forEach((file, idx) => {
         const li = document.createElement('li');
         li.className = 'file-item';
-        li.innerHTML = `
-            <span class="file-item-name"></span>
-            <span class="file-item-size">${formatBytes(file.size)}</span>
-            <button class="file-item-remove" aria-label="Remove file" data-idx="${idx}">&times;</button>
-        `;
+
         const displayName = file.name.length > 60 ? file.name.slice(0, 57) + '…' : file.name;
-        li.querySelector('.file-item-name').textContent = displayName;
-        li.querySelector('.file-item-name').title = file.name;
+        const name = document.createElement('span');
+        name.className = 'file-item-name';
+        name.textContent = displayName;
+        name.title = file.name;
+
+        const size = document.createElement('span');
+        size.className = 'file-item-size';
+        size.textContent = formatBytes(file.size);
+
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'file-item-remove';
+        remove.dataset.idx = String(idx);
+        remove.setAttribute('aria-label', `Remove ${file.name}`);
+        remove.textContent = '×';
+
+        li.append(name, size, remove);
         els.fileList.appendChild(li);
     });
     els.submitBtn.disabled = selectedFiles.length === 0;
@@ -403,8 +420,9 @@ function safeName(name) {
 }
 
 function getAllowedContentType(file) {
-    if (file.type?.startsWith('image/') || file.type?.startsWith('video/') || file.type === 'application/pdf') {
-        return file.type;
+    const reportedType = String(file.type || '').toLowerCase();
+    if (ALLOWED_CONTENT_TYPES.has(reportedType)) {
+        return reportedType;
     }
 
     // Some mobile browsers report HEIC/HEIF as an empty MIME type.

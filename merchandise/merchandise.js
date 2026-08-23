@@ -343,20 +343,46 @@
         window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
     }
 
-    function showOrderStatus() {
-        const status = new URLSearchParams(window.location.search).get('checkout');
+    async function showOrderStatus() {
+        const parameters = new URLSearchParams(window.location.search);
+        const status = parameters.get('checkout');
         if (!['success', 'cancelled'].includes(status)) return;
         const kicker = document.getElementById('orderStatusKicker');
         const title = document.getElementById('orderStatusTitle');
         const body = document.getElementById('orderStatusBody');
 
         if (status === 'success') {
-            cart.clear();
-            saveCart();
-            kicker.textContent = 'Payment successful';
-            title.textContent = 'Your sticker order is confirmed.';
-            body.textContent = 'A Stripe receipt will be sent to the email used at checkout. Your order will now be prepared for shipping. Due to high demand, shipping times may vary.';
-            renderCart();
+            const sessionId = parameters.get('session_id');
+            kicker.textContent = 'Confirming payment';
+            title.textContent = 'Checking your Stripe order.';
+            body.textContent = 'This usually takes only a moment.';
+            orderStatus.dataset.status = 'checking';
+            orderStatus.hidden = false;
+            document.body.classList.add('order-status-open');
+            window.requestAnimationFrame(() => orderStatus.focus({ preventScroll: true }));
+
+            try {
+                if (!sessionId) throw new Error('MISSING_SESSION');
+                const response = await fetch(`/api/checkout-session-status?session_id=${encodeURIComponent(sessionId)}`, {
+                    headers: { Accept: 'application/json' },
+                });
+                const result = await response.json();
+                if (!response.ok || result.confirmed !== true) throw new Error(result.code || 'NOT_CONFIRMED');
+
+                cart.clear();
+                saveCart();
+                kicker.textContent = 'Payment successful';
+                title.textContent = 'Your sticker order is confirmed.';
+                body.textContent = 'A Stripe receipt will be sent to the email used at checkout. Your order will now be prepared for shipping. Due to high demand, shipping times may vary.';
+                orderStatus.dataset.status = 'success';
+                renderCart();
+            } catch {
+                kicker.textContent = 'Payment verification needed';
+                title.textContent = 'We could not verify this order yet.';
+                body.textContent = 'Your cart has been kept. Check your Stripe receipt, then contact order support if your payment completed.';
+                orderStatus.dataset.status = 'error';
+            }
+            return;
         } else {
             kicker.textContent = 'Checkout cancelled';
             title.textContent = 'Your cart is still here.';
