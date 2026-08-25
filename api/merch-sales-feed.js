@@ -26,6 +26,14 @@ function salesCsv(sales) {
             sales.totals.bundleUnits,
             sales.generatedAt,
         ],
+        [
+            'summary:paid-orders',
+            'Paid orders',
+            0,
+            0,
+            sales.totals.orders,
+            sales.generatedAt,
+        ],
     ];
     return `${rows.map((row) => row.map(csvCell).join(',')).join('\n')}\n`;
 }
