@@ -498,6 +498,33 @@ button {
     object-fit: contain;
 }
 
+.product-sold-out-banner {
+    position: absolute;
+    top: 50%;
+    left: -8%;
+    z-index: 4;
+    width: 116%;
+    padding: 11px 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.42);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.42);
+    background: #c64f55;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.38);
+    color: #fff;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 1.25rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    line-height: 1;
+    pointer-events: none;
+    text-align: center;
+    text-transform: uppercase;
+    transform: translateY(-50%) rotate(-4deg);
+}
+
+.product-sold-out-banner[hidden] {
+    display: none;
+}
+
 .product-gallery {
     position: absolute;
     right: 12px;
@@ -718,7 +745,7 @@ button {
 
 .variant-button.sold-out {
     position: relative;
-    cursor: not-allowed;
+    cursor: pointer;
 }
 
 .variant-button.sold-out img {

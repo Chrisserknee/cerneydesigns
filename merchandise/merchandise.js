@@ -122,6 +122,11 @@
         } else {
             media.appendChild(image);
         }
+        const soldOutBanner = document.createElement('span');
+        soldOutBanner.className = 'product-sold-out-banner';
+        soldOutBanner.textContent = 'Sold out';
+        soldOutBanner.hidden = true;
+        media.appendChild(soldOutBanner);
 
         let designPhotoButton;
         let designPhotoThumbnail;
@@ -237,6 +242,7 @@
 
             media.classList.toggle('showing-reference', showingReference);
             media.classList.toggle('showing-lifestyle', showingLifestyle);
+            soldOutBanner.hidden = selected.variant.available !== false;
             referenceButton?.classList.toggle('active', showingReference);
             if (referenceButton) {
                 referenceButton.textContent = showingReference ? 'Back to design' : 'Size reference';
@@ -271,7 +277,6 @@
                 button.setAttribute('aria-label', `${variant.name}${variant.available === false ? ', sold out' : ''}`);
                 button.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
                 button.title = variant.available === false ? `${variant.name} - Sold out` : variant.name;
-                button.disabled = variant.available === false;
                 const thumbnailSources = Array.isArray(variant.images) ? variant.images.slice(0, 3) : [variant.image];
                 if (thumbnailSources.length > 1) button.classList.add('bundle-variant-button');
                 button.append(...thumbnailSources.map((source) => {
