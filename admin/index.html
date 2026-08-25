@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow, noarchive">
+    <title>Store Admin — Chris Cerney</title>
+    <link rel="icon" href="/images/favicon.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/admin/style.css">
+</head>
+<body>
+    <header class="admin-header">
+        <a class="brand" href="/" aria-label="Chris Cerney home"><strong>CHRIS</strong> <span>CERNEY</span></a>
+        <div class="header-actions">
+            <a href="/merchandise/">View store</a>
+            <button type="button" class="text-button" id="signOutButton" hidden>Sign out</button>
+        </div>
+    </header>
+
+    <main>
+        <section class="login-view" id="loginView" aria-labelledby="loginHeading">
+            <form class="login-panel" id="loginForm">
+                <p class="eyebrow">Private dashboard</p>
+                <h1 id="loginHeading">Store administrator</h1>
+                <p>Sign in to view sales and manage sticker inventory.</p>
+                <label for="password">Admin password</label>
+                <div class="password-row">
+                    <input id="password" name="password" type="password" minlength="12" maxlength="256" autocomplete="current-password" required>
+                    <button type="submit" class="primary-button">Sign in</button>
+                </div>
+                <p class="form-message" id="loginMessage" role="status" aria-live="polite"></p>
+            </form>
+        </section>
+
+        <section class="dashboard" id="dashboard" hidden aria-labelledby="dashboardHeading">
+            <div class="dashboard-heading">
+                <div>
+                    <p class="eyebrow">Merchandise</p>
+                    <h1 id="dashboardHeading">Sales &amp; inventory</h1>
+                    <p id="lastUpdated">Loading Stripe data…</p>
+                </div>
+                <button type="button" class="icon-button" id="refreshButton" aria-label="Refresh sales data" title="Refresh sales data">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6v5h-5M4 18v-5h5M18.5 9A7 7 0 0 0 6.2 6.2L4 11m16 2-2.2 4.8A7 7 0 0 1 5.5 15"/></svg>
+                </button>
+            </div>
+
+            <div class="summary-grid" id="summaryGrid" aria-label="Sales summary"></div>
+
+            <section class="admin-section inventory-section" aria-labelledby="inventoryHeading">
+                <div class="section-heading">
+                    <div>
+                        <h2 id="inventoryHeading">Inventory</h2>
+                        <p>Enter the number physically on hand right now. Future paid Stripe orders are deducted automatically.</p>
+                    </div>
+                    <span class="status-pill" id="inventoryStatus">Not configured</span>
+                </div>
+                <form id="inventoryForm">
+                    <div class="inventory-table-wrap">
+                        <table class="inventory-table">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Sticker</th>
+                                    <th scope="col">Direct</th>
+                                    <th scope="col">Bundles</th>
+                                    <th scope="col">Used</th>
+                                    <th scope="col">Remaining</th>
+                                    <th scope="col">Count on hand</th>
+                                </tr>
+                            </thead>
+                            <tbody id="inventoryRows"></tbody>
+                        </table>
+                    </div>
+                    <div class="inventory-actions">
+                        <p id="inventoryMessage" class="form-message" role="status" aria-live="polite"></p>
+                        <button type="submit" class="primary-button" id="saveInventoryButton">Save inventory count</button>
+                    </div>
+                </form>
+            </section>
+
+            <section class="admin-section" aria-labelledby="recentHeading">
+                <div class="section-heading">
+                    <div>
+                        <h2 id="recentHeading">Recent orders</h2>
+                        <p>Paid Stripe orders only. Customer information is intentionally omitted.</p>
+                    </div>
+                </div>
+                <div class="orders-list" id="ordersList"></div>
+            </section>
+        </section>
+    </main>
+
+    <script src="/admin/admin.js"></script>
+</body>
+</html>

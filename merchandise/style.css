@@ -732,6 +732,22 @@ button {
     border-color: var(--blue-bright);
 }
 
+.variant-button.sold-out {
+    position: relative;
+    cursor: not-allowed;
+    filter: grayscale(1);
+    opacity: 0.34;
+}
+
+.variant-button.sold-out::after {
+    content: '';
+    position: absolute;
+    inset: 50% 5px auto;
+    height: 1px;
+    background: var(--salmon);
+    transform: rotate(-35deg);
+}
+
 .variant-button.selected {
     box-shadow: 0 0 0 2px rgba(155, 187, 214, 0.2);
 }

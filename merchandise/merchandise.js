@@ -53,7 +53,18 @@
     }
 
     function isPurchasable(product) {
-        return product.available === true && Number.isInteger(product.price) && product.price > 0;
+        return product.available === true
+            && Number.isInteger(product.price)
+            && product.price > 0
+            && product.variants.some((variant) => variant.available !== false);
+    }
+
+    function variantIsPurchasable(product, variant) {
+        return isPurchasable(product) && variant?.available !== false;
+    }
+
+    function maximumQuantity(variant) {
+        return Number.isInteger(variant?.remaining) ? Math.min(10, Math.max(0, variant.remaining)) : 10;
     }
 
     function createShippingIcon() {
@@ -84,7 +95,10 @@
     }
 
     function createProductCard(product) {
-        const selected = { variant: product.variants[0], mediaMode: 'variant' };
+        const selected = {
+            variant: product.variants.find((variant) => variant.available !== false) || product.variants[0],
+            mediaMode: 'variant',
+        };
         const card = document.createElement('article');
         card.className = `product-card${product.featured ? ' bundle-product' : ''}`;
 
@@ -143,7 +157,7 @@
         body.className = 'product-body';
         const status = document.createElement('span');
         status.className = `product-status${isPurchasable(product) ? ' available' : ''}`;
-        status.textContent = isPurchasable(product) ? 'Available' : 'Checkout setup';
+        status.textContent = isPurchasable(product) ? 'Available' : 'Sold out';
         const title = document.createElement('h3');
         title.textContent = product.name;
         const description = document.createElement('p');
@@ -188,6 +202,7 @@
         const controls = document.createElement('div');
         controls.className = 'product-controls';
         let referenceButton;
+        let updateAddButton = () => {};
 
         const updateMedia = () => {
             const showingReference = selected.mediaMode === 'reference';
@@ -242,13 +257,15 @@
             variantList.setAttribute('role', 'group');
             variantList.setAttribute('aria-label', `${product.name} finish`);
 
-            product.variants.forEach((variant, index) => {
+            product.variants.forEach((variant) => {
                 const button = document.createElement('button');
                 button.type = 'button';
-                button.className = `variant-button${index === 0 ? ' selected' : ''}`;
-                button.setAttribute('aria-label', variant.name);
-                button.setAttribute('aria-pressed', index === 0 ? 'true' : 'false');
-                button.title = variant.name;
+                const isSelected = variant === selected.variant;
+                button.className = `variant-button${isSelected ? ' selected' : ''}${variant.available === false ? ' sold-out' : ''}`;
+                button.setAttribute('aria-label', `${variant.name}${variant.available === false ? ', sold out' : ''}`);
+                button.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
+                button.title = variant.available === false ? `${variant.name} - Sold out` : variant.name;
+                button.disabled = variant.available === false;
                 const thumbnailSources = Array.isArray(variant.images) ? variant.images.slice(0, 3) : [variant.image];
                 if (thumbnailSources.length > 1) button.classList.add('bundle-variant-button');
                 button.append(...thumbnailSources.map((source) => {
@@ -268,6 +285,7 @@
                         candidate.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
                     });
                     updateMedia();
+                    updateAddButton();
                 });
                 variantList.appendChild(button);
             });
@@ -301,15 +319,19 @@
         const addButton = document.createElement('button');
         addButton.type = 'button';
         addButton.className = 'add-button';
-        addButton.textContent = isPurchasable(product) ? 'Add to cart' : 'Checkout coming soon';
-        addButton.disabled = !isPurchasable(product);
+        updateAddButton = () => {
+            const available = variantIsPurchasable(product, selected.variant);
+            addButton.textContent = available ? 'Add to cart' : 'Sold out';
+            addButton.disabled = !available;
+        };
+        updateAddButton();
         addButton.addEventListener('click', () => {
             addToCart(product.id, selected.variant.id, addButton);
             addButton.textContent = 'Added';
             addButton.classList.add('added');
             window.setTimeout(() => {
-                addButton.textContent = 'Add to cart';
                 addButton.classList.remove('added');
+                updateAddButton();
             }, 1200);
         });
         actionRow.append(priceBlock, addButton);
@@ -325,6 +347,40 @@
 
     function renderCatalog() {
         productGrid.replaceChildren(...catalog.map(createProductCard));
+    }
+
+    function applyInventory(inventory) {
+        if (!inventory?.tracking) return;
+        catalog.forEach((product) => {
+            product.variants.forEach((variant) => {
+                const state = product.id === 'independent-news-supporter-bundle'
+                    ? inventory.bundle
+                    : inventory.variants?.[`${product.id}:${variant.id}`];
+                if (!state?.tracked) return;
+                variant.available = state.available === true;
+                variant.remaining = Number.isInteger(state.remaining) ? state.remaining : null;
+            });
+        });
+        for (const [key, quantity] of cart) {
+            const selection = cartSelection(key);
+            if (!selection || !variantIsPurchasable(selection.product, selection.variant)) {
+                cart.delete(key);
+                continue;
+            }
+            const maximum = maximumQuantity(selection.variant);
+            if (quantity > maximum) cart.set(key, maximum);
+        }
+        saveCart();
+    }
+
+    async function loadInventory() {
+        try {
+            const response = await fetch('/api/store-inventory', { headers: { Accept: 'application/json' } });
+            if (!response.ok) return;
+            applyInventory(await response.json());
+        } catch {
+            // Checkout performs its own server-side stock validation.
+        }
     }
 
     function pulseCartButtons() {
@@ -401,18 +457,20 @@
     function addToCart(productId, variantId, sourceElement) {
         const product = productsById.get(productId);
         const variant = variantFor(product, variantId);
-        if (!product || !variant || !isPurchasable(product)) return;
+        if (!product || !variant || !variantIsPurchasable(product, variant)) return;
         const key = `${productId}::${variantId}`;
-        cart.set(key, Math.min((cart.get(key) || 0) + 1, 10));
+        cart.set(key, Math.min((cart.get(key) || 0) + 1, maximumQuantity(variant)));
         saveCart();
         renderCart();
         window.requestAnimationFrame(() => animateProductToCart(sourceElement, variant));
     }
 
     function changeQuantity(key, change) {
+        const selection = cartSelection(key);
+        if (!selection) return;
         const quantity = (cart.get(key) || 0) + change;
         if (quantity <= 0) cart.delete(key);
-        else cart.set(key, Math.min(quantity, 10));
+        else cart.set(key, Math.min(quantity, maximumQuantity(selection.variant)));
         saveCart();
         renderCart();
     }
@@ -472,7 +530,7 @@
         count.textContent = quantity;
         count.setAttribute('aria-label', `Quantity ${quantity}`);
         const increase = createQuantityButton('+', `Increase ${variant.name} quantity`, () => changeQuantity(key, 1));
-        increase.disabled = quantity >= 10;
+        increase.disabled = quantity >= maximumQuantity(variant);
         const remove = createQuantityButton('\u2715', `Remove ${variant.name} from cart`, () => {
             cart.delete(key);
             saveCart();
@@ -487,9 +545,11 @@
     }
 
     function validCartEntries() {
-        return Array.from(cart.entries()).filter(([key]) => {
+        return Array.from(cart.entries()).filter(([key, quantity]) => {
             const selection = cartSelection(key);
-            return selection && isPurchasable(selection.product);
+            return selection
+                && variantIsPurchasable(selection.product, selection.variant)
+                && quantity <= maximumQuantity(selection.variant);
         });
     }
 
@@ -534,8 +594,15 @@
             const result = await response.json();
             if (!response.ok || !result.url) throw new Error(result.code || 'CHECKOUT_UNAVAILABLE');
             window.location.assign(result.url);
-        } catch {
-            checkoutMessage.textContent = 'Checkout is temporarily unavailable. Please try again.';
+        } catch (error) {
+            if (error.message === 'OUT_OF_STOCK') {
+                checkoutMessage.textContent = 'One or more stickers just sold out. Your cart has been updated.';
+                await loadInventory();
+                renderCatalog();
+                renderCart();
+            } else {
+                checkoutMessage.textContent = 'Checkout is temporarily unavailable. Please try again.';
+            }
             checkoutButton.disabled = false;
             checkoutButton.classList.remove('loading');
             checkoutLabel.textContent = 'Secure checkout';
@@ -633,7 +700,10 @@
     document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape' && !orderStatus.hidden) dismissOrderStatus();
     });
-    renderCatalog();
-    renderCart();
-    showOrderStatus();
+    (async () => {
+        await loadInventory();
+        renderCatalog();
+        renderCart();
+        showOrderStatus();
+    })();
 })();

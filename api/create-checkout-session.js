@@ -1,5 +1,7 @@
 'use strict';
 
+const { getInventorySnapshot } = require('./_lib/stripe-store');
+
 const MAX_ITEM_QUANTITY = 10;
 const MAX_CART_QUANTITY = 25;
 const CATALOG_VERSION = 'sticker-drop-8';
@@ -288,6 +290,20 @@ function itemDetailsFor(items) {
     }).join(' | ');
 }
 
+function inventoryCanFulfill(items, inventory) {
+    if (!inventory?.fullyTracked) return true;
+    const demand = new Map(inventory.items.map((item) => [item.sku, 0]));
+    for (const item of items) {
+        if (item.id === 'independent-news-supporter-bundle') {
+            demand.forEach((quantity, sku) => demand.set(sku, quantity + item.quantity));
+        } else {
+            const sku = `${item.id}:${item.variant}`;
+            if (demand.has(sku)) demand.set(sku, demand.get(sku) + item.quantity);
+        }
+    }
+    return inventory.items.every((item) => demand.get(item.sku) <= item.remaining);
+}
+
 module.exports = async function createCheckoutSession(request, response) {
     if (request.method !== 'POST') {
         response.setHeader('Allow', 'POST');
@@ -326,6 +342,18 @@ module.exports = async function createCheckoutSession(request, response) {
     const secretKey = (process.env.STRIPE_SECRET_KEY || '').trim();
     if (!secretKey) {
         return sendJson(response, 503, { error: 'Checkout is not configured.', code: 'CHECKOUT_NOT_CONFIGURED' });
+    }
+
+    if (process.env.INVENTORY_TRACKING_ENABLED === 'true') {
+        try {
+            const { inventory } = await getInventorySnapshot({ fresh: true });
+            if (!inventoryCanFulfill(items, inventory)) {
+                return sendJson(response, 409, { error: 'One or more stickers just sold out. Please refresh your cart.', code: 'OUT_OF_STOCK' });
+            }
+        } catch (error) {
+            console.error('Inventory validation failed', { name: error?.name, status: error?.status, code: error?.code });
+            return sendJson(response, 503, { error: 'Inventory could not be confirmed. Please try again.', code: 'INVENTORY_UNAVAILABLE' });
+        }
     }
 
     let priceItems;
