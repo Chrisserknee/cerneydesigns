@@ -107,6 +107,18 @@ test('admin sales totals include exact colors and bundle inventory consumption',
                             metadata: { item_selections: 'independent-news-supporter-bundle:complete-five-sticker-set:1' },
                             payment_intent: { latest_charge: { amount_refunded: 0, balance_transaction: { fee: 123, net: 3075 } } },
                         },
+                        {
+                            id: 'cs_live_newbundlesale1234567890123',
+                            mode: 'payment',
+                            status: 'complete',
+                            payment_status: 'paid',
+                            created: 1787530000,
+                            amount_total: 3198,
+                            amount_subtotal: 2999,
+                            shipping_cost: { amount_total: 199 },
+                            metadata: { item_selections: 'independent-news-supporter-bundle:complete-four-sticker-set:1' },
+                            payment_intent: { latest_charge: { amount_refunded: 0, balance_transaction: { fee: 123, net: 3075 } } },
+                        },
                     ],
                 }),
             };
@@ -128,9 +140,9 @@ test('admin sales totals include exact colors and bundle inventory consumption',
             headers: { cookie, 'user-agent': 'test-browser' },
         }, response);
         assert.equal(response.statusCode, 200);
-        assert.equal(response.body.summary.orders, 2);
-        assert.equal(response.body.summary.bundleUnits, 1);
-        assert.equal(response.body.summary.totalCollected, 5097);
+        assert.equal(response.body.summary.orders, 3);
+        assert.equal(response.body.summary.bundleUnits, 2);
+        assert.equal(response.body.summary.totalCollected, 8295);
         const blackGold = response.body.inventory.items.find((item) => item.sku === 'sticker-2-inch:black-gold-holographic');
         const coastalBlue = response.body.inventory.items.find((item) => item.sku === 'sticker-2-inch:coastal-blue');
         const fourInch = response.body.inventory.items.find((item) => item.sku === 'sticker-4-inch:stay-classy');
@@ -140,9 +152,9 @@ test('admin sales totals include exact colors and bundle inventory consumption',
         );
         assert.deepEqual(
             { direct: coastalBlue.directSold, bundle: coastalBlue.bundleSold, used: coastalBlue.totalUsed },
-            { direct: 1, bundle: 1, used: 2 },
+            { direct: 1, bundle: 2, used: 3 },
         );
-        assert.equal(fourInch.totalUsed, 1);
+        assert.equal(fourInch.totalUsed, 2);
         assert.equal(response.body.summary.legacyUnspecified, 0);
     } finally {
         global.fetch = previousFetch;

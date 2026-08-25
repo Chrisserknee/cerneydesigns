@@ -1,14 +1,14 @@
 'use strict';
 
 const { getInventorySnapshot } = require('./_lib/stripe-store');
+const { bundle, CATALOG_VERSION } = require('./_lib/store-catalog');
 
 const MAX_ITEM_QUANTITY = 10;
 const MAX_CART_QUANTITY = 25;
-const CATALOG_VERSION = 'sticker-drop-8';
 const SMALL_ORDER_SHIPPING = 99;
 const BUNDLE_ORDER_SHIPPING = 199;
 const LARGE_ORDER_SHIPPING = 299;
-const SUPPORTER_BUNDLE_LOOKUP_KEY = 'independent_news_supporter_bundle_v3';
+const SUPPORTER_BUNDLE_LOOKUP_KEY = 'independent_news_supporter_bundle_v4';
 
 const cachedVariantPrices = new Map();
 
@@ -20,11 +20,11 @@ const productPriceEnvironment = {
 
 const catalog = {
     'independent-news-supporter-bundle': {
-        name: 'Independent News Supporter Bundle - All Four Colorways + 4-Inch Stay Classy',
-        description: 'One 4-inch Stay Classy sticker and all four 2-inch holographic colorways.',
+        name: 'Independent News Supporter Bundle - Three Colorways + 4-Inch Stay Classy',
+        description: 'One 4-inch Stay Classy sticker and three available 2-inch holographic colorways.',
         unitAmount: 2999,
         variants: {
-            'complete-five-sticker-set': 'Complete five-sticker set',
+            'complete-four-sticker-set': 'Complete four-sticker set',
         },
     },
     'sticker-4-inch': {
@@ -41,10 +41,6 @@ const catalog = {
         description: 'Round holographic Chris Cerney portrait sticker.',
         unitAmount: 600,
         variants: {
-            'black-gold-holographic': {
-                name: 'Black and Gold Holographic',
-                imagePath: '/images/merchandise/chris-cerney-black-gold-holographic.webp',
-            },
             'gold-holographic': {
                 name: 'Gold Holographic',
                 imagePath: '/images/merchandise/chris-cerney-gold-holographic.webp',
@@ -295,7 +291,9 @@ function inventoryCanFulfill(items, inventory) {
     const demand = new Map(inventory.items.map((item) => [item.sku, 0]));
     for (const item of items) {
         if (item.id === 'independent-news-supporter-bundle') {
-            demand.forEach((quantity, sku) => demand.set(sku, quantity + item.quantity));
+            Object.entries(bundle.components).forEach(([sku, componentQuantity]) => {
+                if (demand.has(sku)) demand.set(sku, demand.get(sku) + (item.quantity * componentQuantity));
+            });
         } else {
             const sku = `${item.id}:${item.variant}`;
             if (demand.has(sku)) demand.set(sku, demand.get(sku) + item.quantity);

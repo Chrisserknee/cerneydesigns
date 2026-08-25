@@ -21,7 +21,13 @@
             const saved = JSON.parse(localStorage.getItem(storageKey));
             if (!saved || typeof saved !== 'object') return new Map();
             return new Map(Object.entries(saved)
-                .filter(([key, quantity]) => cartSelection(key) && Number.isInteger(quantity) && quantity > 0)
+                .filter(([key, quantity]) => {
+                    const selection = cartSelection(key);
+                    return selection
+                        && variantIsPurchasable(selection.product, selection.variant)
+                        && Number.isInteger(quantity)
+                        && quantity > 0;
+                })
                 .map(([key, quantity]) => [key, Math.min(quantity, 10)]));
         } catch {
             return new Map();
@@ -350,9 +356,14 @@
     }
 
     function applyInventory(inventory) {
-        if (!inventory?.tracking) return;
         catalog.forEach((product) => {
             product.variants.forEach((variant) => {
+                if (variant.forceSoldOut === true) {
+                    variant.available = false;
+                    variant.remaining = 0;
+                    return;
+                }
+                if (!inventory?.tracking) return;
                 const state = product.id === 'independent-news-supporter-bundle'
                     ? inventory.bundle
                     : inventory.variants?.[`${product.id}:${variant.id}`];

@@ -75,6 +75,25 @@ test('checkout rejects oversized request bodies', { concurrency: false }, async 
     assert.equal(response.body.code, 'REQUEST_TOO_LARGE');
 });
 
+test('checkout rejects the sold-out Black and Gold variant server-side', { concurrency: false }, async () => {
+    configureCheckoutEnvironment();
+    const previousFetch = global.fetch;
+    let stripeWasCalled = false;
+    global.fetch = async () => {
+        stripeWasCalled = true;
+        throw new Error('Stripe should not be called for a sold-out variant');
+    };
+    try {
+        const response = responseRecorder();
+        await createCheckoutSession(checkoutRequest(), response);
+        assert.equal(response.statusCode, 400);
+        assert.equal(response.body.code, 'INVALID_CART');
+        assert.equal(stripeWasCalled, false);
+    } finally {
+        global.fetch = previousFetch;
+    }
+});
+
 test('checkout rejects Stripe lookalike redirect hosts', { concurrency: false }, async () => {
     configureCheckoutEnvironment();
     const previousFetch = global.fetch;
@@ -107,7 +126,7 @@ test('checkout status confirms only paid sessions from this catalog', { concurre
             mode: 'payment',
             status: 'complete',
             payment_status: 'paid',
-            metadata: { catalog_version: 'sticker-drop-8' },
+            metadata: { catalog_version: 'sticker-drop-9' },
         }),
     });
     try {
@@ -183,17 +202,17 @@ test('supporter bundle resolves its current Stripe Price and special shipping am
             body: {
                 items: [{
                     id: 'independent-news-supporter-bundle',
-                    variant: 'complete-five-sticker-set',
+                    variant: 'complete-four-sticker-set',
                     quantity: 1,
                 }],
             },
         }), response);
         assert.equal(response.statusCode, 200);
         assert.equal(requests.length, 2);
-        assert.match(requests[0].url, /independent_news_supporter_bundle_v3/);
+        assert.match(requests[0].url, /independent_news_supporter_bundle_v4/);
         assert.equal(stripeParameters.get('line_items[0][price]'), 'price_bundle2999');
         assert.equal(stripeParameters.get('shipping_options[0][shipping_rate_data][fixed_amount][amount]'), '199');
-        assert.equal(stripeParameters.get('metadata[catalog_version]'), 'sticker-drop-8');
+        assert.equal(stripeParameters.get('metadata[catalog_version]'), 'sticker-drop-9');
     } finally {
         global.fetch = previousFetch;
     }
@@ -233,7 +252,7 @@ test('supporter bundle creates a reusable Stripe product and price when not conf
             body: {
                 items: [{
                     id: 'independent-news-supporter-bundle',
-                    variant: 'complete-five-sticker-set',
+                    variant: 'complete-four-sticker-set',
                     quantity: 1,
                 }],
             },
@@ -242,8 +261,8 @@ test('supporter bundle creates a reusable Stripe product and price when not conf
         assert.equal(requests.length, 3);
         const createPriceParameters = new URLSearchParams(requests[1].options.body);
         assert.equal(createPriceParameters.get('unit_amount'), '2999');
-        assert.equal(createPriceParameters.get('lookup_key'), 'independent_news_supporter_bundle_v3');
-        assert.equal(createPriceParameters.get('product_data[name]'), 'Independent News Supporter Bundle - All Four Colorways + 4-Inch Stay Classy');
+        assert.equal(createPriceParameters.get('lookup_key'), 'independent_news_supporter_bundle_v4');
+        assert.equal(createPriceParameters.get('product_data[name]'), 'Independent News Supporter Bundle - Three Colorways + 4-Inch Stay Classy');
         const checkoutParameters = new URLSearchParams(requests[2].options.body);
         assert.equal(checkoutParameters.get('line_items[0][price]'), 'price_createdbundle');
         assert.equal(checkoutParameters.get('shipping_options[0][shipping_rate_data][fixed_amount][amount]'), '199');

@@ -21,6 +21,7 @@ test('sales feed contains aggregate counts without order or customer data', () =
     assert.match(csv, /sticker-2-inch:black-gold-holographic/);
     assert.match(csv, /,30,8,38,/);
     assert.match(csv, /summary:paid-orders,Paid orders,0,0,41,/);
+    assert.match(csv, /independent-news-supporter-bundle:complete-four-sticker-set/);
     assert.doesNotMatch(csv, /private@example\.com|address/i);
 });
 

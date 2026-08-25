@@ -1,6 +1,7 @@
 'use strict';
 
 const { getSales } = require('./_lib/stripe-store');
+const { bundle } = require('./_lib/store-catalog');
 
 function csvCell(value) {
     const text = String(value ?? '');
@@ -19,7 +20,7 @@ function salesCsv(sales) {
             sales.generatedAt,
         ]),
         [
-            'independent-news-supporter-bundle:complete-five-sticker-set',
+            bundle.sku,
             'Independent News Supporter Bundle',
             sales.totals.bundleUnits,
             0,

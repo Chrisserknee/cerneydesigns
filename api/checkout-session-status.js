@@ -1,6 +1,8 @@
 'use strict';
 
-const CATALOG_VERSION = 'sticker-drop-8';
+const { CATALOG_VERSION } = require('./_lib/store-catalog');
+
+const VALID_CATALOG_VERSIONS = new Set(['sticker-drop-8', CATALOG_VERSION]);
 
 function sendJson(response, status, body) {
     response.setHeader('Cache-Control', 'no-store');
@@ -44,7 +46,7 @@ module.exports = async function checkoutSessionStatus(request, response) {
         const confirmed = session.mode === 'payment'
             && session.status === 'complete'
             && session.payment_status === 'paid'
-            && session.metadata?.catalog_version === CATALOG_VERSION;
+            && VALID_CATALOG_VERSIONS.has(session.metadata?.catalog_version);
 
         return sendJson(response, 200, { confirmed });
     } catch (error) {

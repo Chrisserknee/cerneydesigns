@@ -1,6 +1,6 @@
 'use strict';
 
-const { bundle, inventoryItems, itemsBySku } = require('./store-catalog');
+const { bundle, bundlesBySku, inventoryItems, itemsBySku } = require('./store-catalog');
 
 const INVENTORY_MARKER = 'chris_cerney_store_inventory_v1';
 const MAX_SESSION_PAGES = 20;
@@ -46,7 +46,7 @@ function parseItemSelections(value) {
         const [productId, variantId, quantityText] = entry.split(':');
         const quantity = Number(quantityText);
         const sku = `${productId}:${variantId}`;
-        if ((!itemsBySku.has(sku) && sku !== bundle.sku) || !Number.isInteger(quantity) || quantity < 1) continue;
+        if ((!itemsBySku.has(sku) && !bundlesBySku.has(sku)) || !Number.isInteger(quantity) || quantity < 1) continue;
         selections.push({ sku, quantity });
     }
     return selections;
@@ -55,7 +55,11 @@ function parseItemSelections(value) {
 function selectionFromLineItem(lineItem) {
     const text = `${lineItem?.description || ''} ${lineItem?.price?.product?.name || ''}`.toLowerCase();
     const quantity = Number.isInteger(lineItem?.quantity) && lineItem.quantity > 0 ? lineItem.quantity : 1;
-    if (text.includes('independent news supporter bundle')) return { sku: bundle.sku, quantity };
+    if (text.includes('independent news supporter bundle')) {
+        const legacyBundle = Array.from(bundlesBySku.values()).find((candidate) => candidate !== bundle);
+        const isLegacy = text.includes('all four') || text.includes('five-sticker') || text.includes('five sticker');
+        return { sku: isLegacy && legacyBundle ? legacyBundle.sku : bundle.sku, quantity };
+    }
     if (text.includes('4-inch stay classy') || text.includes('4 inch stay classy')) {
         return { sku: 'sticker-4-inch:stay-classy', quantity };
     }
@@ -120,12 +124,13 @@ async function calculateSales() {
         const orderItems = [];
 
         for (const selection of selections) {
-            if (selection.sku === bundle.sku) {
+            const bundleDefinition = bundlesBySku.get(selection.sku);
+            if (bundleDefinition) {
                 totals.bundleUnits += selection.quantity;
-                Object.entries(bundle.components).forEach(([sku, componentQuantity]) => {
+                Object.entries(bundleDefinition.components).forEach(([sku, componentQuantity]) => {
                     bundleConsumption[sku] += selection.quantity * componentQuantity;
                 });
-                orderItems.push(`${bundle.name} x${selection.quantity}`);
+                orderItems.push(`${bundleDefinition.name} x${selection.quantity}`);
             } else if (selection.sku === 'legacy:2-inch-unspecified') {
                 totals.legacyUnspecified += selection.quantity;
                 orderItems.push(`2-Inch Sticker (color unspecified) x${selection.quantity}`);
@@ -211,8 +216,11 @@ function inventoryFromProduct(product, sales) {
         };
     });
     const trackedItems = items.filter((item) => item.tracked);
-    const bundleRemaining = trackedItems.length === items.length
-        ? Math.min(...items.map((item) => item.remaining))
+    const inventoryBySku = new Map(items.map((item) => [item.sku, item]));
+    const bundleItems = Object.entries(bundle.components)
+        .map(([sku, quantity]) => ({ item: inventoryBySku.get(sku), quantity }));
+    const bundleRemaining = bundleItems.every(({ item }) => item?.tracked)
+        ? Math.min(...bundleItems.map(({ item, quantity }) => Math.floor(item.remaining / quantity)))
         : null;
     return {
         tracking: trackedItems.length > 0,

@@ -2,7 +2,7 @@ window.MERCH_CATALOG = [
     {
         id: 'independent-news-supporter-bundle',
         name: 'Independent News Supporter Bundle',
-        description: 'All four 2-inch holographic colorways plus one 4-inch Stay Classy sticker.',
+        description: 'Three available 2-inch holographic colorways plus one 4-inch Stay Classy sticker.',
         details: 'A limited-release set, layered by hand with premium weather-resistant vinyl and fade-resistant color.',
         price: 2999,
         shipping: 199,
@@ -10,17 +10,16 @@ window.MERCH_CATALOG = [
         featured: true,
         hideOptions: true,
         bundleSummary: [
-            { count: '4', label: '2-inch colorways' },
+            { count: '3', label: '2-inch colorways' },
             { count: '1', label: '4-inch Stay Classy' },
         ],
         variants: [
             {
-                id: 'complete-five-sticker-set',
-                name: 'Complete five-sticker set',
-                image: '/images/merchandise/chris-cerney-black-gold-holographic.webp',
-                imageAlt: 'Independent News Supporter Bundle with all four 2-inch colorways and one 4-inch Stay Classy sticker',
+                id: 'complete-four-sticker-set',
+                name: 'Complete four-sticker set',
+                image: '/images/merchandise/chris-cerney-gold-holographic.webp',
+                imageAlt: 'Independent News Supporter Bundle with three 2-inch colorways and one 4-inch Stay Classy sticker',
                 images: [
-                    '/images/merchandise/chris-cerney-black-gold-holographic.webp',
                     '/images/merchandise/chris-cerney-gold-holographic.webp',
                     '/images/merchandise/chris-cerney-coastal-blue.webp',
                     '/images/merchandise/chris-cerney-silver-holographic.webp',
@@ -51,7 +50,7 @@ window.MERCH_CATALOG = [
     {
         id: 'sticker-2-inch',
         name: '2-Inch Chris Cerney Sticker',
-        description: 'A 2-inch round portrait sticker available in four holographic colorways.',
+        description: 'A 2-inch round portrait sticker available in three holographic colorways.',
         details: 'Layered by hand with premium, heavy-duty, weather-resistant vinyl and color built into the material for a fade-resistant finish.',
         price: 600,
         shipping: 99,
@@ -63,9 +62,11 @@ window.MERCH_CATALOG = [
         variants: [
             {
                 id: 'black-gold-holographic',
-                name: 'Black and Gold Holographic',
+                name: 'Black & Gold Textured',
                 image: '/images/merchandise/chris-cerney-black-gold-holographic.webp',
                 imageAlt: 'Black and gold holographic Chris Cerney portrait sticker',
+                available: false,
+                forceSoldOut: true,
             },
             {
                 id: 'gold-holographic',
