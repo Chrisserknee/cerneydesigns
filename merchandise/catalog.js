@@ -1,4 +1,4 @@
-window.MERCH_ORDERS_PAUSED = false;
+window.MERCH_ORDERS_PAUSED = true;
 
 window.MERCH_CATALOG = [
     {

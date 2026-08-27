@@ -340,6 +340,11 @@ module.exports = async function createCheckoutSession(request, response) {
         return sendJson(response, 400, { error: 'Invalid cart.', code: 'INVALID_CART' });
     }
 
+    // Default closed so a missing deployment setting can never reopen checkout.
+    if (process.env.MERCH_ORDERS_PAUSED !== 'false') {
+        return sendJson(response, 503, { error: 'Orders are temporarily paused.', code: 'ORDERS_PAUSED' });
+    }
+
     if (individualOrderingIsPaused(items)) {
         return sendJson(response, 409, { error: 'Individual stickers are sold out. The Supporter Bundle is still available.', code: 'OUT_OF_STOCK' });
     }

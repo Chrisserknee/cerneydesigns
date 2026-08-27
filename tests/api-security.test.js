@@ -41,6 +41,7 @@ function checkoutRequest(overrides = {}) {
 
 function configureCheckoutEnvironment() {
     process.env.NODE_ENV = 'test';
+    process.env.MERCH_ORDERS_PAUSED = 'false';
     process.env.INDIVIDUAL_CHECKOUT_OVERRIDE = 'on';
     process.env.CHECKOUT_ENABLED = 'true';
     process.env.CHECKOUT_ACCOUNT_APPROVED = 'true';
@@ -50,6 +51,29 @@ function configureCheckoutEnvironment() {
     process.env.STRIPE_PRICE_SUPPORTER_BUNDLE = 'price_bundle';
     process.env.SITE_URL = 'https://www.chriscerney.org';
 }
+
+test('checkout rejects every product while merchandise orders are paused', { concurrency: false }, async () => {
+    configureCheckoutEnvironment();
+    process.env.MERCH_ORDERS_PAUSED = 'true';
+    const previousFetch = global.fetch;
+    let stripeWasCalled = false;
+    global.fetch = async () => {
+        stripeWasCalled = true;
+        throw new Error('Stripe should not be called while orders are paused');
+    };
+    try {
+        const response = responseRecorder();
+        await createCheckoutSession(checkoutRequest({
+            body: { items: [{ id: 'independent-news-supporter-bundle', variant: 'complete-four-sticker-set', quantity: 1 }] },
+        }), response);
+        assert.equal(response.statusCode, 503);
+        assert.equal(response.body.code, 'ORDERS_PAUSED');
+        assert.equal(stripeWasCalled, false);
+    } finally {
+        global.fetch = previousFetch;
+        process.env.MERCH_ORDERS_PAUSED = 'false';
+    }
+});
 
 test('checkout rejects individual products while only the bundle is available', { concurrency: false }, async () => {
     configureCheckoutEnvironment();
