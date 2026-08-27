@@ -2,6 +2,7 @@
     'use strict';
 
     const catalog = Array.isArray(window.MERCH_CATALOG) ? window.MERCH_CATALOG : [];
+    const ordersPaused = window.MERCH_ORDERS_PAUSED === true;
     const productsById = new Map(catalog.map((product) => [product.id, product]));
     const storageKey = 'chris-cerney-merch-cart-v2';
 
@@ -59,7 +60,8 @@
     }
 
     function isPurchasable(product) {
-        return product.available === true
+        return !ordersPaused
+            && product.available === true
             && Number.isInteger(product.price)
             && product.price > 0
             && product.variants.some((variant) => variant.available !== false);
@@ -168,7 +170,7 @@
         body.className = 'product-body';
         const status = document.createElement('span');
         status.className = `product-status${isPurchasable(product) ? ' available' : ''}`;
-        status.textContent = isPurchasable(product) ? 'Available' : 'Sold out';
+        status.textContent = ordersPaused ? 'Orders paused' : (isPurchasable(product) ? 'Available' : 'Sold out');
         const title = document.createElement('h3');
         title.textContent = product.name;
         const description = document.createElement('p');
@@ -332,7 +334,7 @@
         addButton.className = 'add-button';
         updateAddButton = () => {
             const available = variantIsPurchasable(product, selected.variant);
-            addButton.textContent = available ? 'Add to cart' : 'Sold out';
+            addButton.textContent = ordersPaused ? 'Orders paused' : (available ? 'Add to cart' : 'Sold out');
             addButton.disabled = !available;
         };
         updateAddButton();

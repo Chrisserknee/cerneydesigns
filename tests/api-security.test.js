@@ -40,6 +40,7 @@ function checkoutRequest(overrides = {}) {
 }
 
 function configureCheckoutEnvironment() {
+    process.env.CHECKOUT_PAUSE_OVERRIDE = 'off';
     process.env.CHECKOUT_ENABLED = 'true';
     process.env.CHECKOUT_ACCOUNT_APPROVED = 'true';
     process.env.STRIPE_SECRET_KEY = 'sk_test_example';
@@ -48,6 +49,29 @@ function configureCheckoutEnvironment() {
     process.env.STRIPE_PRICE_SUPPORTER_BUNDLE = 'price_bundle';
     process.env.SITE_URL = 'https://www.chriscerney.org';
 }
+
+test('checkout rejects all orders while ordering is paused', { concurrency: false }, async () => {
+    configureCheckoutEnvironment();
+    delete process.env.CHECKOUT_PAUSE_OVERRIDE;
+    const previousFetch = global.fetch;
+    let stripeWasCalled = false;
+    global.fetch = async () => {
+        stripeWasCalled = true;
+        throw new Error('Stripe should not be called while orders are paused');
+    };
+    try {
+        const response = responseRecorder();
+        await createCheckoutSession(checkoutRequest({
+            body: { items: [{ id: 'sticker-4-inch', variant: 'stay-classy', quantity: 1 }] },
+        }), response);
+        assert.equal(response.statusCode, 503);
+        assert.equal(response.body.code, 'ORDERS_PAUSED');
+        assert.equal(stripeWasCalled, false);
+    } finally {
+        global.fetch = previousFetch;
+        process.env.CHECKOUT_PAUSE_OVERRIDE = 'off';
+    }
+});
 
 test('checkout rejects cross-site browser requests', { concurrency: false }, async () => {
     configureCheckoutEnvironment();

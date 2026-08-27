@@ -94,6 +94,10 @@ function isAllowedBrowserOrigin(request, siteUrl) {
     }
 }
 
+function ordersArePaused() {
+    return process.env.CHECKOUT_PAUSE_OVERRIDE !== 'off';
+}
+
 function validateItems(value) {
     if (!Array.isArray(value) || value.length === 0 || value.length > 5) {
         return null;
@@ -319,6 +323,10 @@ module.exports = async function createCheckoutSession(request, response) {
     const siteUrl = (process.env.SITE_URL || 'https://www.chriscerney.org').replace(/\/$/, '');
     if (!isAllowedBrowserOrigin(request, siteUrl)) {
         return sendJson(response, 403, { error: 'Request origin is not allowed.', code: 'INVALID_ORIGIN' });
+    }
+
+    if (ordersArePaused()) {
+        return sendJson(response, 503, { error: 'Sticker ordering is temporarily paused.', code: 'ORDERS_PAUSED' });
     }
 
     let body;

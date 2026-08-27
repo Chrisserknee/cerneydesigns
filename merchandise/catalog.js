@@ -1,3 +1,5 @@
+window.MERCH_ORDERS_PAUSED = true;
+
 window.MERCH_CATALOG = [
     {
         id: 'independent-news-supporter-bundle',
