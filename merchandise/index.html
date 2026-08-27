@@ -18,7 +18,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/merchandise/style.css?v=10">
+    <link rel="stylesheet" href="/merchandise/style.css?v=11">
     <link rel="stylesheet" href="/holographic.css?v=9">
 </head>
 <body class="merchandise-page">
@@ -56,6 +56,19 @@
     </button>
 
     <main>
+        <aside class="store-pause-banner" role="status" aria-label="Merchandise orders are paused">
+            <div class="store-shell store-pause-inner">
+                <span class="store-pause-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M10 9v6M14 9v6"></path></svg>
+                </span>
+                <span class="store-pause-copy">
+                    <strong>Orders temporarily paused</strong>
+                    <span>We are restocking before accepting more sticker orders. You can still browse the collection.</span>
+                </span>
+                <span class="store-pause-state">Checkout closed</span>
+            </div>
+        </aside>
+
         <header class="store-header">
             <div class="store-shell">
                 <p class="store-eyebrow">Central Coast sticker drop</p>
@@ -69,10 +82,6 @@
                         <span class="artist-credit-link">Visit on Instagram <span aria-hidden="true">&nearr;</span></span>
                     </span>
                 </a>
-                <div class="launch-status" role="status">
-                    <span class="status-mark" aria-hidden="true"></span>
-                    <span>Orders are temporarily paused. The sticker collection remains available to browse.</span>
-                </div>
                 <p class="coverage-support">Every purchase funds independent Central Coast news.</p>
             </div>
         </header>

@@ -194,6 +194,68 @@ button {
     display: none;
 }
 
+.store-pause-banner {
+    border-bottom: 1px solid rgba(214, 102, 99, 0.58);
+    background: #321b20;
+    box-shadow: inset 4px 0 0 var(--salmon);
+}
+
+.store-pause-inner {
+    min-height: 84px;
+    padding: 14px 0;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.store-pause-icon {
+    width: 42px;
+    height: 42px;
+    flex: 0 0 auto;
+    display: grid;
+    place-items: center;
+    border: 1px solid rgba(214, 102, 99, 0.55);
+    border-radius: 50%;
+    background: rgba(200, 85, 82, 0.14);
+    color: #ef8a86;
+}
+
+.store-pause-icon svg {
+    width: 24px;
+    height: 24px;
+}
+
+.store-pause-copy {
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+}
+
+.store-pause-copy strong {
+    color: #fff1f0;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 1.35rem;
+    line-height: 1.1;
+    text-transform: uppercase;
+}
+
+.store-pause-copy span {
+    color: #d8c3c4;
+    font-size: 0.82rem;
+}
+
+.store-pause-state {
+    margin-left: auto;
+    padding: 8px 11px;
+    flex: 0 0 auto;
+    border: 1px solid rgba(239, 138, 134, 0.52);
+    border-radius: 4px;
+    color: #f2a09c;
+    font-size: 0.68rem;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
 .cart-flight {
     position: fixed;
     z-index: 120;
@@ -1487,10 +1549,34 @@ a:focus-visible {
         font-size: 0.7rem;
     }
 
-    .launch-status {
-        margin-top: 13px;
-        gap: 8px;
-        font-size: 0.76rem;
+    .store-pause-inner {
+        min-height: 0;
+        padding: 14px 0;
+        align-items: flex-start;
+        gap: 11px;
+    }
+
+    .store-pause-icon {
+        width: 36px;
+        height: 36px;
+    }
+
+    .store-pause-icon svg {
+        width: 21px;
+        height: 21px;
+    }
+
+    .store-pause-copy strong {
+        font-size: 1.18rem;
+    }
+
+    .store-pause-copy span {
+        font-size: 0.74rem;
+        line-height: 1.45;
+    }
+
+    .store-pause-state {
+        display: none;
     }
 
     .coverage-support {
