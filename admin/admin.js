@@ -142,19 +142,31 @@
         ordersList.replaceChildren(...orders.map((order) => {
             const row = document.createElement('article');
             row.className = 'order-row';
+            const identity = document.createElement('div');
+            identity.className = 'order-identity';
+            const number = document.createElement('span');
+            number.className = 'order-number';
+            number.textContent = String(order.orderNumber).padStart(2, '0');
+            const name = document.createElement('strong');
+            name.textContent = order.customerName;
             const date = document.createElement('time');
             date.dateTime = new Date(order.created * 1000).toISOString();
             date.textContent = new Date(order.created * 1000).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+            identity.append(number, name, date);
             const details = document.createElement('p');
             details.textContent = order.items.join(' · ');
+            const fulfillment = document.createElement('span');
+            fulfillment.className = `fulfillment-pill ${order.fulfillmentStatus}`;
+            fulfillment.textContent = order.fulfillmentStatus === 'in_shipment' ? 'In shipment' : 'Waiting for inventory';
             const amount = document.createElement('strong');
+            amount.className = 'order-amount';
             amount.textContent = money.format(order.amount / 100);
             if (order.refunded > 0) {
                 const refund = document.createElement('small');
                 refund.textContent = `${money.format(order.refunded / 100)} refunded`;
                 amount.appendChild(refund);
             }
-            row.append(date, details, amount);
+            row.append(identity, details, fulfillment, amount);
             return row;
         }));
     }

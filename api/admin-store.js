@@ -27,7 +27,10 @@ function adminResponse(snapshot) {
             items: inventory.items,
         },
         recentOrders: sales.recentOrders.map((order) => ({
+            orderNumber: order.orderNumber,
             created: order.created,
+            customerName: order.customerName,
+            fulfillmentStatus: order.fulfillmentStatus,
             amount: order.amount,
             refunded: order.refunded,
             items: order.items,

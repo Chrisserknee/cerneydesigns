@@ -96,7 +96,7 @@ test('admin sales totals include exact colors and bundle inventory consumption',
                             payment_intent: { latest_charge: { amount_refunded: 0, balance_transaction: { fee: 85, net: 1814 } } },
                         },
                         {
-                            id: 'cs_live_bundlesale123456789012345',
+                            id: 'cs_live_a1HIokPmCZ67H6elTp8WC2xsyH6OK7Bk0el9GNWcEKlsAzx0I5T3f4mfiE',
                             mode: 'payment',
                             status: 'complete',
                             payment_status: 'paid',
@@ -156,6 +156,14 @@ test('admin sales totals include exact colors and bundle inventory consumption',
         );
         assert.equal(fourInch.totalUsed, 2);
         assert.equal(response.body.summary.legacyUnspecified, 0);
+        assert.deepEqual(
+            response.body.recentOrders.map((order) => ({ number: order.orderNumber, status: order.fulfillmentStatus })),
+            [
+                { number: 1, status: 'in_shipment' },
+                { number: 2, status: 'waiting_inventory' },
+                { number: 3, status: 'waiting_inventory' },
+            ],
+        );
     } finally {
         global.fetch = previousFetch;
     }

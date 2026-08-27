@@ -3,6 +3,7 @@
 const { bundle, bundlesBySku, inventoryItems, itemsBySku } = require('./store-catalog');
 
 const INVENTORY_MARKER = 'chris_cerney_store_inventory_v1';
+const IN_SHIPMENT_THROUGH_SESSION_ID = 'cs_live_a1HIokPmCZ67H6elTp8WC2xsyH6OK7Bk0el9GNWcEKlsAzx0I5T3f4mfiE';
 const MAX_SESSION_PAGES = 20;
 const SALES_CACHE_MS = 60 * 1000;
 const INVENTORY_CACHE_MS = 30 * 1000;
@@ -108,6 +109,21 @@ function moneyFromSession(session) {
     };
 }
 
+function customerNameFromSession(session) {
+    const shipping = session?.collected_information?.shipping_details || session?.shipping_details;
+    return String(shipping?.name || session?.customer_details?.name || 'Customer').trim().slice(0, 120);
+}
+
+function applyFulfillmentStatuses(orders) {
+    orders.sort((a, b) => a.created - b.created);
+    const cutoffIndex = orders.findIndex((order) => order.id === IN_SHIPMENT_THROUGH_SESSION_ID);
+    return orders.map((order, index) => ({
+        ...order,
+        orderNumber: index + 1,
+        fulfillmentStatus: cutoffIndex >= 0 && index <= cutoffIndex ? 'in_shipment' : 'waiting_inventory',
+    }));
+}
+
 async function calculateSales() {
     const sessions = await listPaidSessions();
     const direct = emptyCounts();
@@ -143,6 +159,7 @@ async function calculateSales() {
         recentOrders.push({
             id: session.id,
             created: Number(session.created || 0),
+            customerName: customerNameFromSession(session),
             amount: money.total,
             refunded: money.refunded,
             items: orderItems,
@@ -156,12 +173,11 @@ async function calculateSales() {
         totalUsed: direct[item.sku] + bundleConsumption[item.sku],
     }));
 
-    recentOrders.sort((a, b) => b.created - a.created);
     return {
         generatedAt: new Date().toISOString(),
         totals,
         items,
-        recentOrders: recentOrders.slice(0, 20),
+        recentOrders: applyFulfillmentStatuses(recentOrders),
     };
 }
 
@@ -313,6 +329,7 @@ function invalidateCaches() {
 }
 
 module.exports = {
+    applyFulfillmentStatuses,
     getInventorySnapshot,
     getSales,
     invalidateCaches,
