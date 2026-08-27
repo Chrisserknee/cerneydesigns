@@ -1,4 +1,4 @@
-window.MERCH_ORDERS_PAUSED = true;
+window.MERCH_ORDERS_PAUSED = false;
 
 window.MERCH_CATALOG = [
     {
@@ -39,7 +39,7 @@ window.MERCH_CATALOG = [
         shipping: 299,
         sizeReference: '/images/merchandise/stay-classy-4-inch-size.webp',
         sizeReferenceAlt: 'Four-inch Stay Classy sticker shown with a measurement overlay',
-        available: true,
+        available: false,
         variants: [
             {
                 id: 'stay-classy',
@@ -60,7 +60,7 @@ window.MERCH_CATALOG = [
         sizeReferenceAlt: 'Two-inch Chris Cerney sticker shown with a measurement overlay',
         lifestyleImage: '/images/merchandise/chris-cerney-2-inch-in-hand.webp',
         lifestyleImageAlt: 'Two-inch holographic Chris Cerney sticker held in a hand for scale',
-        available: true,
+        available: false,
         variants: [
             {
                 id: 'black-gold-holographic',

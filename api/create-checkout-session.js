@@ -94,8 +94,11 @@ function isAllowedBrowserOrigin(request, siteUrl) {
     }
 }
 
-function ordersArePaused() {
-    return process.env.CHECKOUT_PAUSE_OVERRIDE !== 'off';
+function individualOrderingIsPaused(items) {
+    const testOverride = process.env.NODE_ENV === 'test'
+        && process.env.INDIVIDUAL_CHECKOUT_OVERRIDE === 'on';
+    return !testOverride
+        && items.some((item) => item.id !== 'independent-news-supporter-bundle');
 }
 
 function validateItems(value) {
@@ -325,10 +328,6 @@ module.exports = async function createCheckoutSession(request, response) {
         return sendJson(response, 403, { error: 'Request origin is not allowed.', code: 'INVALID_ORIGIN' });
     }
 
-    if (ordersArePaused()) {
-        return sendJson(response, 503, { error: 'Sticker ordering is temporarily paused.', code: 'ORDERS_PAUSED' });
-    }
-
     let body;
     try {
         body = parseBody(request);
@@ -339,6 +338,10 @@ module.exports = async function createCheckoutSession(request, response) {
     const items = validateItems(body?.items);
     if (!items) {
         return sendJson(response, 400, { error: 'Invalid cart.', code: 'INVALID_CART' });
+    }
+
+    if (individualOrderingIsPaused(items)) {
+        return sendJson(response, 409, { error: 'Individual stickers are sold out. The Supporter Bundle is still available.', code: 'OUT_OF_STOCK' });
     }
 
     if (process.env.CHECKOUT_ENABLED !== 'true' || process.env.CHECKOUT_ACCOUNT_APPROVED !== 'true') {
