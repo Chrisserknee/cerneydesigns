@@ -24,7 +24,12 @@ service firebase.storage {
     }
 
     function hasSafeClientMetadata() {
-      return !('firebaseStorageDownloadTokens' in request.resource.metadata);
+      return !('metadata' in request.resource)
+        || request.resource.metadata == null
+        || request.resource.metadata.keys().hasOnly([
+          'anonymous', 'senderName', 'senderContact', 'userAgent',
+          'description', 'submissionType'
+        ]);
     }
 
     function isValidSession(session) {

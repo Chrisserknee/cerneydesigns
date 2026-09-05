@@ -65,6 +65,7 @@ const els = {
 let isUploading = false;
 let selectedFiles = [];
 let activeUploadTasks = new Set();
+let pendingUpload = null;
 
 // Warn the user if they try to close the tab mid-upload.
 window.addEventListener('beforeunload', (e) => {
@@ -104,8 +105,14 @@ els.dropzone.addEventListener('drop', (e) => {
 });
 
 function addFiles(files) {
+    if (isUploading) return;
+    pendingUpload = null;
     const rejected = [];
     for (const f of files) {
+        if (!f.size) {
+            rejected.push(`${f.name} (empty file)`);
+            continue;
+        }
         if (f.size > MAX_FILE_BYTES) {
             rejected.push(`${f.name} (too large)`);
             continue;
@@ -169,6 +176,8 @@ function renderFileList() {
 els.fileList.addEventListener('click', (e) => {
     const btn = e.target.closest('.file-item-remove');
     if (!btn) return;
+    if (isUploading) return;
+    pendingUpload = null;
     selectedFiles.splice(Number(btn.dataset.idx), 1);
     renderFileList();
 });
@@ -185,12 +194,12 @@ els.anonymous.addEventListener('change', () => {
 
 // ---------- SUBMIT ----------
 els.submitBtn.addEventListener('click', async () => {
-    if (!selectedFiles.length) return;
+    if (isUploading || !selectedFiles.length) return;
 
     const meta = {
         senderName: els.anonymous.checked ? '' : els.senderName.value.trim(),
         senderContact: els.anonymous.checked ? '' : els.senderContact.value.trim(),
-        description: els.description.value.trim(),
+        description: els.description.value.trim().slice(0, 6000),
         anonymous: els.anonymous.checked,
         // For anonymous submissions, don't leak the user-agent string — it
         // partially de-anonymizes the sender (browser, OS, device model).
@@ -202,7 +211,9 @@ els.submitBtn.addEventListener('click', async () => {
     const pad = (n) => String(n).padStart(2, '0');
     const ts = `${now.getUTCFullYear()}-${pad(now.getUTCMonth() + 1)}-${pad(now.getUTCDate())}_${pad(now.getUTCHours())}-${pad(now.getUTCMinutes())}-${pad(now.getUTCSeconds())}`;
     const rand = createRandomTag();
-    const sessionFolder = `tips/${ts}_${rand}`;
+    // Keep successful files when retrying this submission in the same tab.
+    pendingUpload ||= { folder: `tips/${ts}_${rand}`, completed: new Set() };
+    const sessionFolder = pendingUpload.folder;
 
     showScreen('progress');
     isUploading = true;
@@ -212,9 +223,9 @@ els.submitBtn.addEventListener('click', async () => {
         const totalBytes = selectedFiles.reduce((acc, f) => acc + f.size, 0);
 
         // Per-file running byte counts from the SDK's progress callbacks.
-        const progresses = new Array(selectedFiles.length).fill(0);
+        const progresses = selectedFiles.map((file, index) => pendingUpload.completed.has(index) ? file.size : 0);
 
-        let filesCompleted = 0;
+        let filesCompleted = pendingUpload.completed.size;
         let lastTick = Date.now();
         let lastTickBytes = 0;
         let smoothedRate = 0;
@@ -301,6 +312,7 @@ els.submitBtn.addEventListener('click', async () => {
                 },
                 () => {
                     activeUploadTasks.delete(task);
+                    pendingUpload.completed.add(idx);
                     filesCompleted++;
                     // Ensure this file's bar contribution reflects full size.
                     progresses[idx] = file.size;
@@ -314,16 +326,19 @@ els.submitBtn.addEventListener('click', async () => {
         // Parallel upload workers. Each pulls the next unclaimed file index.
         let nextIdx = 0;
         const worker = async () => {
-            while (true) {
+            while (!uploadAborted) {
                 const i = nextIdx++;
                 if (i >= selectedFiles.length) break;
+                if (pendingUpload.completed.has(i)) continue;
                 await uploadOneFile(selectedFiles[i], i);
             }
         };
         const workers = [];
         const concurrency = Math.min(CONCURRENCY, selectedFiles.length);
         for (let w = 0; w < concurrency; w++) workers.push(worker());
-        await Promise.all(workers);
+        const outcomes = await Promise.allSettled(workers);
+        const failure = outcomes.find(outcome => outcome.status === 'rejected');
+        if (failure) throw failure.reason;
 
         // Sidecar JSON written last — its presence signals a complete submission.
         updateProgressUI('Finishing up…');
@@ -347,7 +362,15 @@ els.submitBtn.addEventListener('click', async () => {
         };
         const infoRef = ref(storage, `${sessionFolder}/_submission.json`);
         const infoBlob = new Blob([JSON.stringify(submission, null, 2)], { type: 'application/json' });
-        await uploadBytes(infoRef, infoBlob, { contentType: 'application/json' });
+        try {
+            await uploadBytes(infoRef, infoBlob, {
+                contentType: 'application/json',
+                customMetadata: { anonymous: String(meta.anonymous) },
+            });
+        } catch (error) {
+            console.error('Submission finalization failed', error?.code);
+            throw new Error('Your files finished uploading, but we could not finalize your tip. Please retry without closing this tab; completed files will not upload again.');
+        }
 
         els.progressBar.style.width = '100%';
         els.progressPercent.textContent = '100%';
@@ -355,6 +378,7 @@ els.submitBtn.addEventListener('click', async () => {
 
         isUploading = false;
         activeUploadTasks.clear();
+        pendingUpload = null;
         showScreen('thankyou');
     } catch (err) {
         console.error(err);
@@ -392,6 +416,7 @@ els.errorRetry.addEventListener('click', () => {
 });
 
 function resetForm() {
+    pendingUpload = null;
     selectedFiles = [];
     renderFileList();
     els.progressBar.style.width = '0%';

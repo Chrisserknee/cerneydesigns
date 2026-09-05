@@ -437,7 +437,7 @@ async function uploadSelectedFiles(sessionFolder, data) {
     });
 
     const worker = async () => {
-        while (true) {
+        while (!uploadAborted) {
             const idx = nextIdx++;
             if (idx >= selectedFiles.length) break;
             await uploadOne(selectedFiles[idx], idx);
@@ -450,7 +450,9 @@ async function uploadSelectedFiles(sessionFolder, data) {
         workers.push(worker());
     }
     try {
-        await Promise.all(workers);
+        const outcomes = await Promise.allSettled(workers);
+        const failure = outcomes.find(outcome => outcome.status === 'rejected');
+        if (failure) throw failure.reason;
     } finally {
         activeUploadTasks.clear();
     }
