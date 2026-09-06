@@ -1,7 +1,8 @@
 (() => {
     'use strict';
 
-    const catalog = Array.isArray(window.MERCH_CATALOG) ? window.MERCH_CATALOG : [];
+    const catalog = Array.isArray(window.MERCH_CATALOG)
+        ? window.MERCH_CATALOG.filter((product) => product.listed !== false) : [];
     const ordersPaused = window.MERCH_ORDERS_PAUSED === true;
     const productsById = new Map(catalog.map((product) => [product.id, product]));
     const storageKey = 'chris-cerney-merch-cart-v2';
@@ -227,9 +228,12 @@
                     bundleImage.src = source;
                     bundleImage.alt = index === selected.variant.images.length - 1
                         ? 'Four-inch Stay Classy sticker included in the bundle'
-                        : `Two-inch sticker option ${index + 1} included in the bundle`;
+                        : `Example two-inch sticker color ${index + 1}; mystery colors vary`;
                     bundleImage.loading = 'lazy';
-                    return bundleImage;
+                    const tile = document.createElement('div');
+                    tile.className = 'bundle-image-item';
+                    tile.appendChild(bundleImage);
+                    return tile;
                 }));
             } else if (showingReference) {
                 image.src = product.sizeReference;

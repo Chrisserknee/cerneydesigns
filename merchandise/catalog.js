@@ -3,25 +3,26 @@ window.MERCH_ORDERS_PAUSED = true;
 window.MERCH_CATALOG = [
     {
         id: 'independent-news-supporter-bundle',
-        name: 'Independent News Supporter Bundle',
-        description: 'Three available 2-inch holographic colorways plus one 4-inch Stay Classy sticker.',
-        details: 'A limited-release set, layered by hand with premium weather-resistant vinyl and fade-resistant color.',
+        name: 'Mystery Colors Supporter Bundle',
+        description: 'Five stickers in mystery colors: one 4-inch Stay Classy and four different 2-inch stickers. Photos show color examples; your mix is a surprise.',
+        details: 'A limited-release five-sticker set, layered by hand with premium weather-resistant vinyl and fade-resistant color. Colors are selected for you; there is no finish selection.',
         price: 2999,
         shipping: 199,
         available: true,
         featured: true,
         hideOptions: true,
         bundleSummary: [
-            { count: '3', label: '2-inch colorways' },
+            { count: '4', label: '2-inch mystery colors' },
             { count: '1', label: '4-inch Stay Classy' },
         ],
         variants: [
             {
-                id: 'complete-four-sticker-set',
-                name: 'Complete four-sticker set',
+                id: 'mystery-five-sticker-set',
+                name: 'Five-sticker mystery color set',
                 image: '/images/merchandise/chris-cerney-gold-holographic.webp',
-                imageAlt: 'Independent News Supporter Bundle with three 2-inch colorways and one 4-inch Stay Classy sticker',
+                imageAlt: 'Example colors for the five-sticker Mystery Colors Supporter Bundle; actual colors vary',
                 images: [
+                    '/images/merchandise/chris-cerney-black-gold-holographic.webp',
                     '/images/merchandise/chris-cerney-gold-holographic.webp',
                     '/images/merchandise/chris-cerney-coastal-blue.webp',
                     '/images/merchandise/chris-cerney-silver-holographic.webp',
@@ -32,6 +33,7 @@ window.MERCH_CATALOG = [
     },
     {
         id: 'sticker-4-inch',
+        listed: false,
         name: '4-Inch Stay Classy Sticker',
         description: 'A 4-inch holographic die-cut Stay Classy Central Coast sticker.',
         details: 'Layered by hand with premium, heavy-duty, weather-resistant vinyl and color built into the material for a fade-resistant finish.',
@@ -51,6 +53,7 @@ window.MERCH_CATALOG = [
     },
     {
         id: 'sticker-2-inch',
+        listed: false,
         name: '2-Inch Chris Cerney Sticker',
         description: 'A 2-inch round portrait sticker available in three holographic colorways.',
         details: 'Layered by hand with premium, heavy-duty, weather-resistant vinyl and color built into the material for a fade-resistant finish.',
