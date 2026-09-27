@@ -59,6 +59,13 @@ let currentStep = 0;
 let isSubmitting = false;
 let selectedFiles = [];
 let activeUploadTasks = new Set();
+let pendingSubmission = null;
+
+window.addEventListener('beforeunload', (event) => {
+    if (!isSubmitting) return;
+    event.preventDefault();
+    event.returnValue = 'Your submission is still uploading.';
+});
 
 els.prevBtn.addEventListener('click', () => {
     if (currentStep > 0) {
@@ -125,12 +132,14 @@ els.fileDropzone.addEventListener('drop', (event) => {
 
 els.fileList.addEventListener('click', (event) => {
     const removeBtn = event.target.closest('.file-item-remove');
-    if (!removeBtn) return;
+    if (!removeBtn || isSubmitting) return;
+    pendingSubmission = null;
     selectedFiles.splice(Number(removeBtn.dataset.idx), 1);
     renderFileList();
 });
 
 els.sendAnother.addEventListener('click', () => {
+    pendingSubmission = null;
     els.form.reset();
     selectedFiles = [];
     renderFileList();
@@ -144,18 +153,25 @@ els.sendAnother.addEventListener('click', () => {
 showStep(0);
 
 function updateMediaUploadPanel() {
+    if (isSubmitting) return;
     const hasMedia = getRadioValue('hasMedia');
     const shouldShow = hasMedia && !hasMedia.startsWith('No,');
     els.mediaUploadPanel.hidden = !shouldShow;
     if (!shouldShow) {
+        pendingSubmission = null;
         selectedFiles = [];
         renderFileList();
     }
 }
 
 function addFiles(files) {
+    if (isSubmitting) return;
     const rejected = [];
     for (const file of files) {
+        if (!file.size) {
+            rejected.push(`${file.name} (empty file)`);
+            continue;
+        }
         if (file.size > MAX_FILE_BYTES) {
             rejected.push(`${file.name} (too large)`);
             continue;
@@ -174,6 +190,7 @@ function addFiles(files) {
             continue;
         }
         if (!selectedFiles.some(f => f.name === file.name && f.size === file.size)) {
+            pendingSubmission = null;
             selectedFiles.push(file);
         }
     }
@@ -331,7 +348,8 @@ async function submitStoryIdea() {
         const pad = (n) => String(n).padStart(2, '0');
         const ts = `${now.getUTCFullYear()}-${pad(now.getUTCMonth() + 1)}-${pad(now.getUTCDate())}_${pad(now.getUTCHours())}-${pad(now.getUTCMinutes())}-${pad(now.getUTCSeconds())}`;
         const rand = createRandomTag();
-        const sessionFolder = `tips/submit-story_${ts}_${rand}`;
+        pendingSubmission ||= { folder: `tips/submit-story_${ts}_${rand}`, completed: [] };
+        const sessionFolder = pendingSubmission.folder;
         const uploadedFiles = await uploadSelectedFiles(sessionFolder, data);
         const uploadedBytes = uploadedFiles.reduce((sum, file) => sum + file.size, 0);
         const description = [
@@ -365,12 +383,13 @@ async function submitStoryIdea() {
             },
         });
 
+        pendingSubmission = null;
         document.querySelector('.wizard-shell').hidden = true;
         els.successScreen.hidden = false;
         window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
         console.error(err);
-        showError('Could not send this story submission. Try again, or use the tipline upload page.');
+        showError('Your submission has not finished. Keep this page open and try again. Files that already finished will not upload again. ' + (navigator.onLine === false ? 'Reconnect to the internet first.' : 'Keep your screen on until you see the confirmation.'));
     } finally {
         isSubmitting = false;
         els.submitBtn.disabled = false;
@@ -381,9 +400,11 @@ async function submitStoryIdea() {
 async function uploadSelectedFiles(sessionFolder, data) {
     if (!selectedFiles.length) return [];
 
-    const uploaded = [];
+    const uploaded = pendingSubmission.completed;
+    const transferred = selectedFiles.map((file, idx) => uploaded[idx] ? file.size : 0);
+    const totalBytes = selectedFiles.reduce((sum, file) => sum + file.size, 0);
     let nextIdx = 0;
-    let completed = 0;
+    let completed = uploaded.filter(Boolean).length;
     let uploadAborted = false;
     activeUploadTasks = new Set();
     const customMetadata = { anonymous: String(data.anonymous), submissionType: 'story_submission' };
@@ -406,8 +427,10 @@ async function uploadSelectedFiles(sessionFolder, data) {
 
         task.on(
             'state_changed',
-            () => {
-                els.submitBtn.textContent = `Uploading ${completed + 1}/${selectedFiles.length}`;
+            (snapshot) => {
+                transferred[idx] = snapshot.bytesTransferred;
+                const percent = Math.min(99, Math.floor(transferred.reduce((sum, bytes) => sum + bytes, 0) / totalBytes * 100));
+                els.submitBtn.textContent = `Uploading ${percent}% - keep this page open`;
             },
             (error) => {
                 activeUploadTasks.delete(task);
@@ -440,6 +463,7 @@ async function uploadSelectedFiles(sessionFolder, data) {
         while (!uploadAborted) {
             const idx = nextIdx++;
             if (idx >= selectedFiles.length) break;
+            if (uploaded[idx]) continue;
             await uploadOne(selectedFiles[idx], idx);
         }
     };
