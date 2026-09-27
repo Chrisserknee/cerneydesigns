@@ -7,18 +7,22 @@
 // ============================================================
 
 const PARENT_FOLDER_ID = '1bYqiGoCQ9cyx4OHIoM3rJADvkAUh6TIQ';
-const CHUNK_SIZE = 16 * 1024 * 1024; // 16 MB: fewer requests, below Apps Script's 50 MB UrlFetch limit.
+const CHUNK_SIZE = 5 * 1024 * 1024; // Bound Apps Script byte-array memory and request time.
 const MAX_FILES = 10;
 const MAX_TOTAL_BYTES = 750 * 1024 * 1024;
 const MAX_RETRIES = 4;
-const SOFT_RUNTIME_LIMIT_MS = 4.5 * 60 * 1000;
+const SOFT_RUNTIME_LIMIT_MS = 3 * 60 * 1000;
 const COMPLETION_FILE = '_DRIVE_COPY_COMPLETE.json';
 
 function doPost(e) {
   const startedAt = Date.now();
+  const lock = LockService.getScriptLock();
+  let locked = false;
   try {
     const payload = JSON.parse(e.postData && e.postData.contents ? e.postData.contents : '{}');
     verifyToken_(payload.token);
+    locked = lock.tryLock(1000);
+    if (!locked) throw new Error('Another delivery is in progress; retry shortly.');
 
     const files = Array.isArray(payload.files) ? payload.files : [];
     if (files.length < 1) throw new Error('No files supplied.');
@@ -31,6 +35,9 @@ function doPost(e) {
 
     const sessionLabel = safeName_(payload.sessionLabel || ('tip-' + new Date().toISOString()));
     const sessionFolder = getOrCreateSessionFolder_(sessionLabel);
+    if (payload.action === 'prepare') return json_(prepareTransfers_(payload, sessionFolder));
+    if (payload.action === 'release') return json_(releaseTransfer_(payload, sessionFolder));
+    checkTransferLease_(payload, sessionFolder);
     const completed = readValidCompletion_(sessionFolder, sessionLabel, files);
     if (completed) {
       return json_({
@@ -106,13 +113,13 @@ function doPost(e) {
       retryable: true,
       error: err && err.message ? err.message : String(err)
     });
+  } finally {
+    if (locked) lock.releaseLock();
   }
 }
 
 function getOrCreateSessionFolder_(sessionLabel) {
-  const lock = LockService.getScriptLock();
-  lock.waitLock(30000);
-  try {
+  {
     const properties = PropertiesService.getScriptProperties();
     const propertyKey = 'folder_' + hash_(sessionLabel);
     const knownId = properties.getProperty(propertyKey);
@@ -135,8 +142,6 @@ function getOrCreateSessionFolder_(sessionLabel) {
     const created = parent.createFolder(sessionLabel);
     properties.setProperty(propertyKey, created.getId());
     return created;
-  } finally {
-    lock.releaseLock();
   }
 }
 
@@ -251,7 +256,7 @@ function mirrorFile_(file, folderId, sessionLabel, startedAt) {
   while (existing.hasNext()) {
     const existingFile = existing.next();
     const sameSize = Number(existingFile.getSize()) === size;
-    const existingMd5 = String(existingFile.getMd5Checksum() || '').toLowerCase();
+    const existingMd5 = String(driveMetadata_(existingFile.getId()).md5Checksum || '').toLowerCase();
     const sameChecksum = !expectedMd5 || existingMd5 === expectedMd5;
     if (sameSize && sameChecksum) {
       return {
@@ -263,7 +268,7 @@ function mirrorFile_(file, folderId, sessionLabel, startedAt) {
         verified: true
       };
     }
-    existingFile.setTrashed(true);
+    // Preserve mismatched older copies for review; only verified matches are reused.
   }
 
   if (size === 0) {
@@ -303,11 +308,11 @@ function mirrorFile_(file, folderId, sessionLabel, startedAt) {
     const firebaseRes = fetchWithRetry_(file.url, {
       method: 'get',
       headers: {
-        Range: 'bytes=' + offset + '-' + end,
-        'Accept-Encoding': 'identity'
+        Range: 'bytes=' + offset + '-' + end
       },
       muteHttpExceptions: true,
-      followRedirects: true
+      followRedirects: true,
+      escaping: false
     });
 
     const fetchCode = firebaseRes.getResponseCode();
@@ -368,6 +373,7 @@ function startDriveUpload_(folderId, name, mimeType, size) {
       'X-Upload-Content-Type': mimeType,
       'X-Upload-Content-Length': String(size)
     },
+    followRedirects: false,
     muteHttpExceptions: true
   });
 
@@ -387,6 +393,7 @@ function uploadDriveChunk_(uploadUrl, bytes, mimeType, start, end, total) {
     try {
       const res = UrlFetchApp.fetch(uploadUrl, {
         method: 'put',
+        followRedirects: false,
         contentType: mimeType,
         payload: bytes,
         headers: {
@@ -420,6 +427,7 @@ function uploadDriveChunk_(uploadUrl, bytes, mimeType, start, end, total) {
 function queryDriveUpload_(uploadUrl, total) {
   const res = UrlFetchApp.fetch(uploadUrl, {
     method: 'put',
+    followRedirects: false,
     payload: '',
     headers: {
       Authorization: 'Bearer ' + ScriptApp.getOAuthToken(),
@@ -466,9 +474,9 @@ function verifyDriveFile_(fileId, name, expectedSize, expectedMd5) {
   let lastErr = null;
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
-      const driveFile = DriveApp.getFileById(fileId);
-      const actualSize = Number(driveFile.getSize());
-      const actualMd5 = String(driveFile.getMd5Checksum() || '').toLowerCase();
+      const metadata = driveMetadata_(fileId);
+      const actualSize = Number(metadata.size);
+      const actualMd5 = String(metadata.md5Checksum || '').toLowerCase();
 
       if (actualSize !== expectedSize) {
         throw new Error('Drive size check failed for ' + name + ' (expected ' + expectedSize + ', got ' + actualSize + ')');
@@ -599,4 +607,62 @@ function json_(obj) {
   return ContentService
     .createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+function driveMetadata_(fileId) {
+  const res = fetchWithRetry_('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(fileId) + '?fields=id,name,size,md5Checksum', {headers: {Authorization: 'Bearer ' + ScriptApp.getOAuthToken()}, muteHttpExceptions: true, followRedirects: false});
+  if (res.getResponseCode() !== 200) throw new Error('Drive metadata HTTP ' + res.getResponseCode());
+  return JSON.parse(res.getContentText());
+}
+
+// Allocate uploads as the Drive owner. Firebase transfers bytes directly,
+// avoiding Apps Script download, memory, and execution-time limits.
+function prepareTransfers_(payload, folder) {
+  const properties = PropertiesService.getScriptProperties();
+  const key = 'lease_' + folder.getId();
+  const old = JSON.parse(properties.getProperty(key) || '{}');
+  if (old.id && old.until > Date.now()) throw new Error('This delivery is already in progress.');
+  if (!payload.leaseId) throw new Error('Missing delivery lease.');
+  const transfers = payload.files.map(function(file) {
+    const name = safeName_(file.name);
+    const size = Number(file.sizeBytes);
+    const checksum = md5Base64ToHex_(file.md5Hash);
+    const existing = folder.getFilesByName(name);
+    while (existing.hasNext()) {
+      const item = existing.next();
+      const metadata = driveMetadata_(item.getId());
+      if (Number(metadata.size) === size && metadata.md5Checksum === checksum) {
+        return {name: name, sizeBytes: size, verified: true, id: item.getId()};
+      }
+    }
+    const stateKey = 'upload_' + hash_(payload.sessionLabel + '|' + folder.getId() + '|' + name + '|' + size);
+    const saved = readUploadState_(properties, stateKey);
+    let uploadUrl = saved && saved.uploadUrl;
+    let nextOffset = 0;
+    if (uploadUrl) {
+      const state = queryDriveUpload_(uploadUrl, size);
+      if (state.expired) uploadUrl = null;
+      else if (state.complete) {
+        const checked = verifyDriveFile_(state.id, name, size, checksum);
+        properties.deleteProperty(stateKey);
+        return checked;
+      } else nextOffset = state.nextOffset;
+    }
+    if (!uploadUrl) uploadUrl = startDriveUpload_(folder.getId(), name, file.mimeType, size);
+    saveUploadState_(properties, stateKey, uploadUrl, nextOffset, size, name);
+    return {name: name, sizeBytes: size, uploadUrl: uploadUrl, nextOffset: nextOffset};
+  });
+  properties.setProperty(key, JSON.stringify({id: payload.leaseId, until: Date.now() + 600000}));
+  return {ok: true, transferMode: 'direct-v1', transfers: transfers, folderUrl: folder.getUrl()};
+}
+function checkTransferLease_(payload, folder) {
+  const lease = JSON.parse(PropertiesService.getScriptProperties().getProperty('lease_' + folder.getId()) || '{}');
+  if (lease.id && lease.until > Date.now() && lease.id !== payload.leaseId) throw new Error('This delivery is already in progress.');
+}
+function releaseTransfer_(payload, folder) {
+  const properties = PropertiesService.getScriptProperties();
+  const key = 'lease_' + folder.getId();
+  const lease = JSON.parse(properties.getProperty(key) || '{}');
+  if (lease.id === payload.leaseId) properties.deleteProperty(key);
+  return {ok: true};
 }
