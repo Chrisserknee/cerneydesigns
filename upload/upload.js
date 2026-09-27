@@ -106,7 +106,6 @@ els.dropzone.addEventListener('drop', (e) => {
 
 function addFiles(files) {
     if (isUploading) return;
-    pendingUpload = null;
     const rejected = [];
     for (const f of files) {
         if (!f.size) {
@@ -131,6 +130,7 @@ function addFiles(files) {
             continue;
         }
         if (!selectedFiles.some(s => s.name === f.name && s.size === f.size)) {
+            pendingUpload = null;
             selectedFiles.push(f);
         }
     }
@@ -241,7 +241,7 @@ els.submitBtn.addEventListener('click', async () => {
 
         const updateProgressUI = (phase) => {
             const uploadedBytes = progresses.reduce((s, v) => s + v, 0);
-            const pct = totalBytes > 0 ? Math.min(100, (uploadedBytes / totalBytes) * 100) : 0;
+            const pct = totalBytes > 0 ? Math.min(99, (uploadedBytes / totalBytes) * 100) : 0;
             els.progressBar.style.width = pct.toFixed(2) + '%';
             els.progressPercent.textContent = pct.toFixed(0) + '%';
 
@@ -308,7 +308,7 @@ els.submitBtn.addEventListener('click', async () => {
                     }
                     console.error(`Upload failed for ${file.name}:`, error);
                     cancelActiveUploads();
-                    reject(new Error(`Upload failed on "${file.name}". Please try again.`));
+                    reject(new Error(`Upload paused on "${file.name}". Keep this page open and retry; completed files will be kept. ${navigator.onLine === false ? "Reconnect to the internet first." : "Keep your screen on while uploading."}`));
                 },
                 () => {
                     activeUploadTasks.delete(task);
