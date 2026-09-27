@@ -4,7 +4,10 @@
 // media is in Storage, then reliably mirrors it to Google Drive.
 // ============================================================
 const { randomUUID } = require('node:crypto');
+const { transferToDrive } = require('./drive-transfer');
 const { onObjectFinalized } = require('firebase-functions/v2/storage');
+const { onSchedule } = require('firebase-functions/v2/scheduler');
+const { GoogleAuth } = require('google-auth-library');
 const { defineSecret } = require('firebase-functions/params');
 const { logger } = require('firebase-functions');
 const { initializeApp } = require('firebase-admin/app');
@@ -24,16 +27,9 @@ initializeApp();
 const ntfyTopic = defineSecret('NTFY_TOPIC');
 const driveBridgeUrl = defineSecret('DRIVE_BRIDGE_URL');
 const driveBridgeToken = defineSecret('DRIVE_BRIDGE_TOKEN');
+const driveAuth = new GoogleAuth({ scopes: ['https://www.googleapis.com/auth/drive.readonly'] });
 
-exports.notifyOnTip = onObjectFinalized(
-    {
-        region: 'us-west1',
-        secrets: [ntfyTopic, driveBridgeUrl, driveBridgeToken],
-        memory: '1GiB',
-        timeoutSeconds: 540,
-        retry: true,
-    },
-    async (event) => {
+async function processTip(event) {
         const object = event.data;
         const filePath = object.name;
 
@@ -50,14 +46,20 @@ exports.notifyOnTip = onObjectFinalized(
         let submission;
         try {
             const [buf] = await submissionFile.download();
+            await revokeDownloadTokens([submissionFile]);
             const parsedSubmission = JSON.parse(buf.toString('utf8'));
             if (!parsedSubmission || typeof parsedSubmission !== 'object' || Array.isArray(parsedSubmission)) {
                 logger.error(`Rejected malformed submission manifest for ${folder}`);
+                await mergeWorkflowMetadata(submissionFile, { processingStatus: 'rejected' });
                 return null;
             }
             submission = sanitizeSubmission(parsedSubmission);
         } catch (err) {
             logger.error('Failed to read submission JSON', err);
+            if (err instanceof SyntaxError) {
+                await mergeWorkflowMetadata(submissionFile, { processingStatus: 'rejected' });
+                return null;
+            }
             throw err;
         }
 
@@ -67,27 +69,30 @@ exports.notifyOnTip = onObjectFinalized(
         const processingErrors = validateSubmissionForProcessing(submission, fileMetadata);
         if (processingErrors.length) {
             logger.error(`Rejected invalid submission for ${folder}`, { processingErrors });
+            await mergeWorkflowMetadata(submissionFile, { processingStatus: 'rejected' });
             return null;
         }
         const integrityWarnings = validateSubmission(submission, fileMetadata);
         if (integrityWarnings.length) {
             logger.error(`Rejected submission with an integrity mismatch for ${folder}`, { integrityWarnings });
+            await mergeWorkflowMetadata(submissionFile, { processingStatus: 'rejected' });
             return null;
         }
         const manifestByStoredName = buildManifestMap(submission);
+        let workflow = await getWorkflowMetadata(submissionFile);
         const fileLinks = await Promise.all(
-            tipFiles.map((file) => buildFileLink(file, object.bucket, manifestByStoredName))
+            tipFiles.map((file) => buildFileLink(file, object.bucket, manifestByStoredName, workflow.driveCopyStatus !== 'complete'))
         );
 
         const consoleUrl = `https://console.firebase.google.com/project/${process.env.GCLOUD_PROJECT}/storage/${object.bucket}/files/~2F${encodeURIComponent(folder).replace(/%2F/g, '~2F')}`;
         const notification = buildPrivacySafeNotification(submission, fileLinks, integrityWarnings, consoleUrl);
-        let workflow = await getWorkflowMetadata(submissionFile);
         let driveFolderUrl = workflow.driveFolderUrl || null;
 
         if (fileLinks.length && workflow.driveCopyStatus !== 'complete') {
             try {
                 const driveMirror = await mirrorSessionToDriveBridge({
                     deliveryId,
+                    bucket,
                     sessionLabel,
                     files: fileLinks,
                     submission: {
@@ -100,11 +105,13 @@ exports.notifyOnTip = onObjectFinalized(
                     },
                 });
                 driveFolderUrl = driveMirror.folderUrl;
+                await verifyDriveContents(driveFolderUrl, fileLinks);
                 workflow = await mergeWorkflowMetadata(submissionFile, {
                     driveCopyStatus: 'complete',
                     driveFolderUrl,
                     driveCompletedAt: new Date().toISOString(),
                     driveDeliveryId: deliveryId,
+                    driveVerification: 'size-and-md5',
                 });
                 logger.info(`Drive mirror verified for ${folder}`, {
                     folderUrl: driveFolderUrl,
@@ -113,6 +120,9 @@ exports.notifyOnTip = onObjectFinalized(
                 await revokeDownloadTokens(tipFiles);
             } catch (err) {
                 logger.error('Drive mirror failed; Eventarc will retry', err);
+                await mergeWorkflowMetadata(submissionFile, {
+                    driveLastFailureAt: new Date().toISOString(),
+                });
                 workflow = await getWorkflowMetadata(submissionFile);
                 if (workflow.driveCopyStatus !== 'complete' && workflow.driveFailureNotified !== 'true') {
                     try {
@@ -138,30 +148,103 @@ exports.notifyOnTip = onObjectFinalized(
         }
 
         workflow = await getWorkflowMetadata(submissionFile);
-        if (workflow.notificationStatus !== 'sent') {
-            await postNtfy(buildNtfyBody({
+        if (workflow.notificationStatus !== 'sent' && Date.now() >= Number(workflow.notificationRetryAt || 0)) {
+            try {
+                await postNtfy(buildNtfyBody({
                 ...notification,
                 clickUrl: driveFolderUrl || consoleUrl,
                 driveFolderUrl,
-            }));
-            await mergeWorkflowMetadata(submissionFile, {
-                notificationStatus: 'sent',
-                notificationSentAt: new Date().toISOString(),
-            });
+                }));
+                await mergeWorkflowMetadata(submissionFile, {
+                    notificationStatus: 'sent',
+                    notificationSentAt: new Date().toISOString(),
+                });
+            } catch (error) {
+                // Delivery and push notifications have separate retry lifecycles.
+                await mergeWorkflowMetadata(submissionFile, {
+                    notificationStatus: 'pending',
+                    notificationRetryAt: Date.now() + (error.status === 429 ? 24 : 1) * 60 * 60 * 1000,
+                });
+                logger.warn('Tip received; notification queued for scheduled retry', { status: error.status || 'network' });
+            }
         } else {
             logger.info(`Notification already sent for ${folder}; skipping duplicate`);
         }
 
         return null;
-    }
-);
+}
 
-async function buildFileLink(file, bucketName, manifestByStoredName) {
+const deliveryOptions = {
+    region: 'us-west1',
+    secrets: [ntfyTopic, driveBridgeUrl, driveBridgeToken],
+    memory: '1GiB',
+    concurrency: 4,
+    maxInstances: 3,
+    timeoutSeconds: 540,
+};
+exports.notifyOnTip = onObjectFinalized({ ...deliveryOptions, retry: true }, processTip);
+
+exports.retryTipDeliveries = onSchedule({
+    ...deliveryOptions,
+    schedule: 'every 60 minutes',
+    maxInstances: 1,
+}, async () => {
+    const started = Date.now();
+    const bucket = getStorage().bucket();
+    const [files] = await bucket.getFiles({ prefix: 'tips/' });
+    const mediaFolders = new Set(files.filter(file => !file.name.endsWith('/_submission.json'))
+        .map(file => file.name.slice(0, file.name.lastIndexOf('/'))));
+    const pending = files.filter(file => {
+        const metadata = file.metadata || {};
+        const state = metadata.metadata || {};
+        const age = started - Date.parse(metadata.timeCreated);
+        return file.name.endsWith('/_submission.json')
+            && state.processingStatus !== 'rejected'
+            && age > 60 * 60 * 1000 && age < 30 * 24 * 60 * 60 * 1000
+            && (state.driveCopyStatus !== 'complete' && mediaFolders.has(file.name.slice(0, file.name.lastIndexOf('/')))
+                || state.notificationStatus !== 'sent' && started >= Number(state.notificationRetryAt || 0));
+    }).sort((a, b) => Date.parse(a.metadata.metadata?.driveLastFailureAt || a.metadata.timeCreated)
+        - Date.parse(b.metadata.metadata?.driveLastFailureAt || b.metadata.timeCreated));
+    for (const file of pending) {
+        if (Date.now() - started > 420000) break;
+        try {
+            await processTip({ data: { ...file.metadata, bucket: bucket.name }, id: `reconcile:${file.metadata.generation}` });
+        } catch (error) {
+            logger.error('Scheduled tip delivery still pending', { path: file.name, message: error.message });
+        }
+    }
+});
+
+async function verifyDriveContents(folderUrl, files) {
+    const folderId = new URL(folderUrl).pathname.split('/').pop();
+    if (!/^[A-Za-z0-9_-]+$/.test(folderId)) throw new Error('Invalid Drive destination');
+    const client = await driveAuth.getClient();
+    const found = [];
+    let pageToken;
+    do {
+        const { data } = await client.request({
+            url: 'https://www.googleapis.com/drive/v3/files',
+            params: { q: `'${folderId}' in parents and trashed = false`, fields: 'nextPageToken,files(id,name,size,md5Checksum)', pageSize: 100, pageToken },
+            timeout: 30000,
+        });
+        found.push(...(data.files || []));
+        pageToken = data.nextPageToken;
+    } while (pageToken);
+    for (const source of files) {
+        const checksum = Buffer.from(source.md5Hash, 'base64').toString('hex');
+        if (!checksum || !found.some(file => file.name === source.name
+            && Number(file.size) === source.sizeBytes && file.md5Checksum === checksum)) {
+            throw new Error(`Drive file verification failed for ${source.name}`);
+        }
+    }
+}
+
+async function buildFileLink(file, bucketName, manifestByStoredName, needsDownload = true) {
     let metadata = file.metadata || {};
     let customMetadata = metadata.metadata || {};
     let token = firstDownloadToken(customMetadata.firebaseStorageDownloadTokens);
 
-    if (!token) {
+    if (!token && needsDownload) {
         token = randomUUID();
         [metadata] = await file.setMetadata({
             metadata: {
@@ -201,7 +284,8 @@ async function revokeDownloadTokens(files) {
         const [metadata] = await file.getMetadata();
         const customMetadata = { ...(metadata.metadata || {}) };
         if (!customMetadata.firebaseStorageDownloadTokens) return;
-        delete customMetadata.firebaseStorageDownloadTokens;
+        // GCS PATCH requires explicit null to remove a custom metadata key.
+        customMetadata.firebaseStorageDownloadTokens = null;
         await file.setMetadata({ metadata: customMetadata });
     }));
 }
@@ -251,36 +335,42 @@ async function mergeWorkflowMetadata(file, updates) {
  * Calls the Apps Script bridge. The bridge runs as Chris's Google account,
  * which avoids the personal-Drive quota issue service accounts hit.
  */
-async function mirrorSessionToDriveBridge({ deliveryId, sessionLabel, files, submission }) {
+async function mirrorSessionToDriveBridge({ deliveryId, bucket, sessionLabel, files, submission }) {
     const url = driveBridgeUrl.value();
-    if (!isApprovedDriveBridgeUrl(url)) {
-        throw new Error('DRIVE_BRIDGE_URL is not configured.');
-    }
-
-    const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({
-            token: driveBridgeToken.value(),
-            deliveryId,
-            sessionLabel,
-            submission,
-            files,
-        }),
-    });
-
-    const text = await res.text();
-    let payload = {};
+    if (!isApprovedDriveBridgeUrl(url)) throw new Error('DRIVE_BRIDGE_URL is not configured.');
+    const leaseId = randomUUID();
+    const deadline = Date.now() + 420000;
+    const callBridge = async (action) => {
+        const res = await fetch(url, {
+            method: 'POST', signal: AbortSignal.timeout(60000),
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ token: driveBridgeToken.value(), deliveryId, leaseId, action, sessionLabel, submission, files }),
+        });
+        let payload;
+        try { payload = await res.json(); } catch { throw new Error('Drive bridge returned an invalid response.'); }
+        if (!res.ok || !payload.ok) throw new Error(String(payload.error || `Drive bridge HTTP ${res.status}`).replace(/https?:\/\/\S+/g, '[URL]'));
+        return payload;
+    };
+    let leased = false;
     try {
-        payload = text ? JSON.parse(text) : {};
-    } catch {
-        throw new Error(`Drive bridge returned non-JSON response: ${text.slice(0, 200)}`);
+        const prepared = await callBridge('prepare');
+        if (prepared.transferMode !== 'direct-v1' || !Array.isArray(prepared.transfers)) throw new Error('Drive bridge needs the direct-transfer update.');
+        leased = true;
+        if (prepared.transfers.length !== files.length || new Set(prepared.transfers.map(file => file.name)).size !== files.length) throw new Error('Drive transfer manifest mismatch.');
+        for (const transfer of prepared.transfers) {
+            const source = files.find(file => file.name === transfer.name);
+            if (!source || Number(transfer.sizeBytes) !== source.sizeBytes) throw new Error('Drive transfer source mismatch.');
+            await transferToDrive({ ...transfer, md5Hash: source.md5Hash, mimeType: source.mimeType }, async (start, end) => {
+                const [bytes] = await bucket.file(`tips/${sessionLabel}/${source.name}`).download({ start, end });
+                return bytes;
+            }, { deadline });
+        }
+        return normalizeDriveBridgeResponse(await callBridge('finalize'), files);
+    } finally {
+        if (leased) {
+            try { await callBridge('release'); } catch { logger.warn('Drive transfer lease will expire automatically.'); }
+        }
     }
-
-    if (!res.ok || !payload.ok || payload.error) {
-        throw new Error(payload.error || `Drive bridge HTTP ${res.status}`);
-    }
-    return normalizeDriveBridgeResponse(payload, files);
 }
 
 function isApprovedDriveBridgeUrl(value) {
@@ -299,12 +389,15 @@ function isApprovedDriveBridgeUrl(value) {
 async function postNtfy(body) {
     const res = await fetch('https://ntfy.sh', {
         method: 'POST',
+        signal: AbortSignal.timeout(15000),
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
     });
     if (!res.ok) {
         const text = await res.text();
-        throw new Error(`ntfy ${res.status}: ${text}`);
+        const error = new Error(`ntfy ${res.status}: ${text}`);
+        error.status = res.status;
+        throw error;
     }
     logger.info('ntfy notification sent');
 }
