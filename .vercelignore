@@ -1,0 +1,10 @@
+# Repo files that are not part of the website (kept in git, not deployed)
+/CLAUDE.md
+/functions
+/tests
+/firebase.json
+/.firebaserc
+/storage.rules
+/upload/drive-bridge-apps-script.gs
+*.test.js
+*.test.cjs
