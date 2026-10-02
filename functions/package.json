@@ -7,11 +7,12 @@
   "main": "index.js",
   "private": true,
   "scripts": {
-    "test": "node --test index.test.js delivery.test.js bridge.test.js drive-transfer.test.js ../upload/upload.test.cjs ../submit-story/submit-story.test.cjs"
+    "test": "node --test index.test.js delivery.test.js bridge.test.js drive-transfer.test.js ../upload/upload.test.cjs ../submit-story/submit-story.test.cjs tip-alerts.test.js"
   },
   "dependencies": {
     "firebase-admin": "^14.3.0",
     "firebase-functions": "^7.3.2",
-    "google-auth-library": "^9.15.1"
+    "google-auth-library": "^9.15.1",
+    "web-push": "3.6.7"
   }
 }

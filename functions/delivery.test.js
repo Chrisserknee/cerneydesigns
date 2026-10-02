@@ -7,6 +7,7 @@ function delivery(driveFiles = [], bucket = {}) {
     const context = vm.createContext({
         exports: {}, process, Buffer, URL, Date, AbortSignal,
         require(name) {
+            if (name === './tip-alerts') return {};
             if (name === 'google-auth-library') return { GoogleAuth: class { async getClient() { return { request: async () => ({ data: { files: driveFiles } }) }; } } };
             if (name === 'firebase-functions/v2/storage') return { onObjectFinalized: (_, handler) => handler };
             if (name === 'firebase-functions/v2/scheduler') return { onSchedule: (_, handler) => handler };
@@ -17,7 +18,7 @@ function delivery(driveFiles = [], bucket = {}) {
             return require(name);
         },
     });
-    vm.runInContext(fs.readFileSync(__dirname + '/index.js', 'utf8') + '\nthis.fns = { verifyDriveContents, revokeDownloadTokens, buildFileLink };', context);
+    vm.runInContext(fs.readFileSync(__dirname + '/index.js', 'utf8') + '\nthis.fns = { verifyDriveContents, revokeDownloadTokens, buildFileLink, buildStoryDocument };', context);
     return { ...context.fns, context };
 }
 
@@ -57,4 +58,15 @@ test('a sent notification does not exclude media still waiting for Drive', async
     manifest.metadata.metadata.driveCopyStatus = 'complete';
     await context.exports.retryTipDeliveries();
     assert.equal(attempts, 1);
+});
+
+
+test('text-only stories have a verifiable Drive document without a public token', () => {
+    const { createHash } = require('node:crypto');
+    const doc = delivery().buildStoryDocument({type:'story_submission',fileCount:0,whatHappened:'A story'},'bucket','tips/session');
+    assert.equal(doc.name,'01_STORY_DETAILS.json');
+    assert.equal(doc.sizeBytes,doc.inlineBytes.length);
+    assert.equal(doc.md5Hash,createHash('md5').update(doc.inlineBytes).digest('base64'));
+    assert.equal(JSON.parse(doc.inlineBytes).whatHappened,'A story');
+    assert.doesNotMatch(doc.url,/token=/);
 });

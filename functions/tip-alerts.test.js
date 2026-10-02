@@ -1,0 +1,73 @@
+'use strict';
+const test=require('node:test');const assert=require('node:assert/strict');const fs=require('node:fs');const vm=require('node:vm');
+const h=require('./tip-alerts-helpers');
+const subscription={endpoint:'https://web.push.apple.com/test',keys:{p256dh:Buffer.alloc(65,4).toString('base64url'),auth:Buffer.alloc(16,1).toString('base64url')}};
+const now=Date.now();const tip={id:'a'.repeat(64),receivedAt:new Date(now-1000).toISOString(),type:'upload',status:'processing'};
+const device={id:'b'.repeat(64),subscription,subscribedAt:new Date(now-60000).toISOString(),expiresAt:new Date(now+86400000).toISOString()};
+const keys={enabledAt:new Date(now-60000).toISOString(),publicKey:'public',privateKey:'private'};
+function harness({send=async()=>{},fetchImpl=async()=>({ok:false}), initial={}}={}){
+ const files=new Map(Object.entries(initial).map(([name,data])=>[name,{data,generation:1}]));let generation=1;
+ const b={file(name,opts={}){return {name,getMetadata:async()=>{const x=files.get(name);if(!x)throw Object.assign(Error(),{code:404});return [{generation:x.generation,...(x.metadata||{})}];},download:async()=>{const x=files.get(name);if(!x || (opts.generation && opts.generation!==x.generation))throw Object.assign(Error(),{code:404});return [Buffer.from(JSON.stringify(x.data))];},save:async(value,opts)=>{const old=files.get(name);const expected=opts.preconditionOpts?.ifGenerationMatch;if(expected!==undefined && expected!==(old?.generation || 0))throw Object.assign(Error(),{code:412});files.set(name,{data:JSON.parse(value),generation:++generation});}};},getFiles:async({prefix})=>[[...files.keys()].filter(n=>n.startsWith(prefix)).map(name=>({name}))]};
+ const c=vm.createContext({exports:{},Buffer,URL,Date,Intl,AbortSignal,fetch:fetchImpl,require(name){
+ if(name==='web-push')return {sendNotification:send,generateVAPIDKeys:()=>keys};
+ if(name==='firebase-admin/storage')return {getStorage:()=>({bucket:()=>b})};
+ if(name==='firebase-functions')return {logger:{info(){},warn(){},error(){}}};
+ if(name==='firebase-functions/v2/storage')return {onObjectFinalized:(_,f)=>f,onObjectMetadataUpdated:(_,f)=>f};
+ if(name==='firebase-functions/v2/scheduler')return {onSchedule:(_,f)=>f};
+ if(name==='firebase-functions/v2/https')return {onRequest:(_,f)=>f};
+ return require(name);
+ }});
+ vm.runInContext(fs.readFileSync(__dirname+'/tip-alerts.js','utf8')+'\nthis.testing={deliver,authenticate,handleApi,syncTip,adminVerified};',c);
+ return {...c.testing,files};
+}
+test('only supported HTTPS push endpoints and correctly sized keys are accepted',()=>{
+ assert.equal(h.validSubscription(subscription),true);
+ for(const endpoint of ['http://web.push.apple.com/test','https://web.push.apple.com.evil.test/x','https://localhost/x','https://169.254.169.254/latest','https://web.push.apple.com:444/x','https://user:pass@web.push.apple.com/x'])assert.equal(h.validSubscription({...subscription,endpoint}),false);
+ assert.equal(h.validSubscription({...subscription,keys:{...subscription.keys,auth:'tiny'}}),false);
+});
+test('Drive links cannot become arbitrary redirects',()=>{
+ assert.equal(h.driveUrl('https://drive.google.com/drive/folders/abc_123?usp=sharing'),'https://drive.google.com/drive/folders/abc_123');
+ for(const url of ['javascript:alert(1)','https://drive.google.com.evil/x','https://drive.google.com/redirect?to=evil','https://user@drive.google.com/drive/folders/id'])assert.equal(h.driveUrl(url),null);
+});
+test('retry is measured in minutes and honors server Retry-After',()=>{
+ assert.equal(h.retryTime({},1,now)-now,60000);
+ assert.equal(h.retryTime({},2,now)-now,300000);
+ assert.equal(h.retryTime({headers:{'retry-after':'900'}},1,now)-now,900000);
+ assert.equal(h.retryTime({headers:{'retry-after':new Date(now+600000).toUTCString()}},1,now)>now+590000,true);
+});
+test('notification has source timestamp, private inbox link, and no submitter details',()=>{
+ const n=h.notification({...tip,senderName:'PRIVATE PERSON',description:'PRIVATE STORY',driveUrl:'https://drive.google.com/drive/folders/secret'},now+3600000);
+ assert.equal(n.notification.title,'Tip received earlier');assert.match(n.notification.body,/Received/);assert.match(n.notification.navigate,/tip=[a-f0-9]{64}$/);
+ assert.doesNotMatch(JSON.stringify(n),/PRIVATE|secret/);
+});
+test('capture uses server receipt time and strips client metadata',()=>{
+ const o={name:'tips/2026-10-02_22-30-00_abcdefghijkl/_submission.json',timeCreated:new Date().toISOString(),metadata:{senderName:'private',notificationStatus:'sent',driveCopyStatus:'complete',driveFolderUrl:'https://drive.google.com/drive/folders/id'}};
+ const t=h.tipRecord(o);assert.equal(t.receivedAt,o.timeCreated);assert.equal(t.status,'ready');assert.equal(t.senderName,undefined);assert.equal(h.tipRecord({...o,name:'_tipalerts/v1/config.json'}),null);
+});
+test('simultaneous triggers send a tip only once and sent records suppress repeats',async()=>{
+ let sent=0;const x=harness({send:async()=>{sent++;}});
+ await Promise.all([x.deliver(tip,device,keys),x.deliver(tip,device,keys)]);await x.deliver(tip,device,keys);assert.equal(sent,1);
+});
+test('failed push is retained for retry without waiting for a Drive copy',async()=>{
+ let sent=0;const x=harness({send:async()=>{sent++;throw Object.assign(Error(),{statusCode:503});}});
+ await x.deliver(tip,device,keys);await x.deliver(tip,device,keys);assert.equal(sent,1);
+ const r=[...x.files.values()][0].data;assert.equal(r.status,'pending');assert.ok(r.nextAttempt<=Date.now()+60000);assert.ok(r.nextAttempt>Date.now());
+});
+test('expired subscriptions are disabled rather than retried forever',async()=>{
+ const x=harness({send:async()=>{throw Object.assign(Error(),{statusCode:410});},initial:{['_tipalerts/v1/devices/'+device.id+'.json']:device}});
+ await x.deliver(tip,device,keys);assert.equal(x.files.get('_tipalerts/v1/devices/'+device.id+'.json').data.subscription,null);
+});
+test('pairing does not replay historical tips or send to expired devices',async()=>{
+ let sent=0;const x=harness({send:async()=>sent++});
+ await x.deliver({...tip,receivedAt:new Date(now-86400000).toISOString()},device,keys);
+ await x.deliver(tip,{...device,expiresAt:new Date(now-1).toISOString()},keys);assert.equal(sent,0);
+});
+test('pairing requires the existing administrator session verified at the fixed site',async()=>{
+ let called=0;const x=harness({fetchImpl:async(url,opts)=>{called++;assert.equal(url,'https://www.chriscerney.org/api/admin-auth');assert.equal(opts.redirect,'error');return {ok:true,json:async()=>({authenticated:true})};}});
+ assert.equal(await x.adminVerified({adminCookie:'cc_admin_session=test.sig',userAgent:'test'}),true);
+ assert.equal(await x.adminVerified({adminCookie:'cc_admin_session=x\r\nHost: evil'}),false);assert.equal(called,1);
+});
+test('raw device tokens are required; expired devices cannot read the inbox',async()=>{
+ const token='x'.repeat(43);const x=harness({initial:{['_tipalerts/v1/devices/'+h.hash(token)+'.json']:{...device,expiresAt:new Date(now-1).toISOString()}}});
+ assert.equal(await x.authenticate(token),null);assert.equal(await x.authenticate('../config'),null);
+});

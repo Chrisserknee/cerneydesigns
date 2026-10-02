@@ -3,7 +3,7 @@
 // Triggers when tips/*/_submission.json is finalized after all
 // media is in Storage, then reliably mirrors it to Google Drive.
 // ============================================================
-const { randomUUID } = require('node:crypto');
+const { randomUUID, createHash } = require('node:crypto');
 const { transferToDrive } = require('./drive-transfer');
 const { onObjectFinalized } = require('firebase-functions/v2/storage');
 const { onSchedule } = require('firebase-functions/v2/scheduler');
@@ -87,14 +87,16 @@ async function processTip(event) {
         const consoleUrl = `https://console.firebase.google.com/project/${process.env.GCLOUD_PROJECT}/storage/${object.bucket}/files/~2F${encodeURIComponent(folder).replace(/%2F/g, '~2F')}`;
         const notification = buildPrivacySafeNotification(submission, fileLinks, integrityWarnings, consoleUrl);
         let driveFolderUrl = workflow.driveFolderUrl || null;
+        const driveFiles = fileLinks.length ? fileLinks
+            : submission.type === 'story_submission' ? [buildStoryDocument(submission, object.bucket, folder)] : [];
 
-        if (fileLinks.length && workflow.driveCopyStatus !== 'complete') {
+        if (driveFiles.length && workflow.driveCopyStatus !== 'complete') {
             try {
                 const driveMirror = await mirrorSessionToDriveBridge({
                     deliveryId,
                     bucket,
                     sessionLabel,
-                    files: fileLinks,
+                    files: driveFiles,
                     submission: {
                         ...submission,
                         deliveryAudit: {
@@ -105,7 +107,7 @@ async function processTip(event) {
                     },
                 });
                 driveFolderUrl = driveMirror.folderUrl;
-                await verifyDriveContents(driveFolderUrl, fileLinks);
+                await verifyDriveContents(driveFolderUrl, driveFiles);
                 workflow = await mergeWorkflowMetadata(submissionFile, {
                     driveCopyStatus: 'complete',
                     driveFolderUrl,
@@ -163,7 +165,7 @@ async function processTip(event) {
                 // Delivery and push notifications have separate retry lifecycles.
                 await mergeWorkflowMetadata(submissionFile, {
                     notificationStatus: 'pending',
-                    notificationRetryAt: Date.now() + (error.status === 429 ? 24 : 1) * 60 * 60 * 1000,
+                    notificationRetryAt: Date.now() + 60 * 60 * 1000,
                 });
                 logger.warn('Tip received; notification queued for scheduled retry', { status: error.status || 'network' });
             }
@@ -201,7 +203,7 @@ exports.retryTipDeliveries = onSchedule({
         return file.name.endsWith('/_submission.json')
             && state.processingStatus !== 'rejected'
             && age > 60 * 60 * 1000 && age < 30 * 24 * 60 * 60 * 1000
-            && (state.driveCopyStatus !== 'complete' && mediaFolders.has(file.name.slice(0, file.name.lastIndexOf('/')))
+            && (state.driveCopyStatus !== 'complete' && (mediaFolders.has(file.name.slice(0, file.name.lastIndexOf('/'))) || file.name.startsWith('tips/submit-story_'))
                 || state.notificationStatus !== 'sent' && started >= Number(state.notificationRetryAt || 0));
     }).sort((a, b) => Date.parse(a.metadata.metadata?.driveLastFailureAt || a.metadata.timeCreated)
         - Date.parse(b.metadata.metadata?.driveLastFailureAt || b.metadata.timeCreated));
@@ -214,6 +216,19 @@ exports.retryTipDeliveries = onSchedule({
         }
     }
 });
+
+// Text-only story submissions still need a Drive folder and readable details.
+function buildStoryDocument(submission, bucketName, folder) {
+    const inlineBytes = Buffer.from(JSON.stringify(submission, null, 2));
+    return {
+        name: '01_STORY_DETAILS.json', originalName: 'Story details',
+        sizeBytes: inlineBytes.length, mimeType: 'application/json',
+        md5Hash: createHash('md5').update(inlineBytes).digest('base64'), inlineBytes,
+        // Private, token-free source reference. Bytes are transferred directly;
+        // the bridge only verifies the completed Drive file at finalization.
+        url: `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodeURIComponent(folder + '/_submission.json')}?alt=media`,
+    };
+}
 
 async function verifyDriveContents(folderUrl, files) {
     const folderId = new URL(folderUrl).pathname.split('/').pop();
@@ -344,7 +359,7 @@ async function mirrorSessionToDriveBridge({ deliveryId, bucket, sessionLabel, fi
         const res = await fetch(url, {
             method: 'POST', signal: AbortSignal.timeout(60000),
             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify({ token: driveBridgeToken.value(), deliveryId, leaseId, action, sessionLabel, submission, files }),
+            body: JSON.stringify({ token: driveBridgeToken.value(), deliveryId, leaseId, action, sessionLabel, submission, files: files.map(({ inlineBytes, ...file }) => file) }),
         });
         let payload;
         try { payload = await res.json(); } catch { throw new Error('Drive bridge returned an invalid response.'); }
@@ -361,6 +376,7 @@ async function mirrorSessionToDriveBridge({ deliveryId, bucket, sessionLabel, fi
             const source = files.find(file => file.name === transfer.name);
             if (!source || Number(transfer.sizeBytes) !== source.sizeBytes) throw new Error('Drive transfer source mismatch.');
             await transferToDrive({ ...transfer, md5Hash: source.md5Hash, mimeType: source.mimeType }, async (start, end) => {
+                if (source.inlineBytes) return source.inlineBytes.subarray(start, end + 1);
                 const [bytes] = await bucket.file(`tips/${sessionLabel}/${source.name}`).download({ start, end });
                 return bytes;
             }, { deadline });
@@ -401,3 +417,6 @@ async function postNtfy(body) {
     }
     logger.info('ntfy notification sent');
 }
+
+// Private iPhone Web Push alerts run alongside the existing NTFY delivery.
+Object.assign(exports, require('./tip-alerts'));
