@@ -18,6 +18,10 @@ function bodyIsTooLarge(request, maximumBytes = 16 * 1024) {
     if (Number.isFinite(contentLength) && contentLength > maximumBytes) return true;
     if (Buffer.isBuffer(request.body)) return request.body.length > maximumBytes;
     if (typeof request.body === 'string') return Buffer.byteLength(request.body, 'utf8') > maximumBytes;
+    if (request.body && typeof request.body === 'object') {
+        try { return Buffer.byteLength(JSON.stringify(request.body),'utf8') > maximumBytes; }
+        catch { return true; }
+    }
     return false;
 }
 

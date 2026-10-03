@@ -9,7 +9,8 @@ const {
     setSessionCookie,
     verifyPassword,
 } = require('./_lib/admin-auth');
-const { bodyIsTooLarge, isAllowedOrigin, parseBody, sendJson } = require('./_lib/http');
+const { bodyIsTooLarge, parseBody, sendJson } = require('./_lib/http');
+const {reserveLoginAttempt}=require('./_lib/tip-backend');
 
 module.exports = async function adminAuth(request, response) {
     if (request.method === 'GET') {
@@ -17,7 +18,7 @@ module.exports = async function adminAuth(request, response) {
     }
 
     if (request.method === 'DELETE') {
-        if (!isAllowedOrigin(request)) return sendJson(response, 403, { error: 'Request origin is not allowed.' });
+        if (request.headers.origin !== 'https://www.chriscerney.org') return sendJson(response, 403, { error: 'Request origin is not allowed.' });
         clearSessionCookie(response);
         return sendJson(response, 200, { authenticated: false });
     }
@@ -27,7 +28,7 @@ module.exports = async function adminAuth(request, response) {
         return sendJson(response, 405, { error: 'Method not allowed.' });
     }
     if (!isConfigured()) return sendJson(response, 503, { error: 'Administrator access is not configured.' });
-    if (!isAllowedOrigin(request)) return sendJson(response, 403, { error: 'Request origin is not allowed.' });
+    if (request.headers.origin !== 'https://www.chriscerney.org') return sendJson(response, 403, { error: 'Request origin is not allowed.' });
     if (!String(request.headers['content-type'] || '').toLowerCase().startsWith('application/json')) {
         return sendJson(response, 415, { error: 'JSON request required.' });
     }
@@ -40,6 +41,12 @@ module.exports = async function adminAuth(request, response) {
     } catch {
         return sendJson(response, 400, { error: 'Invalid JSON.' });
     }
+    try {
+        if (!await reserveLoginAttempt(request)) {
+            response.setHeader('Retry-After','900');
+            return sendJson(response,429,{error:'Too many attempts. Try again in 15 minutes.'});
+        }
+    } catch { return sendJson(response,503,{error:'Sign-in protection is temporarily unavailable. Try again shortly.'}); }
     const valid = verifyPassword(body?.password);
     recordLogin(request, valid);
     if (!valid) return sendJson(response, 401, { error: 'Incorrect password.' });

@@ -6,6 +6,9 @@ const { onObjectFinalized, onObjectMetadataUpdated } = require('firebase-functio
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { getStorage } = require('firebase-admin/storage');
 const { logger } = require('firebase-functions');
+const {defineSecret}=require('firebase-functions/params');
+const {gatewayAuthenticated}=require('./request-auth');
+const proxySecret=defineSecret('TIP_ALERTS_PROXY_SECRET');
 const { SITE, hash, activeDevice, validSubscription, tipRecord, retryTime, notification } = require('./tip-alerts-helpers');
 const ROOT = '_tipalerts/v1/';
 const bucket = () => getStorage().bucket('tip-line-8c2d7.firebasestorage.app');
@@ -30,6 +33,22 @@ async function updateDevice(id, changes) {
         try { await write(name,{...current.data,...changes},current.generation); return; }
         catch(e) { if(e.code !== 412 || attempt===2) throw e; }
     }
+}
+async function reserveLogin(clientKey) {
+    if (!/^[a-f0-9]{64}$/.test(clientKey || '')) throw Object.assign(new Error('Invalid client'),{code:400});
+    const name='security/login-limits.json',windowMs=15*60000;
+    for(let attempt=0;attempt<5;attempt++) {
+        const now=Date.now(),stored=await read(name);
+        const state=stored && now-stored.data.startedAt<windowMs ? stored.data : {startedAt:now,count:0,clients:{}};
+        // Account-wide and per-network limits survive cold starts and scaling.
+        if(state.count>=40 || (state.clients[clientKey] || 0)>=8)return false;
+        const next={...state,count:state.count+1,clients:{...state.clients,[clientKey]:(state.clients[clientKey] || 0)+1}};
+        try {await write(name,next,stored?.generation || 0);return true;}
+        catch(e) {if(e.code!==412 || attempt===4)throw e;}
+    }
+}
+function deviceLabel(device) {
+    return device.label || (device.subscription?.endpoint?.includes('push.apple.com') ? 'iPhone or iPad' : 'Browser');
 }
 async function config() {
     const existing = await read('config.json');
@@ -118,16 +137,31 @@ async function handleApi(req, res) {
     if (!req.is('application/json') || req.rawBody?.length > 16384) return res.status(400).json({error:'Invalid request.'});
     const body = req.body || {};
     try {
+        if (body.op === 'login-attempt') {
+            if(!await reserveLogin(body.clientKey))return res.status(429).json({allowed:false});
+            return res.json({allowed:true});
+        }
         if (body.op === 'pair') {
             if (!await adminVerified(body)) return res.status(401).json({error:'Please sign in to pair this device.'});
             const token = randomBytes(32).toString('base64url');
             const now = Date.now();
-            const device = {id:hash(token), createdAt:new Date(now).toISOString(), sessionPolicy:'until-sign-out', expiresAt:null, subscription:null};
+            const ua=String(body.userAgent || '');
+            const label=/iPhone/.test(ua)?'iPhone':/iPad/.test(ua)?'iPad':/Macintosh/.test(ua)?'Mac':/Android/.test(ua)?'Android':'Browser';
+            const device = {id:hash(token),label,createdAt:new Date(now).toISOString(), sessionPolicy:'until-sign-out', expiresAt:null, subscription:null};
             await write(`devices/${device.id}.json`, device, 0);
             return res.json({token, expiresAt:device.expiresAt});
         }
         const device = await authenticate(body.token);
         if (!device) return res.status(401).json({error:'Sign in to connect this device.'});
+        if(body.op === 'devices') {
+            const devices=(await documents('devices/')).filter(d=>activeDevice(d));
+            return res.json({devices:devices.map(d=>({id:d.id,label:deviceLabel(d),createdAt:d.createdAt,current:d.id===device.id,alertsOn:!!d.subscription}))});
+        }
+        if(body.op === 'revoke-device') {
+            if(!/^[a-f0-9]{64}$/.test(body.id || '') || body.id===device.id)return res.status(400).json({error:'Use Sign out to disconnect this device.'});
+            await updateDevice(body.id,{revokedAt:new Date().toISOString(),expiresAt:new Date().toISOString(),subscription:null});
+            return res.json({disconnected:true});
+        }
         if (body.op === 'status') {
             const keys = await config();
             return res.json({authenticated:true, publicKey:keys.publicKey, subscribed:!!device.subscription, expiresAt:device.expiresAt});
@@ -173,6 +207,7 @@ async function handleApi(req, res) {
         }
         return res.status(400).json({error:'Unknown request.'});
     } catch(e) {
+        if (e.code === 400) return res.status(400).json({error:'Invalid request.'});
         if (e.code === 401) return res.status(401).json({error:'Sign in to connect this device.'});
         logger.error('Tip alerts request failed', {op:body.op, code:Number(e.code || e.statusCode) || 0});
         return res.status(503).json({error:'Temporarily unavailable. Please try again.'});
@@ -187,4 +222,9 @@ exports.retryWebTips = onSchedule({...options,maxInstances:1,schedule:'every 5 m
     const tips = (await documents('tips/')).filter(t=>Date.parse(t.receivedAt)>Date.now()-7*86400000);
     for (const tip of tips) for (const device of devices) await deliver(tip,device,keys);
 });
-exports.tipAlertsApi = onRequest({...options,invoker:'public'},handleApi);
+async function secureHandleApi(req,res) {
+    res.set('Cache-Control','no-store');res.set('X-Content-Type-Options','nosniff');
+    if(!gatewayAuthenticated(req,proxySecret.value()))return res.status(403).json({error:'Trusted website connection required.'});
+    return handleApi(req,res);
+}
+exports.tipAlertsApi = onRequest({...options,invoker:'public',secrets:[proxySecret]},secureHandleApi);

@@ -51,6 +51,24 @@ async function load() {
 }
 function dateLabel(value) { return new Intl.DateTimeFormat('en-US',{timeZone:'America/Los_Angeles',month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'}).format(new Date(value)); }
 function folderLink(tip, label='Open folder') { const a=document.createElement('a'); a.className='folder'; a.textContent=label; a.href=tip.driveUrl; a.rel='noreferrer'; return a; }
+async function loadDevices() {
+    const data=await api('devices');$('devices').replaceChildren();
+    for(const device of data.devices) {
+        const row=document.createElement('div');row.className='tip';
+        const label=document.createElement('p');label.textContent=`${device.current?'This device':device.label} · Connected ${dateLabel(device.createdAt)}`;row.append(label);
+        if(!device.current) {
+            const button=document.createElement('button');button.className='secondary';button.textContent='Disconnect';
+            button.addEventListener('click',async()=>{
+                if(!confirm(`Disconnect ${device.label}? It will need to sign in again, and its alerts will stop.`))return;
+                button.disabled=true;
+                try{await api('revoke-device',{id:device.id});await loadDevices();message('That device is disconnected.');}
+                catch(e){message(e.message,true);button.disabled=false;}
+            });row.append(button);
+        }
+        $('devices').append(row);
+    }
+}
+$('showDevices').addEventListener('click',()=>loadDevices().catch(e=>message(e.message,true)));
 async function loadTips() {
     clearTimeout(inboxTimer);
     const data=await api('list'); $('tips').replaceChildren(); show('empty',!data.tips.length);

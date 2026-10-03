@@ -9,6 +9,7 @@ function harness({send=async()=>{},fetchImpl=async()=>({ok:false}), initial={}}=
  const files=new Map(Object.entries(initial).map(([name,data])=>[name,{data,generation:1}]));let generation=1;
  const b={file(name,opts={}){return {name,getMetadata:async()=>{const x=files.get(name);if(!x)throw Object.assign(Error(),{code:404});return [{generation:x.generation,...(x.metadata||{})}];},download:async()=>{const x=files.get(name);if(!x || (opts.generation && opts.generation!==x.generation))throw Object.assign(Error(),{code:404});return [Buffer.from(JSON.stringify(x.data))];},save:async(value,opts)=>{const old=files.get(name);const expected=opts.preconditionOpts?.ifGenerationMatch;if(expected!==undefined && expected!==(old?.generation || 0))throw Object.assign(Error(),{code:412});files.set(name,{data:JSON.parse(value),generation:++generation});}};},getFiles:async({prefix})=>[[...files.keys()].filter(n=>n.startsWith(prefix)).map(name=>({name}))]};
  const c=vm.createContext({exports:{},Buffer,URL,Date,Intl,AbortSignal,fetch:fetchImpl,require(name){
+ if(name==='firebase-functions/params')return {defineSecret:()=>({value:()=> 'test-secret'.repeat(4)})};
  if(name==='web-push')return {sendNotification:send,generateVAPIDKeys:()=>keys};
  if(name==='firebase-admin/storage')return {getStorage:()=>({bucket:()=>b})};
  if(name==='firebase-functions')return {logger:{info(){},warn(){},error(){}}};
@@ -17,7 +18,7 @@ function harness({send=async()=>{},fetchImpl=async()=>({ok:false}), initial={}}=
  if(name==='firebase-functions/v2/https')return {onRequest:(_,f)=>f};
  return require(name);
  }});
- vm.runInContext(fs.readFileSync(__dirname+'/tip-alerts.js','utf8')+'\nthis.testing={deliver,authenticate,handleApi,syncTip,adminVerified,updateDevice};',c);
+ vm.runInContext(fs.readFileSync(__dirname+'/tip-alerts.js','utf8')+'\nthis.testing={deliver,authenticate,handleApi,syncTip,adminVerified,updateDevice,reserveLogin,secureHandleApi};',c);
  return {...c.testing,files};
 }
 test('only supported HTTPS push endpoints and correctly sized keys are accepted',()=>{
@@ -99,4 +100,28 @@ test('a stale subscription update cannot undo sign-out',async()=>{
  const x=harness({initial:{[path]:{...device,sessionPolicy:'until-sign-out',expiresAt:null,revokedAt:new Date().toISOString(),subscription:null}}});
  await assert.rejects(x.updateDevice(id,{subscription}),e=>e.code===401);
  assert.equal(x.files.get(path).data.subscription,null);
+});
+
+test('login attempts are reserved atomically and persist across fresh server instances',async()=>{
+ const x=harness(),key='a'.repeat(64);
+ for(let i=0;i<8;i++)assert.equal(await x.reserveLogin(key),true);
+ assert.equal(await x.reserveLogin(key),false);
+ const fresh=harness({initial:Object.fromEntries([...x.files].map(([k,v])=>[k,v.data]))});
+ assert.equal(await fresh.reserveLogin(key),false);
+ for(let i=0;i<32;i++)assert.equal(await fresh.reserveLogin(h.hash('network-'+i)),true);
+ assert.equal(await fresh.reserveLogin(h.hash('another-network')),false);
+});
+test('concurrent requests cannot get extra password guesses',async()=>{
+ const x=harness(),key='a'.repeat(64);for(let i=0;i<7;i++)await x.reserveLogin(key);
+ const results=await Promise.all(Array.from({length:5},()=>x.reserveLogin(key)));
+ assert.equal(results.filter(Boolean).length,1);
+});
+test('remote disconnect leaves the current phone connected and invalidates the other token',async()=>{
+ const token='x'.repeat(43),other='y'.repeat(43),id=h.hash(token),target=h.hash(other);
+ const x=harness({initial:{['_tipalerts/v1/devices/'+id+'.json']:{...device,id,sessionPolicy:'until-sign-out',expiresAt:null},['_tipalerts/v1/devices/'+target+'.json']:{...device,id:target,sessionPolicy:'until-sign-out',expiresAt:null}}});
+ const res={set(){},status(n){this.code=n;return this;},json(body){this.body=body;}};
+ await x.handleApi({method:'POST',is:()=>true,body:{op:'devices',token}},res);
+ assert.equal(res.body.devices.length,2);assert.doesNotMatch(JSON.stringify(res.body),/endpoint|p256dh|auth|subscription/);
+ await x.handleApi({method:'POST',is:()=>true,body:{op:'revoke-device',token,id:target}},res);
+ assert.equal(res.body.disconnected,true);assert.equal(await x.authenticate(other),null);assert.equal((await x.authenticate(token)).id,id);
 });

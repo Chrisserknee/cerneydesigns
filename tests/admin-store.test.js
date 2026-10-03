@@ -4,6 +4,8 @@ const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 const test = require('node:test');
 
+const backend=require('../api/_lib/tip-backend');
+backend.reserveLoginAttempt=async()=>true;
 const adminAuth = require('../api/admin-auth');
 const adminStore = require('../api/admin-store');
 

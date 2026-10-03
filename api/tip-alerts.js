@@ -1,7 +1,7 @@
 'use strict';
 const { isAuthenticated } = require('./_lib/admin-auth');
 const { parseBody, sendJson } = require('./_lib/http');
-const BACKEND = 'https://us-west1-tip-line-8c2d7.cloudfunctions.net/tipAlertsApi';
+const {callTipBackend}=require('./_lib/tip-backend');
 const COOKIE = 'cc_tip_device';
 const deviceCookie = (token, maxAge = 34560000) => `${COOKIE}=${token}; Max-Age=${maxAge}; Path=/api/tip-alerts; HttpOnly; Secure; SameSite=Strict`;
 function readCookie(request, name) {
@@ -15,7 +15,7 @@ module.exports = async (request, response) => {
     let body;
     try { body = parseBody(request); if (Buffer.byteLength(JSON.stringify(body)) > 8192) return sendJson(response,413,{error:'Request too large.'}); }
     catch { return sendJson(response,400,{error:'Invalid request.'}); }
-    const ops = ['pair','status','subscribe','unsubscribe','logout','list','tip','test'];
+    const ops = ['pair','status','subscribe','unsubscribe','logout','list','tip','test','devices','revoke-device'];
     if (!ops.includes(body?.op)) return sendJson(response,400,{error:'Unknown request.'});
     let payload;
     if (body.op === 'pair') {
@@ -24,10 +24,10 @@ module.exports = async (request, response) => {
     } else {
         const token = readCookie(request,COOKIE);
         if (!/^[A-Za-z0-9_-]{43}$/.test(token)) return sendJson(response,401,{error:'Sign in to connect this device.'});
-        payload = {op:body.op,token,...(body.op === 'subscribe' ? {subscription:body.subscription} : {}),...(body.op === 'tip' ? {id:body.id} : {})};
+        payload = {op:body.op,token,...(body.op === 'subscribe' ? {subscription:body.subscription} : {}),...(['tip','revoke-device'].includes(body.op) ? {id:body.id} : {})};
     }
     try {
-        const remote = await fetch(BACKEND,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),signal:AbortSignal.timeout(25000),redirect:'error'});
+        const remote = await callTipBackend(payload);
         const result = await remote.json();
         if (remote.ok && body.op === 'pair') {
             if (!/^[A-Za-z0-9_-]{43}$/.test(result.token)) throw new Error('Invalid pairing response');

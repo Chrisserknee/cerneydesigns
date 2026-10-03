@@ -14,7 +14,6 @@ const { initializeApp } = require('firebase-admin/app');
 const { getStorage } = require('firebase-admin/storage');
 const {
     buildManifestMap,
-    firstDownloadToken,
     normalizeDriveBridgeResponse,
     sanitizeSubmission,
     validateSubmission,
@@ -31,7 +30,13 @@ async function processTip(event) {
         const object = event.data;
         const filePath = object.name;
 
-        if (!filePath || !filePath.startsWith('tips/') || !filePath.endsWith('/_submission.json')) {
+        if (!filePath || !filePath.startsWith('tips/')) {
+            return null;
+        }
+        if (!filePath.endsWith('/_submission.json')) {
+            // Firebase can attach a bearer download token during intake. Revoke
+            // it immediately, including when the sender never finishes a tip.
+            await revokeDownloadTokens([getStorage().bucket(object.bucket).file(filePath)]);
             return null;
         }
 
@@ -53,7 +58,7 @@ async function processTip(event) {
             }
             submission = sanitizeSubmission(parsedSubmission);
         } catch (err) {
-            logger.error('Failed to read submission JSON', err);
+            logger.error('Failed to read submission JSON', {code:Number(err.code) || 0});
             if (err instanceof SyntaxError) {
                 await mergeWorkflowMetadata(submissionFile, { processingStatus: 'rejected' });
                 return null;
@@ -77,9 +82,10 @@ async function processTip(event) {
             return null;
         }
         const manifestByStoredName = buildManifestMap(submission);
+        await revokeDownloadTokens(tipFiles);
         let workflow = await getWorkflowMetadata(submissionFile);
         const fileLinks = await Promise.all(
-            tipFiles.map((file) => buildFileLink(file, object.bucket, manifestByStoredName, workflow.driveCopyStatus !== 'complete'))
+            tipFiles.map((file) => buildFileLink(file, object.bucket, manifestByStoredName))
         );
 
         let driveFolderUrl = workflow.driveFolderUrl || null;
@@ -124,7 +130,7 @@ async function processTip(event) {
                 });
                 await revokeDownloadTokens(tipFiles);
             } catch (err) {
-                logger.error('Drive mirror failed; Eventarc will retry', err);
+                logger.error('Drive mirror failed; Eventarc will retry', {code:Number(err.code || err.status) || 0});
                 await mergeWorkflowMetadata(submissionFile, {
                     driveLastFailureAt: new Date().toISOString(),
                 });
@@ -216,22 +222,8 @@ async function verifyDriveContents(folderUrl, files) {
     }
 }
 
-async function buildFileLink(file, bucketName, manifestByStoredName, needsDownload = true) {
-    let metadata = file.metadata || {};
-    let customMetadata = metadata.metadata || {};
-    let token = firstDownloadToken(customMetadata.firebaseStorageDownloadTokens);
-
-    if (!token && needsDownload) {
-        token = randomUUID();
-        [metadata] = await file.setMetadata({
-            metadata: {
-                ...customMetadata,
-                firebaseStorageDownloadTokens: token,
-            },
-        });
-        customMetadata = metadata.metadata || {};
-        logger.info(`Created missing download token for ${file.name}`);
-    }
+async function buildFileLink(file, bucketName, manifestByStoredName) {
+    const metadata = file.metadata || {};
 
     const basename = file.name.split('/').pop();
     const manifestFile = manifestByStoredName.get(basename);
@@ -241,7 +233,9 @@ async function buildFileLink(file, bucketName, manifestByStoredName, needsDownlo
         sourcePath: file.name,
         generation: String(metadata.generation || ''),
         md5Hash: metadata.md5Hash || '',
-        url: `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodeURIComponent(file.name)}?alt=media&token=${token}`,
+        // The server reads bytes with IAM, then uploads them directly to Drive.
+        // Never mint a public download token for confidential tip material.
+        url: `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodeURIComponent(file.name)}?alt=media`,
         sizeBytes: Number(metadata.size || 0),
         mimeType: metadata.contentType || 'application/octet-stream',
     };

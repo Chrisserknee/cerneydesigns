@@ -14,6 +14,8 @@ self.addEventListener('push',event=>{
 });
 self.addEventListener('notificationclick',event=>{
     event.notification.close();
-    const url=event.notification.data?.url || self.location.origin+'/tip-alerts/';
+    const fallback=self.location.origin+'/tip-alerts/';
+    let url=fallback;
+    try{const u=new URL(event.notification.data?.url,fallback);if(u.origin===self.location.origin && u.pathname.startsWith('/tip-alerts/'))url=u.href;}catch{}
     event.waitUntil(self.clients.openWindow(url));
 });

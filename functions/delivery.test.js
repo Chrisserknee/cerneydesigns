@@ -47,6 +47,20 @@ test('notification retry does not create another media download token', async ()
     assert.equal(writes, 0);
 });
 
+test('new Drive transfers never mint or forward public download tokens',async()=>{
+ let writes=0;
+ const link=await delivery().buildFileLink({name:'tips/test/photo.png',metadata:{size:'5',metadata:{firebaseStorageDownloadTokens:'old-token'}},setMetadata(){writes++;}},'bucket',new Map());
+ assert.equal(writes,0);assert.doesNotMatch(link.url,/token|old-token/);
+});
+
+test('an unfinished media upload has its public token revoked without waiting for a manifest',async()=>{
+ let patch;
+ const file={getMetadata:async()=>[{metadata:{firebaseStorageDownloadTokens:'old-token'}}],setMetadata:async value=>{patch=value;}};
+ const {context}=delivery([],{file:()=>file});
+ await context.exports.notifyOnTip({data:{name:'tips/test/01_photo.png',bucket:'bucket'}});
+ assert.equal(patch.metadata.firebaseStorageDownloadTokens,null);
+});
+
 test('a sent notification does not exclude media still waiting for Drive', async () => {
     const manifest = { name: 'tips/test/_submission.json', metadata: { name: 'tips/test/_submission.json', timeCreated: new Date(Date.now() - 7200000).toISOString(), generation: '1', metadata: { notificationStatus: 'sent' } } };
     const files = [manifest, { name: 'tips/test/01_video.mov' }];
