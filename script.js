@@ -28,7 +28,7 @@
     }
 
     // Only enable cursor glow on non-touch devices
-    if (window.matchMedia('(pointer: fine)').matches) {
+    if (cursorGlow && window.matchMedia('(pointer: fine)').matches && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
         animateCursorGlow();
     }
 
@@ -38,7 +38,7 @@
     function updateScrollProgress() {
         const scrollTop = window.scrollY;
         const docHeight = document.documentElement.scrollHeight - window.innerHeight;
-        const scrollPercent = (scrollTop / docHeight) * 100;
+        const scrollPercent = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
         if (scrollProgress) {
             scrollProgress.style.width = scrollPercent + '%';
         }
@@ -49,30 +49,26 @@
     const navMenu = document.getElementById('navMenu');
     const navbar = document.getElementById('navbar');
 
-    navToggle.addEventListener('click', () => {
-        navToggle.classList.toggle('active');
-        navMenu.classList.toggle('open');
-        // Prevent body scroll when menu is open
-        document.body.style.overflow = navMenu.classList.contains('open') ? 'hidden' : '';
-    });
-
-    // Close mobile menu when a link is clicked
+    const mobileNavigation = window.matchMedia('(max-width: 860px)');
+    function setNavigationOpen(open) {
+        navToggle.classList.toggle('active', open);
+        navToggle.setAttribute('aria-expanded', String(open));
+        navMenu.classList.toggle('open', open);
+        navMenu.inert = mobileNavigation.matches && !open;
+        document.body.style.overflow = open && mobileNavigation.matches ? 'hidden' : '';
+    }
+    navToggle.addEventListener('click', () => setNavigationOpen(!navMenu.classList.contains('open')));
     navMenu.querySelectorAll('a').forEach(link => {
-        link.addEventListener('click', () => {
-            navToggle.classList.remove('active');
-            navMenu.classList.remove('open');
-            document.body.style.overflow = '';
-        });
+        link.addEventListener('click', () => setNavigationOpen(false));
     });
-
-    // Close menu on Escape key
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && navMenu.classList.contains('open')) {
-            navToggle.classList.remove('active');
-            navMenu.classList.remove('open');
-            document.body.style.overflow = '';
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && navMenu.classList.contains('open')) {
+            setNavigationOpen(false);
+            navToggle.focus();
         }
     });
+    mobileNavigation.addEventListener('change', () => setNavigationOpen(false));
+    setNavigationOpen(false);
 
     // Navbar shrink on scroll
     let lastScroll = 0;
@@ -180,7 +176,7 @@
     }
 
     // ==================== MAGNETIC BUTTONS ====================
-    if (window.matchMedia('(pointer: fine)').matches) {
+    if (cursorGlow && window.matchMedia('(pointer: fine)').matches && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
         document.querySelectorAll('.magnetic').forEach(btn => {
             btn.addEventListener('mousemove', (e) => {
                 const rect = btn.getBoundingClientRect();
@@ -208,26 +204,6 @@
         const rate = scrolled * 0.3;
         heroContent.style.transform = `translateY(${rate}px)`;
         heroContent.style.opacity = 1 - (scrolled / (window.innerHeight * 0.8));
-    }
-
-    // ==================== NEWSLETTER FORM ====================
-    const newsletterForm = document.getElementById('newsletterForm');
-
-    if (newsletterForm) {
-        newsletterForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            // Placeholder - replace with actual newsletter service
-            const btn = newsletterForm.querySelector('.btn');
-            const originalText = btn.querySelector('span').textContent;
-            btn.querySelector('span').textContent = 'Subscribed!';
-            btn.style.pointerEvents = 'none';
-
-            setTimeout(() => {
-                btn.querySelector('span').textContent = originalText;
-                btn.style.pointerEvents = '';
-                newsletterForm.reset();
-            }, 3000);
-        });
     }
 
     // ==================== SMOOTH SCROLL ====================

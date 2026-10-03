@@ -73,3 +73,8 @@ test('empty files cannot produce a rejected backend submission', async () => {
     await c.submit();
     assert.equal(c.uploads.length, 0);
 });
+
+test('supported file extension is accepted when the browser omits MIME type', async () => {
+    const c = client(); c.add({ name: 'photo.AVIF', type: '', size: 100 }); await c.submit();
+    assert.equal(c.uploads.length, 1); assert.equal(c.manifests.length, 1);
+});

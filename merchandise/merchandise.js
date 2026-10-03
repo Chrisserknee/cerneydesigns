@@ -723,7 +723,8 @@
         if (event.key === 'Escape' && !orderStatus.hidden) dismissOrderStatus();
     });
     (async () => {
-        await loadInventory();
+        // Paused orders cannot be purchased, so the catalog needs no stock lookup.
+        if (!ordersPaused) await loadInventory();
         renderCatalog();
         renderCart();
         showOrderStatus();

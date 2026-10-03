@@ -453,6 +453,17 @@ function getAllowedContentType(file) {
     // Some mobile browsers report HEIC/HEIF as an empty MIME type.
     const ext = file.name.split('.').pop()?.toLowerCase();
     const fallbackTypes = {
+        avif: 'image/avif',
+        bmp: 'image/bmp',
+        tif: 'image/tiff',
+        tiff: 'image/tiff',
+        webm: 'video/webm',
+        m4v: 'video/x-m4v',
+        avi: 'video/x-msvideo',
+        mpg: 'video/mpeg',
+        mpeg: 'video/mpeg',
+        '3gp': 'video/3gpp',
+        '3g2': 'video/3gpp2',
         heic: 'image/heic',
         heif: 'image/heif',
         jpg: 'image/jpeg',

@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /tip-alerts
+Disallow: /api/
+
+Sitemap: https://www.chriscerney.org/sitemap.xml

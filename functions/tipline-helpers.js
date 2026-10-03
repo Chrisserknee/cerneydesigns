@@ -36,9 +36,15 @@ function buildManifestMap(submission) {
 function sanitizeSubmission(submission) {
     const source = submission && typeof submission === 'object' ? submission : {};
     const anonymous = source.anonymous === true;
+    // A story source may consent to private follow-up while remaining unnamed
+    // in coverage. This permission never applies to anonymous tipline uploads.
+    const privateFollowUp = source.type === 'story_submission' && source.canContact === 'Yes'
+        ? { name: cleanText(source.senderName, 200), contact: cleanText(source.senderContact, 300) }
+        : null;
     const clean = {
         ...source,
         anonymous,
+        privateFollowUp,
         senderName: anonymous ? '' : cleanText(source.senderName, 200),
         senderContact: anonymous ? '' : cleanText(source.senderContact, 300),
         userAgent: anonymous ? '' : cleanText(source.userAgent, 500),
@@ -48,6 +54,11 @@ function sanitizeSubmission(submission) {
         timing: cleanText(source.timing, 300),
         extraContext: cleanText(source.extraContext, 1500),
     };
+    if (anonymous && privateFollowUp?.contact) {
+        clean.description += '\n\nPRIVATE FOLLOW-UP — KEEP IDENTITY OUT OF COVERAGE\n'
+            + (privateFollowUp.name ? `Name: ${privateFollowUp.name}\n` : '')
+            + `Contact: ${privateFollowUp.contact}`;
+    }
     return clean;
 }
 

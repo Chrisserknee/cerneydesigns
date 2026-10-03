@@ -68,13 +68,13 @@ window.addEventListener('beforeunload', (event) => {
 });
 
 els.prevBtn.addEventListener('click', () => {
-    if (currentStep > 0) {
+    if (!isSubmitting && currentStep > 0) {
         showStep(currentStep - 1);
     }
 });
 
 els.nextBtn.addEventListener('click', () => {
-    if (!validateStep(currentStep)) return;
+    if (isSubmitting || !validateStep(currentStep)) return;
     if (currentStep === reviewStepIndex - 1) {
         renderReview();
     }
@@ -83,7 +83,19 @@ els.nextBtn.addEventListener('click', () => {
 
 els.form.addEventListener('submit', async (event) => {
     event.preventDefault();
-    if (isSubmitting || !validateStep(currentStep)) return;
+    if (isSubmitting) return;
+    // Enter in a text field advances the wizard; only the review can send it.
+    if (currentStep !== reviewStepIndex) {
+        els.nextBtn.click();
+        return;
+    }
+    for (let index = 0; index < reviewStepIndex; index++) {
+        if (!validateStep(index)) {
+            showStep(index);
+            validateStep(index);
+            return;
+        }
+    }
     await submitStoryIdea();
 });
 
@@ -295,7 +307,7 @@ function collectData() {
             type: getAllowedContentType(file) || file.type || '',
         })),
         canContact: canContact ? 'Yes' : 'No',
-        senderName: canContact && !anonymous ? els.senderName.value.trim() : '',
+        senderName: canContact ? els.senderName.value.trim() : '',
         senderContact: canContact ? els.senderContact.value.trim() : '',
         anonymous,
         extraContext: els.extraContext.value.trim(),
@@ -313,8 +325,8 @@ function renderReview() {
         ['Photos / video / documents?', data.hasMedia],
         ['Attached files', data.files.length ? data.files.map(file => `${file.name} (${formatBytes(file.size)})`).join('\n') : 'None attached'],
         ['Can Chris contact you?', data.canContact],
-        ['Contact', data.senderContact || 'Not provided'],
-        ['Anonymous?', data.anonymous ? 'Yes' : 'No'],
+        ['Private follow-up contact', data.senderContact || 'Not provided'],
+        ['Anonymous in coverage?', data.anonymous ? 'Yes' : 'No'],
         ['Extra context', data.extraContext || 'Not provided'],
     ];
 
@@ -338,6 +350,8 @@ function renderReview() {
 
 async function submitStoryIdea() {
     isSubmitting = true;
+    els.prevBtn.disabled = true;
+    els.nextBtn.disabled = true;
     els.submitBtn.disabled = true;
     els.submitBtn.textContent = selectedFiles.length ? 'Uploading Files...' : 'Sending...';
 
@@ -392,6 +406,8 @@ async function submitStoryIdea() {
         showError('Your submission has not finished. Keep this page open and try again. Files that already finished will not upload again. ' + (navigator.onLine === false ? 'Reconnect to the internet first.' : 'Keep your screen on until you see the confirmation.'));
     } finally {
         isSubmitting = false;
+        els.prevBtn.disabled = false;
+        els.nextBtn.disabled = false;
         els.submitBtn.disabled = false;
         els.submitBtn.textContent = 'Submit a Story';
     }
@@ -495,6 +511,17 @@ function getAllowedContentType(file) {
 
     const ext = file.name.split('.').pop()?.toLowerCase();
     const fallbackTypes = {
+        avif: 'image/avif',
+        bmp: 'image/bmp',
+        tif: 'image/tiff',
+        tiff: 'image/tiff',
+        webm: 'video/webm',
+        m4v: 'video/x-m4v',
+        avi: 'video/x-msvideo',
+        mpg: 'video/mpeg',
+        mpeg: 'video/mpeg',
+        '3gp': 'video/3gpp',
+        '3g2': 'video/3gpp2',
         heic: 'image/heic',
         heif: 'image/heif',
         jpg: 'image/jpeg',

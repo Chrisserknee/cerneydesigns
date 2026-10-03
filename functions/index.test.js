@@ -175,3 +175,23 @@ test('Drive bridge honors the server Range offset for resumable uploads', () => 
         }
     );
 });
+
+test('anonymous coverage retains consented contact only in a private follow-up record', () => {
+    const result = helpers.sanitizeSubmission({ type: 'story_submission', canContact: 'Yes', anonymous: true,
+        senderName: 'Test source', senderContact: 'source@example.invalid', userAgent: 'device', description: 'Audit test' });
+    assert.equal(result.senderName, ''); assert.equal(result.senderContact, ''); assert.equal(result.userAgent, '');
+    assert.deepEqual(result.privateFollowUp, { name: 'Test source', contact: 'source@example.invalid' });
+    assert.match(result.description, /KEEP IDENTITY OUT OF COVERAGE/);
+    assert.match(result.description, /source@example.invalid/);
+    const alert = helpers.buildPrivacySafeNotification(result, [], [], 'https://example.invalid');
+    assert.doesNotMatch(JSON.stringify(alert), /source@example.invalid|Test source/);
+});
+test('anonymous tip uploads and stories without follow-up consent discard private identity fields', () => {
+    for (const type of ['tip_submission', 'story_submission']) {
+        const result = helpers.sanitizeSubmission({ type, canContact: type === 'story_submission' ? 'No' : 'Yes',
+            anonymous: true, senderName: 'private name', senderContact: 'private contact',
+            privateFollowUp: { name: 'injected', contact: 'injected' }, description: 'Audit' });
+        assert.equal(result.privateFollowUp, null); assert.equal(result.senderContact, '');
+        assert.equal(result.senderName, ''); assert.equal(result.description, 'Audit');
+    }
+});
