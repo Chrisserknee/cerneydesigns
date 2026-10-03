@@ -6,7 +6,7 @@ const { onObjectFinalized, onObjectMetadataUpdated } = require('firebase-functio
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { getStorage } = require('firebase-admin/storage');
 const { logger } = require('firebase-functions');
-const { SITE, hash, validSubscription, tipRecord, retryTime, notification } = require('./tip-alerts-helpers');
+const { SITE, hash, activeDevice, validSubscription, tipRecord, retryTime, notification } = require('./tip-alerts-helpers');
 const ROOT = '_tipalerts/v1/';
 const bucket = () => getStorage().bucket('tip-line-8c2d7.firebasestorage.app');
 const options = {region:'us-west1', memory:'256MiB', timeoutSeconds:120, maxInstances:3};
@@ -21,6 +21,15 @@ async function read(name) {
 async function write(name, data, generation) {
     await bucket().file(ROOT + name).save(JSON.stringify(data), {resumable:false, contentType:'application/json',
         metadata:{cacheControl:'no-store'}, ...(generation === undefined ? {} : {preconditionOpts:{ifGenerationMatch:generation}})});
+}
+async function updateDevice(id, changes) {
+    const name = `devices/${id}.json`;
+    for (let attempt=0; attempt<3; attempt++) {
+        const current = await read(name);
+        if (!activeDevice(current?.data)) throw Object.assign(new Error('Device disconnected'), {code:401});
+        try { await write(name,{...current.data,...changes},current.generation); return; }
+        catch(e) { if(e.code !== 412 || attempt===2) throw e; }
+    }
 }
 async function config() {
     const existing = await read('config.json');
@@ -56,7 +65,7 @@ async function send(subscription, payload, keys) {
     });
 }
 async function deliver(tip, device, keys) {
-    if (!device.subscription || Date.parse(device.expiresAt) <= Date.now()
+    if (!device.subscription || !activeDevice(device)
         || Date.parse(tip.receivedAt) < Math.max(Date.parse(keys.enabledAt), Date.parse(device.subscribedAt))) return;
     const name = `deliveries/${tip.id}-${device.id}.json`;
     const previous = await read(name);
@@ -95,7 +104,7 @@ async function capture(event) {
 async function authenticate(token) {
     if (!/^[A-Za-z0-9_-]{43}$/.test(token || '')) return null;
     const record = await read(`devices/${hash(token)}.json`);
-    return record && Date.parse(record.data.expiresAt) > Date.now() ? record.data : null;
+    return activeDevice(record?.data) ? record.data : null;
 }
 async function adminVerified(body) {
     if (typeof body.adminCookie !== 'string' || body.adminCookie.length > 2048
@@ -113,7 +122,7 @@ async function handleApi(req, res) {
             if (!await adminVerified(body)) return res.status(401).json({error:'Please sign in to pair this device.'});
             const token = randomBytes(32).toString('base64url');
             const now = Date.now();
-            const device = {id:hash(token), createdAt:new Date(now).toISOString(), expiresAt:new Date(now + 90*86400000).toISOString(), subscription:null};
+            const device = {id:hash(token), createdAt:new Date(now).toISOString(), sessionPolicy:'until-sign-out', expiresAt:null, subscription:null};
             await write(`devices/${device.id}.json`, device, 0);
             return res.json({token, expiresAt:device.expiresAt});
         }
@@ -128,15 +137,15 @@ async function handleApi(req, res) {
             const key = await config();
             const data = {...device, subscription:{endpoint:body.subscription.endpoint, keys:{p256dh:body.subscription.keys.p256dh, auth:body.subscription.keys.auth}},
                 subscribedAt:device.subscribedAt || new Date().toISOString()};
-            await write(`devices/${device.id}.json`,data);
+            await updateDevice(device.id,{subscription:data.subscription,subscribedAt:data.subscribedAt});
             return res.json({subscribed:true, publicKey:key.publicKey});
         }
         if (body.op === 'unsubscribe') {
-            await write(`devices/${device.id}.json`, {...device, subscription:null, subscribedAt:null});
+            await updateDevice(device.id,{subscription:null,subscribedAt:null});
             return res.json({subscribed:false});
         }
         if (body.op === 'logout') {
-            await write(`devices/${device.id}.json`, {...device, expiresAt:new Date().toISOString(), subscription:null});
+            await updateDevice(device.id,{revokedAt:new Date().toISOString(),expiresAt:new Date().toISOString(),subscription:null});
             return res.json({authenticated:false});
         }
         if (body.op === 'list' || body.op === 'tip') {
@@ -157,13 +166,14 @@ async function handleApi(req, res) {
         if (body.op === 'test') {
             if (!device.subscription) return res.status(409).json({error:'Enable notifications on this device first.'});
             if (Date.now() - Date.parse(device.lastTestAt || 0) < 30000) return res.status(429).json({error:'Wait 30 seconds before another test.'});
-            await write(`devices/${device.id}.json`,{...device,lastTestAt:new Date().toISOString()});
+            await updateDevice(device.id,{lastTestAt:new Date().toISOString()});
             const payload = {web_push:8030, notification:{title:'Tip alerts are connected',body:'Tap to open your private tip inbox.',navigate:SITE+'/tip-alerts/?test=1',tag:'tip-alert-test',icon:SITE+'/tip-alerts/icon-192.png',data:{url:SITE+'/tip-alerts/?test=1'}}};
             await send(device.subscription, payload, await config());
             return res.json({accepted:true});
         }
         return res.status(400).json({error:'Unknown request.'});
     } catch(e) {
+        if (e.code === 401) return res.status(401).json({error:'Sign in to connect this device.'});
         logger.error('Tip alerts request failed', {op:body.op, code:Number(e.code || e.statusCode) || 0});
         return res.status(503).json({error:'Temporarily unavailable. Please try again.'});
     }
@@ -172,7 +182,7 @@ exports.captureWebTip = onObjectFinalized({...options,retry:true},capture);
 exports.updateWebTip = onObjectMetadataUpdated({...options,retry:true},capture);
 exports.retryWebTips = onSchedule({...options,maxInstances:1,schedule:'every 5 minutes'},async()=>{
     const keys = await config();
-    const devices = (await documents('devices/')).filter(d=>d.subscription && Date.parse(d.expiresAt)>Date.now());
+    const devices = (await documents('devices/')).filter(d=>d.subscription && activeDevice(d));
     if (!devices.length) return;
     const tips = (await documents('tips/')).filter(t=>Date.parse(t.receivedAt)>Date.now()-7*86400000);
     for (const tip of tips) for (const device of devices) await deliver(tip,device,keys);

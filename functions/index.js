@@ -1,5 +1,5 @@
 // ============================================================
-// TIPLINE — ntfy push + Google Drive bridge
+// TIPLINE — verified Google Drive delivery
 // Triggers when tips/*/_submission.json is finalized after all
 // media is in Storage, then reliably mirrors it to Google Drive.
 // ============================================================
@@ -14,7 +14,6 @@ const { initializeApp } = require('firebase-admin/app');
 const { getStorage } = require('firebase-admin/storage');
 const {
     buildManifestMap,
-    buildPrivacySafeNotification,
     firstDownloadToken,
     normalizeDriveBridgeResponse,
     sanitizeSubmission,
@@ -24,7 +23,6 @@ const {
 
 initializeApp();
 
-const ntfyTopic = defineSecret('NTFY_TOPIC');
 const driveBridgeUrl = defineSecret('DRIVE_BRIDGE_URL');
 const driveBridgeToken = defineSecret('DRIVE_BRIDGE_TOKEN');
 const driveAuth = new GoogleAuth({ scopes: ['https://www.googleapis.com/auth/drive.readonly'] });
@@ -84,8 +82,6 @@ async function processTip(event) {
             tipFiles.map((file) => buildFileLink(file, object.bucket, manifestByStoredName, workflow.driveCopyStatus !== 'complete'))
         );
 
-        const consoleUrl = `https://console.firebase.google.com/project/${process.env.GCLOUD_PROJECT}/storage/${object.bucket}/files/~2F${encodeURIComponent(folder).replace(/%2F/g, '~2F')}`;
-        const notification = buildPrivacySafeNotification(submission, fileLinks, integrityWarnings, consoleUrl);
         let driveFolderUrl = workflow.driveFolderUrl || null;
         const driveFiles = fileLinks.length ? fileLinks
             : submission.type === 'story_submission' ? [buildStoryDocument(submission, object.bucket, folder)] : [];
@@ -97,6 +93,15 @@ async function processTip(event) {
                     bucket,
                     sessionLabel,
                     files: driveFiles,
+                    onMediaReady: async (folderUrl) => {
+                        // Publish only after an independent size/checksum check. The
+                        // photo can open while the bridge writes its summary files.
+                        workflow = await mergeWorkflowMetadata(submissionFile, {
+                            driveCopyStatus: 'finalizing', driveFolderUrl: folderUrl,
+                            driveMediaReadyAt: new Date().toISOString(),
+                        });
+                        logger.info('Tip media ready in Drive', {elapsedMs:Date.now()-Date.parse(object.timeCreated)});
+                    },
                     submission: {
                         ...submission,
                         deliveryAudit: {
@@ -107,7 +112,6 @@ async function processTip(event) {
                     },
                 });
                 driveFolderUrl = driveMirror.folderUrl;
-                await verifyDriveContents(driveFolderUrl, driveFiles);
                 workflow = await mergeWorkflowMetadata(submissionFile, {
                     driveCopyStatus: 'complete',
                     driveFolderUrl,
@@ -116,7 +120,6 @@ async function processTip(event) {
                     driveVerification: 'size-and-md5',
                 });
                 logger.info(`Drive mirror verified for ${folder}`, {
-                    folderUrl: driveFolderUrl,
                     copied: driveMirror.copied.length,
                 });
                 await revokeDownloadTokens(tipFiles);
@@ -125,23 +128,6 @@ async function processTip(event) {
                 await mergeWorkflowMetadata(submissionFile, {
                     driveLastFailureAt: new Date().toISOString(),
                 });
-                workflow = await getWorkflowMetadata(submissionFile);
-                if (workflow.driveCopyStatus !== 'complete' && workflow.driveFailureNotified !== 'true') {
-                    try {
-                        await postNtfy(buildNtfyBody({
-                            ...notification,
-                            title: `${notification.title} (Drive copy retrying)`,
-                            message: `${notification.message}\n\nThe Firebase upload is safe. Google Drive delivery is retrying automatically.`,
-                            clickUrl: consoleUrl,
-                        }));
-                        await mergeWorkflowMetadata(submissionFile, {
-                            driveFailureNotified: 'true',
-                            driveLastFailureAt: new Date().toISOString(),
-                        });
-                    } catch (notifyErr) {
-                        logger.error('Drive failure notification also failed', notifyErr);
-                    }
-                }
                 throw err;
             }
         } else if (workflow.driveCopyStatus === 'complete') {
@@ -149,36 +135,12 @@ async function processTip(event) {
             await revokeDownloadTokens(tipFiles);
         }
 
-        workflow = await getWorkflowMetadata(submissionFile);
-        if (workflow.notificationStatus !== 'sent' && Date.now() >= Number(workflow.notificationRetryAt || 0)) {
-            try {
-                await postNtfy(buildNtfyBody({
-                ...notification,
-                clickUrl: driveFolderUrl || consoleUrl,
-                driveFolderUrl,
-                }));
-                await mergeWorkflowMetadata(submissionFile, {
-                    notificationStatus: 'sent',
-                    notificationSentAt: new Date().toISOString(),
-                });
-            } catch (error) {
-                // Delivery and push notifications have separate retry lifecycles.
-                await mergeWorkflowMetadata(submissionFile, {
-                    notificationStatus: 'pending',
-                    notificationRetryAt: Date.now() + 60 * 60 * 1000,
-                });
-                logger.warn('Tip received; notification queued for scheduled retry', { status: error.status || 'network' });
-            }
-        } else {
-            logger.info(`Notification already sent for ${folder}; skipping duplicate`);
-        }
-
         return null;
 }
 
 const deliveryOptions = {
     region: 'us-west1',
-    secrets: [ntfyTopic, driveBridgeUrl, driveBridgeToken],
+    secrets: [driveBridgeUrl, driveBridgeToken],
     memory: '1GiB',
     concurrency: 4,
     maxInstances: 3,
@@ -188,7 +150,7 @@ exports.notifyOnTip = onObjectFinalized({ ...deliveryOptions, retry: true }, pro
 
 exports.retryTipDeliveries = onSchedule({
     ...deliveryOptions,
-    schedule: 'every 60 minutes',
+    schedule: 'every 5 minutes',
     maxInstances: 1,
 }, async () => {
     const started = Date.now();
@@ -202,9 +164,9 @@ exports.retryTipDeliveries = onSchedule({
         const age = started - Date.parse(metadata.timeCreated);
         return file.name.endsWith('/_submission.json')
             && state.processingStatus !== 'rejected'
-            && age > 60 * 60 * 1000 && age < 30 * 24 * 60 * 60 * 1000
-            && (state.driveCopyStatus !== 'complete' && (mediaFolders.has(file.name.slice(0, file.name.lastIndexOf('/'))) || file.name.startsWith('tips/submit-story_'))
-                || state.notificationStatus !== 'sent' && started >= Number(state.notificationRetryAt || 0));
+            && age > 5 * 60 * 1000 && age < 30 * 24 * 60 * 60 * 1000
+            && state.driveCopyStatus !== 'complete'
+            && (mediaFolders.has(file.name.slice(0, file.name.lastIndexOf('/'))) || file.name.startsWith('tips/submit-story_'));
     }).sort((a, b) => Date.parse(a.metadata.metadata?.driveLastFailureAt || a.metadata.timeCreated)
         - Date.parse(b.metadata.metadata?.driveLastFailureAt || b.metadata.timeCreated));
     for (const file of pending) {
@@ -305,29 +267,6 @@ async function revokeDownloadTokens(files) {
     }));
 }
 
-function buildNtfyBody({
-    title,
-    message,
-    consoleUrl,
-    clickUrl,
-    driveFolderUrl = null,
-}) {
-    const actions = [];
-    if (driveFolderUrl) {
-        actions.push({ action: 'view', label: 'Open Drive Folder', url: driveFolderUrl, clear: true });
-    }
-    actions.push({ action: 'view', label: 'Open Firebase Folder', url: consoleUrl, clear: true });
-    return {
-        topic: ntfyTopic.value(),
-        title,
-        message,
-        priority: 4,
-        tags: ['camera_flash', 'newspaper'],
-        click: clickUrl,
-        actions,
-    };
-}
-
 async function getWorkflowMetadata(file) {
     const [metadata] = await file.getMetadata();
     return metadata.metadata || {};
@@ -350,14 +289,14 @@ async function mergeWorkflowMetadata(file, updates) {
  * Calls the Apps Script bridge. The bridge runs as Chris's Google account,
  * which avoids the personal-Drive quota issue service accounts hit.
  */
-async function mirrorSessionToDriveBridge({ deliveryId, bucket, sessionLabel, files, submission }) {
+async function mirrorSessionToDriveBridge({ deliveryId, bucket, sessionLabel, files, submission, onMediaReady }) {
     const url = driveBridgeUrl.value();
     if (!isApprovedDriveBridgeUrl(url)) throw new Error('DRIVE_BRIDGE_URL is not configured.');
     const leaseId = randomUUID();
     const deadline = Date.now() + 420000;
     const callBridge = async (action) => {
         const res = await fetch(url, {
-            method: 'POST', signal: AbortSignal.timeout(60000),
+            method: 'POST', signal: AbortSignal.timeout(action === 'release' ? 5000 : 60000),
             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
             body: JSON.stringify({ token: driveBridgeToken.value(), deliveryId, leaseId, action, sessionLabel, submission, files: files.map(({ inlineBytes, ...file }) => file) }),
         });
@@ -381,7 +320,14 @@ async function mirrorSessionToDriveBridge({ deliveryId, bucket, sessionLabel, fi
                 return bytes;
             }, { deadline });
         }
-        return normalizeDriveBridgeResponse(await callBridge('finalize'), files);
+        await verifyDriveContents(prepared.folderUrl, files);
+        if (onMediaReady) await onMediaReady(prepared.folderUrl);
+        // Finalization is idempotent: a lost/invalid response must not delay
+        // access to already verified media or require a whole new delivery.
+        let finalized;
+        try { finalized = await callBridge('finalize'); }
+        catch { finalized = await callBridge('finalize'); }
+        return normalizeDriveBridgeResponse(finalized, files);
     } finally {
         if (leased) {
             try { await callBridge('release'); } catch { logger.warn('Drive transfer lease will expire automatically.'); }
@@ -402,21 +348,5 @@ function isApprovedDriveBridgeUrl(value) {
     }
 }
 
-async function postNtfy(body) {
-    const res = await fetch('https://ntfy.sh', {
-        method: 'POST',
-        signal: AbortSignal.timeout(15000),
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-    });
-    if (!res.ok) {
-        const text = await res.text();
-        const error = new Error(`ntfy ${res.status}: ${text}`);
-        error.status = res.status;
-        throw error;
-    }
-    logger.info('ntfy notification sent');
-}
-
-// Private iPhone Web Push alerts run alongside the existing NTFY delivery.
+// Private iPhone Web Push is the tipline notification channel.
 Object.assign(exports, require('./tip-alerts'));

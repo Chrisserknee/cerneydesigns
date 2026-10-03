@@ -3,22 +3,22 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 
-function delivery(driveFiles = [], bucket = {}) {
+function delivery(driveFiles = [], bucket = {}, fetchImpl = async()=>{throw Error("Unexpected request");}) {
     const context = vm.createContext({
-        exports: {}, process, Buffer, URL, Date, AbortSignal,
+        exports: {}, process, Buffer, URL, Date, AbortSignal, fetch:fetchImpl,
         require(name) {
             if (name === './tip-alerts') return {};
             if (name === 'google-auth-library') return { GoogleAuth: class { async getClient() { return { request: async () => ({ data: { files: driveFiles } }) }; } } };
             if (name === 'firebase-functions/v2/storage') return { onObjectFinalized: (_, handler) => handler };
             if (name === 'firebase-functions/v2/scheduler') return { onSchedule: (_, handler) => handler };
-            if (name === 'firebase-functions/params') return { defineSecret: () => ({ value: () => 'test' }) };
+            if (name === 'firebase-functions/params') return { defineSecret: name => ({ value: () => name === 'DRIVE_BRIDGE_URL' ? 'https://script.google.com/macros/s/test/exec' : 'test' }) };
             if (name === 'firebase-functions') return { logger: { info() {}, warn() {}, error() {} } };
             if (name === 'firebase-admin/app') return { initializeApp() {} };
             if (name === 'firebase-admin/storage') return { getStorage: () => ({ bucket: () => bucket }) };
             return require(name);
         },
     });
-    vm.runInContext(fs.readFileSync(__dirname + '/index.js', 'utf8') + '\nthis.fns = { verifyDriveContents, revokeDownloadTokens, buildFileLink, buildStoryDocument };', context);
+    vm.runInContext(fs.readFileSync(__dirname + '/index.js', 'utf8') + '\nthis.fns = { verifyDriveContents, revokeDownloadTokens, buildFileLink, buildStoryDocument, mirrorSessionToDriveBridge };', context);
     return { ...context.fns, context };
 }
 
@@ -69,4 +69,36 @@ test('text-only stories have a verifiable Drive document without a public token'
     assert.equal(doc.md5Hash,createHash('md5').update(doc.inlineBytes).digest('base64'));
     assert.equal(JSON.parse(doc.inlineBytes).whatHappened,'A story');
     assert.doesNotMatch(doc.url,/token=/);
+});
+
+
+test('verified media becomes accessible before a failed bridge finalization is retried', async () => {
+    const source={name:'photo.jpg',sizeBytes:4,md5Hash:Buffer.from('1234567890abcdef').toString('base64')};
+    const copied={name:source.name,sizeBytes:4,verified:true,id:'photo',md5Checksum:Buffer.from(source.md5Hash,'base64').toString('hex')};
+    const events=[];let attempts=0;
+    const {mirrorSessionToDriveBridge}=delivery([{...copied,size:'4'}],{},async(url,options)=>{
+        assert.equal(url,'https://script.google.com/macros/s/test/exec');
+        const action=JSON.parse(options.body).action;events.push(action);
+        if(action==='prepare')return {ok:true,json:async()=>({ok:true,transferMode:'direct-v1',folderUrl:'https://drive.google.com/drive/folders/test',transfers:[copied]})};
+        if(action==='finalize' && ++attempts===1)return {ok:false,json:async()=>{throw Error('Invalid JSON');}};
+        return {ok:true,json:async()=>({ok:true,complete:true,folderUrl:'https://drive.google.com/drive/folders/test',copied:[copied]})};
+    });
+    await mirrorSessionToDriveBridge({deliveryId:'test',sessionLabel:'test',files:[source],onMediaReady:async()=>events.push('ready')});
+    assert.deepEqual(events,['prepare','ready','finalize','finalize','release']);
+});
+
+test('a checksum mismatch never publishes a Drive link', async () => {
+    let published=false;
+    const {mirrorSessionToDriveBridge}=delivery([{name:'photo.jpg',size:'4',md5Checksum:'wrong'}],{},async(url,options)=>({ok:true,json:async()=>({ok:true,transferMode:'direct-v1',folderUrl:'https://drive.google.com/drive/folders/test',transfers:[{name:'photo.jpg',sizeBytes:4,verified:true}]})}));
+    await assert.rejects(mirrorSessionToDriveBridge({files:[{name:'photo.jpg',sizeBytes:4,md5Hash:Buffer.from('1234567890abcdef').toString('base64')}],onMediaReady:async()=>{published=true;}}),/verification failed/);
+    assert.equal(published,false);
+});
+
+test('Drive reconciliation retries a recent stuck upload and ignores old NTFY backlog',async()=>{
+    const manifest={name:'tips/test/_submission.json',metadata:{name:'tips/test/_submission.json',timeCreated:new Date(Date.now()-360000).toISOString(),generation:'1',metadata:{notificationStatus:'pending'}}};
+    const {context}=delivery([],{getFiles:async()=>[[manifest,{name:'tips/test/photo.jpg'}]]});
+    let calls=0;context.processTip=async()=>calls++;
+    await context.exports.retryTipDeliveries();assert.equal(calls,1);
+    manifest.metadata.metadata.driveCopyStatus='complete';
+    await context.exports.retryTipDeliveries();assert.equal(calls,1);
 });

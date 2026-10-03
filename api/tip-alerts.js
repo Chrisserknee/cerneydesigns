@@ -3,6 +3,7 @@ const { isAuthenticated } = require('./_lib/admin-auth');
 const { parseBody, sendJson } = require('./_lib/http');
 const BACKEND = 'https://us-west1-tip-line-8c2d7.cloudfunctions.net/tipAlertsApi';
 const COOKIE = 'cc_tip_device';
+const deviceCookie = (token, maxAge = 34560000) => `${COOKIE}=${token}; Max-Age=${maxAge}; Path=/api/tip-alerts; HttpOnly; Secure; SameSite=Strict`;
 function readCookie(request, name) {
     return String(request.headers.cookie || '').split(';').map(x=>x.trim()).find(x=>x.startsWith(name+'='))?.slice(name.length+1) || '';
 }
@@ -30,10 +31,10 @@ module.exports = async (request, response) => {
         const result = await remote.json();
         if (remote.ok && body.op === 'pair') {
             if (!/^[A-Za-z0-9_-]{43}$/.test(result.token)) throw new Error('Invalid pairing response');
-            response.setHeader('Set-Cookie',`${COOKIE}=${result.token}; Max-Age=7776000; Path=/api/tip-alerts; HttpOnly; Secure; SameSite=Strict`);
+            response.setHeader('Set-Cookie',deviceCookie(result.token));
             return sendJson(response,200,{authenticated:true,expiresAt:result.expiresAt});
         }
-        if (remote.ok && body.op === 'logout') response.setHeader('Set-Cookie',`${COOKIE}=; Max-Age=0; Path=/api/tip-alerts; HttpOnly; Secure; SameSite=Strict`);
+        if (remote.ok) response.setHeader('Set-Cookie',body.op === 'logout' ? deviceCookie('',0) : deviceCookie(payload.token));
         return sendJson(response,remote.status,result);
     } catch { return sendJson(response,503,{error:'Could not reach tip alerts. Please try again.'}); }
 };

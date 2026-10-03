@@ -8,9 +8,9 @@ This context was carried over from the Codex "Website Editor" chats (June–Sept
 
 - Static HTML/CSS/JS. No build step and no root `package.json`.
 - Repo: `github.com/Chrisserknee/cerneydesigns`, branch `main`. Vercel project `cerneydesigns` auto-deploys `main` to chriscerney.org (the apex 307-redirects to `www.chriscerney.org`; use `curl -L` when checking). Vercel serverless functions live in `api/`.
-- Firebase project `tip-line-8c2d7` (see `.firebaserc`): Storage receives tip uploads; Cloud Functions in `functions/` (Node 22) are `notifyOnTip` (on upload) and `retryTipDeliveries` (hourly retry).
+- Firebase project `tip-line-8c2d7` (see `.firebaserc`): Storage receives tip uploads; Cloud Functions in `functions/` (Node 22) are `notifyOnTip` (on upload) and `retryTipDeliveries` (five-minute retry).
 - Uploads are delivered to the owner's Google Drive through a Google Apps Script bridge (`upload/drive-bridge-apps-script.gs`, deployed separately in Apps Script; last known production version 10). Firebase transfers files into resumable Drive uploads and verifies size and checksum before marking delivery complete.
-- Push alerts to the owner's phone use ntfy and can hit HTTP 429. That is queued and retried and is not a delivery failure.
+- Push alerts use the private Cerney Tips Home Screen app through Web Push. NTFY has been removed from tip delivery. Trusted tip devices have no scheduled server expiry; sign-out revokes access. Device cookies renew on use. Drive links become available after independent media verification, before bridge summary finalization.
 - Security headers and a strict CSP are in `vercel.json` (`script-src 'self' https://www.gstatic.com`, and so on). Adding any third-party script, image host, or connect target means updating the CSP too. `/admin/*` is noindex and no-store.
 
 ## Layout

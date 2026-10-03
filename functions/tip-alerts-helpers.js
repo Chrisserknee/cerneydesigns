@@ -2,6 +2,10 @@
 const { createHash } = require('node:crypto');
 const SITE = 'https://www.chriscerney.org';
 const hash = value => createHash('sha256').update(value).digest('hex');
+function activeDevice(device, now = Date.now()) {
+    return !!device && !device.revokedAt && (device.sessionPolicy === 'until-sign-out'
+        ? device.expiresAt === null : Date.parse(device.expiresAt) > now);
+}
 function validSubscription(value) {
     try {
         const u = new URL(value.endpoint);
@@ -53,4 +57,4 @@ function notification(tip, now = Date.now()) {
         },
     };
 }
-module.exports = { SITE, hash, validSubscription, driveUrl, tipRecord, retryTime, notification };
+module.exports = { SITE, hash, activeDevice, validSubscription, driveUrl, tipRecord, retryTime, notification };

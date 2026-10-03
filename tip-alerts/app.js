@@ -2,7 +2,7 @@
 const $ = id => document.getElementById(id);
 const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
-let state, registration, retryTimer, openAttempts = 0;
+let state, registration, retryTimer, inboxTimer, openAttempts = 0;
 const tipId = new URLSearchParams(location.search).get('tip');
 const show = (id, visible) => { $(id).hidden = !visible; };
 function message(text='', error=false) { $('message').textContent=text; $('message').classList.toggle('error',error); }
@@ -33,9 +33,11 @@ async function updateControls() {
     show('test',enabled); show('disable',!!local || state.subscribed);
 }
 async function load() {
+    clearTimeout(retryTimer);
     show('install',isIOS && !standalone);
     try {
         state = await api('status');
+        show('sessionHelp',state.expiresAt === null);
         show('login',false); show('intro',false); show('connected',true);
         try { await prepareNotifications(); } catch { registration = null; }
         await updateControls(); await loadTips();
@@ -50,6 +52,7 @@ async function load() {
 function dateLabel(value) { return new Intl.DateTimeFormat('en-US',{timeZone:'America/Los_Angeles',month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'}).format(new Date(value)); }
 function folderLink(tip, label='Open folder') { const a=document.createElement('a'); a.className='folder'; a.textContent=label; a.href=tip.driveUrl; a.rel='noreferrer'; return a; }
 async function loadTips() {
+    clearTimeout(inboxTimer);
     const data=await api('list'); $('tips').replaceChildren(); show('empty',!data.tips.length);
     for(const tip of data.tips) {
         const row=document.createElement('article');row.className='tip';
@@ -57,6 +60,10 @@ async function loadTips() {
         const time=document.createElement('time');time.dateTime=tip.receivedAt;time.textContent=dateLabel(tip.receivedAt);info.append(title,time);row.append(info);
         if(tip.driveUrl) row.append(folderLink(tip)); else {const status=document.createElement('span');status.className='state';status.textContent=tip.status==='review'?'Needs review':'Files processing';row.append(status);}
         $('tips').append(row);
+    }
+    // Keep a newly arrived photo current without requiring manual refresh.
+    if (!document.hidden && data.tips.some(t=>!t.driveUrl && t.status==='processing' && Date.parse(t.receivedAt)>Date.now()-3600000)) {
+        inboxTimer=setTimeout(()=>loadTips().catch(e=>message(e.message,true)),3000);
     }
 }
 async function openTip() {
@@ -96,4 +103,8 @@ $('test').addEventListener('click',async()=>{
 $('disable').addEventListener('click',async()=>{try{await api('unsubscribe');const subscription=await manager()?.getSubscription();if(subscription)await subscription.unsubscribe();state.subscribed=false;await updateControls();message('Alerts are off on this device.');}catch(e){message(e.message,true);}});
 $('refresh').addEventListener('click',async()=>{try{await loadTips();if(tipId){clearTimeout(retryTimer);openAttempts=0;await openTip();}message('Inbox updated.');}catch(e){message(e.message,true);}});
 $('logout').addEventListener('click',async()=>{try{await api('logout');const subscription=await manager()?.getSubscription();if(subscription)await subscription.unsubscribe();clearTimeout(retryTimer);location.replace('/tip-alerts/');}catch(e){message(e.message,true);}});
+document.addEventListener('visibilitychange',()=>{
+    if(document.hidden) clearTimeout(inboxTimer);
+    else if(state) load();
+});
 load();

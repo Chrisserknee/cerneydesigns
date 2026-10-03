@@ -17,7 +17,7 @@ function harness({send=async()=>{},fetchImpl=async()=>({ok:false}), initial={}}=
  if(name==='firebase-functions/v2/https')return {onRequest:(_,f)=>f};
  return require(name);
  }});
- vm.runInContext(fs.readFileSync(__dirname+'/tip-alerts.js','utf8')+'\nthis.testing={deliver,authenticate,handleApi,syncTip,adminVerified};',c);
+ vm.runInContext(fs.readFileSync(__dirname+'/tip-alerts.js','utf8')+'\nthis.testing={deliver,authenticate,handleApi,syncTip,adminVerified,updateDevice};',c);
  return {...c.testing,files};
 }
 test('only supported HTTPS push endpoints and correctly sized keys are accepted',()=>{
@@ -70,4 +70,33 @@ test('pairing requires the existing administrator session verified at the fixed 
 test('raw device tokens are required; expired devices cannot read the inbox',async()=>{
  const token='x'.repeat(43);const x=harness({initial:{['_tipalerts/v1/devices/'+h.hash(token)+'.json']:{...device,expiresAt:new Date(now-1).toISOString()}}});
  assert.equal(await x.authenticate(token),null);assert.equal(await x.authenticate('../config'),null);
+});
+
+
+test('trusted devices stay active past 90 days; expiry and revocation fail closed',()=>{
+ const trusted={...device,sessionPolicy:'until-sign-out',expiresAt:null};
+ assert.equal(h.activeDevice(trusted,now+500*86400000),true);
+ assert.equal(h.activeDevice({...trusted,revokedAt:new Date().toISOString()}),false);
+ assert.equal(h.activeDevice({...device,expiresAt:null}),false);
+ assert.equal(h.activeDevice({...trusted,expiresAt:device.expiresAt}),false);
+});
+test('persistent authentication and push stop on explicit sign-out',async()=>{
+ const token='x'.repeat(43),id=h.hash(token),path='_tipalerts/v1/devices/'+id+'.json';
+ let sent=0;const trusted={...device,id,createdAt:new Date(now-200*86400000).toISOString(),sessionPolicy:'until-sign-out',expiresAt:null};
+ const x=harness({send:async()=>sent++,initial:{[path]:trusted}});
+ assert.equal((await x.authenticate(token)).id,id);
+ await x.deliver(tip,trusted,keys);assert.equal(sent,1);
+ const res={set(){},status(n){this.code=n;return this;},json(data){this.body=data;}};
+ await x.handleApi({method:'POST',is:()=>true,body:{op:'logout',token}},res);
+ assert.equal(res.body.authenticated,false);assert.equal(await x.authenticate(token),null);
+ const revoked=x.files.get(path).data;assert.ok(revoked.revokedAt);assert.equal(revoked.subscription,null);
+ await x.deliver({...tip,id:'c'.repeat(64)},revoked,keys);assert.equal(sent,1);
+});
+
+
+test('a stale subscription update cannot undo sign-out',async()=>{
+ const id='b'.repeat(64),path='_tipalerts/v1/devices/'+id+'.json';
+ const x=harness({initial:{[path]:{...device,sessionPolicy:'until-sign-out',expiresAt:null,revokedAt:new Date().toISOString(),subscription:null}}});
+ await assert.rejects(x.updateDevice(id,{subscription}),e=>e.code===401);
+ assert.equal(x.files.get(path).data.subscription,null);
 });
