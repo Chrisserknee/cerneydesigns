@@ -8,3 +8,5 @@
 /upload/drive-bridge-apps-script.gs
 *.test.js
 *.test.cjs
+
+/inbox-sync

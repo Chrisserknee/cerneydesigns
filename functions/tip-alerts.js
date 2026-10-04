@@ -10,6 +10,7 @@ const {defineSecret}=require('firebase-functions/params');
 const {gatewayAuthenticated}=require('./request-auth');
 const proxySecret=defineSecret('TIP_ALERTS_PROXY_SECRET');
 const { SITE, hash, activeDevice, validSubscription, tipRecord, retryTime, notification } = require('./tip-alerts-helpers');
+const {sourceContext,displayContext}=require('./tip-inbox-context');
 const ROOT = '_tipalerts/v1/';
 const bucket = () => getStorage().bucket('tip-line-8c2d7.firebasestorage.app');
 const options = {region:'us-west1', memory:'256MiB', timeoutSeconds:120, maxInstances:3};
@@ -64,10 +65,10 @@ async function documents(prefix) {
 // Only tip summaries are cached. Every request still reads the current device
 // record, and every inbox refresh lists storage generations to detect changes.
 const inboxRecords = new Map();
-async function inboxDocuments() {
-    const [files] = await bucket().getFiles({prefix:ROOT + 'tips/'});
+async function inboxDocuments(prefix='tips/') {
+    const [files] = await bucket().getFiles({prefix:ROOT + prefix});
     const names = new Set(files.map(f=>f.name));
-    for (const name of inboxRecords.keys()) if (!names.has(name)) inboxRecords.delete(name);
+    for (const name of inboxRecords.keys()) if (name.startsWith(ROOT+prefix) && !names.has(name)) inboxRecords.delete(name);
     const records = await Promise.all(files.map(async file=>{
         const generation=file.metadata?.generation;
         const cached=inboxRecords.get(file.name);
@@ -91,6 +92,17 @@ async function inboxDocuments() {
 async function syncTip(object) {
     const record = tipRecord(object);
     if (!record) return null;
+    const file=bucket().file(object.name,{generation:object.generation});
+    const [raw]=await file.download();
+    const initial=JSON.parse(raw.toString());
+    let followup;
+    try {
+        const [bytes]=await bucket().file(object.name.replace('_submission.json','_context_ready.json')).download();
+        const context=JSON.parse(bytes.toString());
+        if(context.submissionName===object.name && String(context.submissionGeneration)===String(object.generation))
+            followup={...context.submission,receivedAt:context.receivedAt};
+    } catch(e) { if(e.code!==404)throw e; }
+    Object.assign(record,sourceContext(initial,followup));
     const name = `tips/${record.id}.json`;
     for (let attempt=0; attempt<3; attempt++) {
         const old = await read(name);
@@ -139,11 +151,12 @@ async function deliver(tip, device, keys) {
     }
 }
 async function capture(event) {
-    if (!event.data?.name?.startsWith('tips/') || !event.data.name.endsWith('/_submission.json')) return;
-    const [current] = await bucket().file(event.data.name).getMetadata();
+    if (!event.data?.name?.startsWith('tips/') || !/\/_(submission|context_ready)\.json$/.test(event.data.name)) return;
+    const contextOnly=event.data.name.endsWith('/_context_ready.json');
+    const [current] = await bucket().file(event.data.name.replace('_context_ready.json','_submission.json')).getMetadata();
     if (!(await require('./upload-admission').permittedObject(current))) return;
     const tip = await syncTip(current);
-    if (!tip) return;
+    if (!tip || contextOnly) return;
     const keys = await config();
     const devices = await documents('devices/');
     await Promise.all(devices.map(device => deliver(tip, device, keys)));
@@ -225,7 +238,9 @@ async function handleApi(req, res) {
                 tips = (await inboxDocuments()).filter(t => Date.parse(t.receivedAt) > Date.now()-30*86400000)
                     .sort((a,b)=>Date.parse(b.receivedAt)-Date.parse(a.receivedAt)).slice(0,50);
             }
-            return res.json({authenticated:true,expiresAt:device.expiresAt,tips:tips.map(({path,...t})=>t)});
+            const reports=await inboxDocuments('enrichment/');
+            const byId=new Map(reports.map(r=>[r.id,r]));
+            return res.json({authenticated:true,expiresAt:device.expiresAt,tips:tips.map(t=>displayContext(t,byId.get(t.id))).map(({path,sourceGeneration,sourceTitle,sourceSummary,sourceLocation,contextReceivedAt,...t})=>t)});
         }
         if (body.op === 'test') {
             if (!device.subscription) return res.status(409).json({error:'Enable notifications on this device first.'});

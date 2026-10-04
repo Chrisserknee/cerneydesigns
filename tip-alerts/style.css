@@ -15,3 +15,5 @@ html.standalone-app,html.standalone-app body{overscroll-behavior-y:none}
 .pull-refreshing .pull-indicator::before{animation:refresh-spin .7s linear infinite}
 @keyframes refresh-spin{to{transform:rotate(calc(var(--pull-turn,0deg) + 360deg))}}
 @media(prefers-reduced-motion:reduce){.standalone-app main{transition:none}.pull-refreshing .pull-indicator::before{animation:none}}
+
+.tip-summary{font-size:13px;line-height:1.5;margin:9px 0 6px;overflow-wrap:anywhere}.tip-location,.tip-provenance{font-size:11px;color:#617482;line-height:1.5;margin:5px 0;overflow-wrap:anywhere}.tip{align-items:flex-start}.tip .folder{margin-top:2px}@media(max-width:540px){.tip{flex-wrap:wrap}.tip>div{flex-basis:100%}.tip .folder{margin-top:0}.tip .state{text-align:left;max-width:none}}

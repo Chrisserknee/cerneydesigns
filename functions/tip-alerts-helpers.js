@@ -29,7 +29,7 @@ function tipRecord(object) {
     const m = object.metadata || {};
     if (!Number.isFinite(Date.parse(object.timeCreated))) return null;
     return {
-        id: hash(object.name), path: object.name, receivedAt: object.timeCreated,
+        id: hash(object.name), sourceGeneration:String(object.generation || ''), path: object.name, receivedAt: object.timeCreated,
         type: object.name.includes('/submit-story_') ? 'story' : 'upload',
         driveUrl: driveUrl(m.driveFolderUrl),
         status: m.processingStatus === 'rejected' ? 'review' : m.driveCopyStatus === 'complete' ? 'ready' : 'processing',

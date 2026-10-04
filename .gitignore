@@ -17,3 +17,7 @@ node_modules/
 
 # Logs
 *.log
+
+# Python inbox companion
+__pycache__/
+*.pyc

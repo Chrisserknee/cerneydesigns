@@ -143,3 +143,11 @@ test('device authentication always reads fresh storage even with a warm inbox ca
  assert.equal(await c.authenticate(token),null);
  assert.deepEqual(c.counts,{metadata:0,downloads:2});
 });
+
+test('source details and verified follow-up enrich one canonical inbox record',async()=>{
+ const path='tips/2026-10-04_12-00-00_abcdefghijkl/_submission.json';
+ const c=harness({initial:{[path]:{whatHappened:'Original context',senderContact:'SECRET'},[path.replace('_submission.json','_context_ready.json')]:{submissionName:path,submissionGeneration:'1',receivedAt:'2026-10-04T12:01:00Z',submission:{whatHappened:'Updated context',location:'Monterey',senderName:'SECRET'}}}});
+ const r=await c.syncTip({name:path,generation:1,timeCreated:'2026-10-04T12:00:00Z',metadata:{}});
+ assert.equal(r.sourceTitle,'Updated context');assert.equal(r.sourceLocation,'Monterey');assert.doesNotMatch(JSON.stringify(r),/SECRET/);
+ assert.equal([...c.files.keys()].filter(n=>n.startsWith('_tipalerts/v1/tips/')).length,1);
+});

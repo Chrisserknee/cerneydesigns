@@ -141,3 +141,14 @@ test('unchanged auto refresh preserves the actual rendered card nodes',async()=>
  record.status='processing';await c.run('loadTips({quiet:true})');
  assert.notEqual(c.elements.get('tips').children[0],row);
 });
+
+test('Claude titles and context replace a generic card safely on automatic refresh',async()=>{
+ const tip={id:'x',receivedAt:new Date().toISOString(),type:'upload',driveUrl:'https://drive.google.com/drive/folders/test'};
+ const c=client({respond:()=>({status:200,body:{tips:[{...tip}]}})});await c.ready;
+ Object.assign(tip,{title:'Bicycle riders in Monterey',summary:'<img src=x onerror=alert(1)>',contextSource:'claude',reportState:'ready'});
+ await c.run('loadTips({quiet:true})');
+ const info=c.elements.get('tips').children[0].children[0];
+ assert.equal(info.children[0].textContent,tip.title);
+ assert.equal(info.children[2].textContent,tip.summary);
+ assert.match(info.children.at(-1).textContent,/Claude draft.*Draft ready for your review/);
+});

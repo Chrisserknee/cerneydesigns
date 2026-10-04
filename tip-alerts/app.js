@@ -140,8 +140,14 @@ async function fetchTips(quiet) {
     $('tips').replaceChildren();
     for(const tip of data.tips) {
         const row=document.createElement('article');row.className='tip';
-        const info=document.createElement('div'); const title=document.createElement('h3');title.textContent=(tip.type==='story'?'Story submission':'Tipline upload')+(tip.incomplete?' · Incomplete':'');
-        const time=document.createElement('time');time.dateTime=tip.receivedAt;time.textContent=dateLabel(tip.receivedAt);info.append(title,time);row.append(info);
+        const info=document.createElement('div'); const title=document.createElement('h3');title.textContent=(tip.title || (tip.type==='story'?'Story submission':'Tipline upload'))+(tip.incomplete?' · Incomplete':'');
+        const time=document.createElement('time');time.dateTime=tip.receivedAt;time.textContent=dateLabel(tip.receivedAt);info.append(title,time);
+        if(tip.summary) { const summary=document.createElement('p');summary.className='tip-summary';summary.textContent=tip.summary;info.append(summary); }
+        if(tip.location) { const place=document.createElement('p');place.className='tip-location';place.textContent='Reported location: '+tip.location;info.append(place); }
+        const provenance=document.createElement('p');provenance.className='tip-provenance';
+        const reportStates={queued:'Report queued',analyzing:'Analyzing media',awaiting_editor:'Preparing report',editing:'Editing report',rendering:'Rendering report',qc_pending:'Checking draft',ready:'Draft ready for your review',approved:'Draft approved',needs_review:'Draft needs attention',held:'Report held',declined:'Not selected for a report',paused:'Report paused',failed:'Report processing stopped'};
+        provenance.textContent=(tip.contextSource==='claude'?'Claude draft':tip.contextSource==='tipster'?'Tipster context · Unverified':'Context pending')+(tip.reportState?' · '+(reportStates[tip.reportState] || 'Report processing'):'');
+        info.append(provenance);row.append(info);
         if(folderURL(tip.driveUrl)) row.append(folderLink(tip)); else {const status=document.createElement('span');status.className='state';status.textContent=tip.status==='review'?'Needs review':'Files processing';row.append(status);}
         $('tips').append(row);
     }
