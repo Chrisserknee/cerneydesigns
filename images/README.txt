@@ -8,3 +8,6 @@ If no logo is found, the text "CerneyDesigns" will be shown instead.
 
 
 
+
+GoFundMe wordmark: gofundme-logo.svg
+Source: official fundraiser header at https://www.gofundme.com/f/support-independent-reporting-in-monterey-county (retrieved October 4, 2026). Used beside links to this fundraiser; original artwork and colors retained.
