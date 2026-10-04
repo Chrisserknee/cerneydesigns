@@ -32,6 +32,15 @@ service firebase.storage {
         ]);
     }
 
+    function hasUploadGrant(session, fileName) {
+      return request.auth != null
+        && request.auth.token.tipSession == session
+        && request.time.toMillis() < request.auth.token.tipExpires
+        && ((fileName == '_submission.json' || fileName == '_context.json')
+          || (fileName in request.auth.token.tipFiles
+            && request.resource.size == request.auth.token.tipFiles[fileName]));
+    }
+
     function isValidSession(session) {
       return session.matches('^(submit-story_)?[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{2}-[0-9]{2}-[0-9]{2}_[a-z0-9]{12}$');
     }
@@ -54,7 +63,7 @@ service firebase.storage {
     // Anonymous tipline uploads are write-only. Nobody can list, read,
     // overwrite, or delete objects through the public client SDK.
     match /tips/{session}/{fileName} {
-      allow create: if resource == null && isValidSession(session)
+      allow create: if resource == null && isValidSession(session) && hasUploadGrant(session, fileName)
         && (isTipMedia(fileName) || isSubmissionJson(fileName));
       allow read, update, delete: if false;
     }

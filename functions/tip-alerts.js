@@ -114,6 +114,7 @@ async function deliver(tip, device, keys) {
 async function capture(event) {
     if (!event.data?.name?.startsWith('tips/') || !event.data.name.endsWith('/_submission.json')) return;
     const [current] = await bucket().file(event.data.name).getMetadata();
+    if (!(await require('./upload-admission').permittedObject(current))) return;
     const tip = await syncTip(current);
     if (!tip) return;
     const keys = await config();
@@ -225,6 +226,7 @@ exports.retryWebTips = onSchedule({...options,maxInstances:1,schedule:'every 5 m
 async function secureHandleApi(req,res) {
     res.set('Cache-Control','no-store');res.set('X-Content-Type-Options','nosniff');
     if(!gatewayAuthenticated(req,proxySecret.value()))return res.status(403).json({error:'Trusted website connection required.'});
+    if(req.body?.op==='upload-authorize'){try{const r=await require('./upload-admission').authorize(req.body);return res.status(r.status).json(r.body);}catch{return res.status(503).json({error:'Upload protection unavailable. Please try again.'});}}
     return handleApi(req,res);
 }
 exports.tipAlertsApi = onRequest({...options,invoker:'public',secrets:[proxySecret]},secureHandleApi);

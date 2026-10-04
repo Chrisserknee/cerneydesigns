@@ -36,6 +36,7 @@ async function processTip(event) {
         if (!filePath || !filePath.startsWith('tips/')) {
             return null;
         }
+        if (!(await require('./upload-admission').permittedObject(object))) return null;
         if (filePath.endsWith('/_context.json')) return processTipContext(event);
         if (!filePath.endsWith('/_submission.json')) {
             // Firebase can attach a bearer download token during intake. Revoke

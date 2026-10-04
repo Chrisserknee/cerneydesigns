@@ -1,3 +1,4 @@
+import { authorizeUpload } from "/upload/admission.js?v=20261004-guard";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
 import {
     getStorage,
@@ -364,6 +365,7 @@ async function submitStoryIdea() {
         const rand = createRandomTag();
         pendingSubmission ||= { folder: `tips/submit-story_${ts}_${rand}`, completed: [] };
         const sessionFolder = pendingSubmission.folder;
+        await authorizeUpload(app,sessionFolder,selectedFiles.map((file,idx)=>({name:`${String(idx+1).padStart(2,'0')}_${safeName(file.name)}`,size:file.size,type:getAllowedContentType(file)})));
         const uploadedFiles = await uploadSelectedFiles(sessionFolder, data);
         const uploadedBytes = uploadedFiles.reduce((sum, file) => sum + file.size, 0);
         const description = [
@@ -537,7 +539,9 @@ function getAllowedContentType(file) {
 }
 
 function safeName(name) {
-    return name.replace(/[\\/]/g, '_').replace(/[^\w.\- ()]/g, '_').slice(0, 160) || 'upload';
+    const clean=name.replace(/[\\/]/g, '_').replace(/[^\w.\- ()]/g, '_');
+    const ext=clean.match(/\.[^.]{1,8}$/)?.[0] || '';
+    return clean.length<=45 ? clean : clean.slice(0,45-ext.length)+ext;
 }
 
 function createRandomTag() {

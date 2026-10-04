@@ -7,7 +7,7 @@
   "main": "index.js",
   "private": true,
   "scripts": {
-    "test": "node --test tip-context.test.js index.test.js delivery.test.js bridge.test.js drive-transfer.test.js ../upload/upload.test.cjs ../submit-story/submit-story.test.cjs tip-alerts.test.js"
+    "test": "node --test tip-context.test.js index.test.js delivery.test.js bridge.test.js drive-transfer.test.js ../upload/upload.test.cjs ../submit-story/submit-story.test.cjs tip-alerts.test.js upload-policy.test.js upload-admission.test.js upload-gateway.test.js"
   },
   "dependencies": {
     "firebase-admin": "^14.3.0",

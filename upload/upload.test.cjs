@@ -25,7 +25,7 @@ function client({ failManifest = false, failContext = false, holdUploads = false
         },
         window: { addEventListener() {}, scrollTo() {} }, navigator: { userAgent: 'test' },
         crypto: require('node:crypto').webcrypto, TextEncoder, Blob, setTimeout, alert() {},
-        console: { error() {} }, initializeApp() {}, getStorage() {}, ref: (_, path) => path,
+        console: { error() {} }, initializeApp() {}, async authorizeUpload() {}, getStorage() {}, ref: (_, path) => path,
         uploadBytesResumable(path, file, metadata) {
             uploads.push({ path, metadata });
             return { cancel() {}, on(_, progress, error, done) { tasks.push({progress,error,done}); if(!holdUploads) queueMicrotask(done); } };

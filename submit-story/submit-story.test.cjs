@@ -14,7 +14,7 @@ function client() {
         document: { getElementById: get, querySelectorAll: () => steps, querySelector: get, createElement: element },
         window: { addEventListener() {}, scrollTo() {} }, navigator: { userAgent: 'test' },
         crypto: require('node:crypto').webcrypto, Blob, setTimeout, console: { error() {} },
-        initializeApp() {}, getStorage() {}, ref: (_, path) => path,
+        initializeApp() {}, async authorizeUpload() {}, getStorage() {}, ref: (_, path) => path,
         uploadBytesResumable(path) { uploads.push(path); return { cancel() {}, on(_, progress, error, done) { queueMicrotask(done); } }; },
         async uploadBytes(path, blob) { manifests.push({ path, body: JSON.parse(await blob.text()) }); if (failManifest) { failManifest = false; throw new Error('network'); } },
     });

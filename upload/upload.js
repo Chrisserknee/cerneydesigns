@@ -1,3 +1,4 @@
+import { authorizeUpload } from "/upload/admission.js?v=20261004-guard";
 // ============================================================
 // TIPLINE UPLOAD CLIENT — Firebase Storage
 // Direct browser → Firebase Storage via the official SDK.
@@ -162,7 +163,7 @@ function addFiles(files) {
     els.selectionNotice.hidden = rejected.length === 0;
     if (rejected.length) {
         // Never silently send part of a selection or block picker dismissal with alert().
-        els.selectionNotice.textContent = 'Nothing has been sent from this selection. Please choose files within the limits below.\n\n' + rejected.join('\n');
+        els.selectionNotice.textContent = 'Nothing has been sent from this selection. Please choose fewer or smaller files.\n\n' + rejected.join('\n');
         els.selectionNotice.focus();
         return false;
     }
@@ -340,6 +341,8 @@ async function startUpload() {
         const storedNames = selectedFiles.map((file, idx) =>
             `${String(idx + 1).padStart(2, '0')}_${safeName(file.name)}`
         );
+        const grantFiles = selectedFiles.map((file,idx)=>({name:storedNames[idx],size:file.size,type:getAllowedContentType(file)}));
+        await authorizeUpload(app,sessionFolder,grantFiles);
         let uploadAborted = false;
         activeUploadTasks = new Set();
 
@@ -464,6 +467,7 @@ async function startUpload() {
                 ...(meta.anonymous ? {} : { senderName: meta.senderName, senderContact: meta.senderContact }),
             };
             try {
+                await authorizeUpload(app,sessionFolder,grantFiles);
                 await uploadBytes(ref(storage, `${sessionFolder}/_context.json`),
                     new Blob([JSON.stringify(context)], { type: 'application/json' }),
                     { contentType: 'application/json', customMetadata: { anonymous: String(meta.anonymous) } });
@@ -548,10 +552,9 @@ function createRandomTag() {
 }
 
 function safeName(name) {
-    return name
-        .replace(/[\\/]/g, '_')
-        .replace(/[^\w.\- ()]/g, '_')
-        .slice(0, 160) || 'upload';
+    const clean=name.replace(/[\\/]/g, '_').replace(/[^\w.\- ()]/g, '_');
+    const ext=clean.match(/\.[^.]{1,8}$/)?.[0] || '';
+    return clean.length<=45 ? clean : clean.slice(0,45-ext.length)+ext;
 }
 
 function getAllowedContentType(file) {

@@ -8,6 +8,7 @@ function delivery(driveFiles = [], bucket = {}, fetchImpl = async()=>{throw Erro
         exports: {}, process, Buffer, URL, Date, AbortSignal, fetch:fetchImpl,
         require(name) {
             if (name === './tip-alerts') return {};
+            if (name === './upload-admission') return {permittedObject:async()=>true};
             if (name === 'google-auth-library') return { GoogleAuth: class { async getClient() { return { request: async () => ({ data: { files: driveFiles } }) }; } } };
             if (name === 'firebase-functions/v2/storage') return { onObjectFinalized: (_, handler) => handler };
             if (name === 'firebase-functions/v2/scheduler') return { onSchedule: (_, handler) => handler };
