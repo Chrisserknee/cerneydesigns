@@ -54,7 +54,7 @@ service firebase.storage {
     // Anonymous tipline uploads are write-only. Nobody can list, read,
     // overwrite, or delete objects through the public client SDK.
     match /tips/{session}/{fileName} {
-      allow create: if isValidSession(session)
+      allow create: if resource == null && isValidSession(session)
         && (isTipMedia(fileName) || isSubmissionJson(fileName));
       allow read, update, delete: if false;
     }
