@@ -306,6 +306,7 @@ body {
 
 /* ========== FILE LIST ========== */
 .file-list {
+    width: 100%;
     list-style: none;
     margin-top: 14px;
     display: flex;
@@ -339,18 +340,15 @@ body {
     font-variant-numeric: tabular-nums;
 }
 
-.file-item-remove {
-    background: transparent;
-    border: none;
-    color: var(--text-muted);
-    cursor: pointer;
-    font-size: 1.2rem;
-    line-height: 1;
-    padding: 4px 8px;
-    transition: color 0.2s ease;
-}
-
-.file-item-remove:hover { color: var(--danger); }
+.file-item-status { color: var(--accent-blue-link); font-size: 0.8rem; white-space: nowrap; }
+.file-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; text-align: left; gap: 5px 12px; }
+.file-item-name { grid-column: 1 / -1; }
+.file-item-size { color: var(--text-dim); }
+.auto-upload-note { margin: 0 0 18px; font-weight: 600; font-size: .95rem; line-height: 1.5; }
+.picker-note, .upload-limits { color: var(--text-dim); font-size: .82rem; line-height: 1.6; margin-top: 10px; }
+.selection-notice { white-space: pre-line; margin-top: 18px; padding: 14px; border: 1px solid var(--danger); border-radius: 8px; color: var(--text); font-size: .88rem; line-height: 1.5; }
+.dropzone:focus-visible { outline: 2px solid var(--accent-blue-link); outline-offset: 4px; }
+#progressTitle:focus { outline: none; }
 
 /* ========== DETAILS ========== */
 .field {
@@ -528,7 +526,7 @@ body {
     font-weight: 700;
     color: var(--text);
     letter-spacing: 0.02em;
-    margin-top: 18px;
+    margin-top: 8px;
     font-variant-numeric: tabular-nums;
 }
 

@@ -40,10 +40,12 @@ const ALLOWED_CONTENT_TYPES = new Set([
 const CONCURRENCY = 2;
 
 const els = {
+    tipIntro: document.getElementById('tipIntro'),
     dropzone: document.getElementById('dropzone'),
     fileInput: document.getElementById('fileInput'),
     fileList: document.getElementById('fileList'),
-    submitBtn: document.getElementById('submitBtn'),
+    selectionNotice: document.getElementById('selectionNotice'),
+    progressTitle: document.getElementById('progressTitle'),
     uploader: document.getElementById('uploader'),
     progressScreen: document.getElementById('progressScreen'),
     progressBar: document.getElementById('progressBar'),
@@ -77,6 +79,8 @@ let isUploading = false;
 let selectedFiles = [];
 let activeUploadTasks = new Set();
 let pendingUpload = null;
+let selectionPending = false;
+let fileStatusLabels = [];
 
 // Warn the user if they try to close the tab mid-upload.
 window.addEventListener('beforeunload', (e) => {
@@ -88,12 +92,24 @@ window.addEventListener('beforeunload', (e) => {
 });
 
 // ---------- FILE SELECTION ----------
-els.fileInput.addEventListener('change', (e) => {
-    const files = Array.from(e.target.files);
-    // Defer the reset so iOS Safari can close the photo picker first.
-    setTimeout(() => { els.fileInput.value = ''; }, 0);
-    addFiles(files);
+// Do not read/decode video bytes or build thumbnails here. Native pickers
+// prepare media before change fires; a page cannot dismiss that system dialog.
+els.fileInput.addEventListener('change', (e) => receiveSelection(Array.from(e.target.files || [])));
+els.fileInput.addEventListener('cancel', () => { els.dropzone.focus(); });
+els.dropzone.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); els.fileInput.click(); }
 });
+function receiveSelection(files) {
+    if (isUploading || selectionPending || !files.length) return;
+    selectionPending = true;
+    // Return control to the browser before changing screens or starting streams.
+    setTimeout(() => {
+        els.fileInput.value = '';
+        const accepted = addFiles(files);
+        selectionPending = false;
+        if (accepted) void startUpload();
+    }, 0);
+}
 
 ['dragenter', 'dragover'].forEach(evt => {
     els.dropzone.addEventListener(evt, (e) => {
@@ -111,13 +127,14 @@ els.fileInput.addEventListener('change', (e) => {
 
 els.dropzone.addEventListener('drop', (e) => {
     if (e.dataTransfer?.files?.length) {
-        addFiles(Array.from(e.dataTransfer.files));
+        receiveSelection(Array.from(e.dataTransfer.files));
     }
 });
 
 function addFiles(files) {
-    if (isUploading) return;
+    if (isUploading) return false;
     const rejected = [];
+    const batch = [];
     for (const f of files) {
         if (!f.size) {
             rejected.push(`${f.name} (empty file)`);
@@ -131,32 +148,33 @@ function addFiles(files) {
             rejected.push(`${f.name} (unsupported file type)`);
             continue;
         }
-        if (selectedFiles.length >= MAX_FILES_PER_SUBMISSION) {
+        if (batch.length >= MAX_FILES_PER_SUBMISSION) {
             rejected.push(`${f.name} (too many files)`);
             continue;
         }
-        const nextTotal = selectedFiles.reduce((sum, file) => sum + file.size, 0) + f.size;
+        const nextTotal = batch.reduce((sum, file) => sum + file.size, 0) + f.size;
         if (nextTotal > MAX_TOTAL_BYTES) {
             rejected.push(`${f.name} (submission total too large)`);
             continue;
         }
-        if (!selectedFiles.some(s => s.name === f.name && s.size === f.size)) {
-            pendingUpload = null;
-            selectedFiles.push(f);
-        }
+        if (!batch.some(s => s.name === f.name && s.size === f.size && s.lastModified === f.lastModified)) batch.push(f);
     }
+    els.selectionNotice.hidden = rejected.length === 0;
     if (rejected.length) {
-        alert(
-            `Some file${rejected.length > 1 ? 's were' : ' was'} not added:\n\n` +
-            rejected.join('\n') +
-            `\n\nLimits: ${MAX_FILES_PER_SUBMISSION} files, ${formatBytes(MAX_FILE_BYTES)} each, ${formatBytes(MAX_TOTAL_BYTES)} total.`
-        );
+        // Never silently send part of a selection or block picker dismissal with alert().
+        els.selectionNotice.textContent = 'Nothing has been sent from this selection. Please choose files within the limits below.\n\n' + rejected.join('\n');
+        els.selectionNotice.focus();
+        return false;
     }
+    selectedFiles = batch;
+    pendingUpload = null;
     renderFileList();
+    return selectedFiles.length > 0;
 }
 
 function renderFileList() {
     els.fileList.replaceChildren();
+    fileStatusLabels = [];
     selectedFiles.forEach((file, idx) => {
         const li = document.createElement('li');
         li.className = 'file-item';
@@ -171,27 +189,14 @@ function renderFileList() {
         size.className = 'file-item-size';
         size.textContent = formatBytes(file.size);
 
-        const remove = document.createElement('button');
-        remove.type = 'button';
-        remove.className = 'file-item-remove';
-        remove.dataset.idx = String(idx);
-        remove.setAttribute('aria-label', `Remove ${file.name}`);
-        remove.textContent = '×';
-
-        li.append(name, size, remove);
+        const status = document.createElement('span');
+        status.className = 'file-item-status';
+        status.textContent = 'Waiting';
+        fileStatusLabels.push(status);
+        li.append(name, size, status);
         els.fileList.appendChild(li);
     });
-    els.submitBtn.disabled = selectedFiles.length === 0;
 }
-
-els.fileList.addEventListener('click', (e) => {
-    const btn = e.target.closest('.file-item-remove');
-    if (!btn) return;
-    if (isUploading) return;
-    pendingUpload = null;
-    selectedFiles.splice(Number(btn.dataset.idx), 1);
-    renderFileList();
-});
 
 // ---------- POST-UPLOAD DETAILS ----------
 let resolveDetails = null;
@@ -263,8 +268,8 @@ els.skipDetails.addEventListener('click', () => finishDetails(true));
 // Escape takes the same privacy-preserving path as the visible skip button.
 els.detailsDialog.addEventListener('cancel', e => { e.preventDefault(); finishDetails(true); });
 
-// ---------- SUBMIT ----------
-els.submitBtn.addEventListener('click', async () => {
+// ---------- AUTOMATIC UPLOAD ----------
+async function startUpload() {
     if (isUploading || !selectedFiles.length) return;
 
     // Unique folder per submission: sortable UTC timestamp + cryptographic tag.
@@ -276,11 +281,15 @@ els.submitBtn.addEventListener('click', async () => {
     pendingUpload ||= { folder: `tips/${ts}_${rand}`, completed: new Set() };
     const sessionFolder = pendingUpload.folder;
 
-    showScreen('progress');
     isUploading = true;
+    els.fileInput.disabled = true;
     resetProgressUI();
+    showScreen('progress');
+    els.progressTitle.focus();
 
     try {
+        // Show the file cards and initial progress before any SDK work begins.
+        await new Promise(resolve => setTimeout(resolve, 0));
         const totalBytes = selectedFiles.reduce((acc, f) => acc + f.size, 0);
 
         // Per-file running byte counts from the SDK's progress callbacks.
@@ -299,6 +308,7 @@ els.submitBtn.addEventListener('click', async () => {
             }
         };
         updateFileLabel();
+        fileStatusLabels.forEach((label, i) => { label.textContent = pendingUpload.completed.has(i) ? 'Uploaded' : 'Waiting'; });
 
         const updateProgressUI = (phase) => {
             const uploadedBytes = progresses.reduce((s, v) => s + v, 0);
@@ -341,6 +351,7 @@ els.submitBtn.addEventListener('click', async () => {
         };
 
         const uploadOneFile = (file, idx) => new Promise((resolve, reject) => {
+            fileStatusLabels[idx].textContent = 'Uploading…';
             const storageRef = ref(storage, `${sessionFolder}/${storedNames[idx]}`);
             const contentType = getAllowedContentType(file);
 
@@ -354,10 +365,12 @@ els.submitBtn.addEventListener('click', async () => {
                 'state_changed',
                 (snap) => {
                     progresses[idx] = snap.bytesTransferred;
+                    fileStatusLabels[idx].textContent = `Uploading · ${Math.min(99, Math.floor(snap.bytesTransferred / file.size * 100))}%`;
                     updateProgressUI();
                 },
                 (error) => {
                     activeUploadTasks.delete(task);
+                    fileStatusLabels[idx].textContent = 'Paused';
                     if (uploadAborted && error?.code === 'storage/canceled') {
                         reject(error);
                         return;
@@ -369,6 +382,7 @@ els.submitBtn.addEventListener('click', async () => {
                 () => {
                     activeUploadTasks.delete(task);
                     pendingUpload.completed.add(idx);
+                    fileStatusLabels[idx].textContent = 'Uploaded';
                     filesCompleted++;
                     // Ensure this file's bar contribution reflects full size.
                     progresses[idx] = file.size;
@@ -435,6 +449,9 @@ els.submitBtn.addEventListener('click', async () => {
             }
         }
         updateProgressUI('Your tip has been sent. Extra details are optional.');
+        els.progressTitle.textContent = 'Your Tip Is Sent';
+        els.progressBar.style.width = '100%';
+        els.progressPercent.textContent = '100%';
         pendingUpload.meta ||= await collectDetails();
         const meta = pendingUpload.meta;
         if (meta.detailsStatus === 'provided') {
@@ -461,21 +478,24 @@ els.submitBtn.addEventListener('click', async () => {
         els.progressStatus.textContent = 'Done';
 
         isUploading = false;
+        els.fileInput.disabled = false;
         activeUploadTasks.clear();
         pendingUpload = null;
         showScreen('thankyou');
     } catch (err) {
         console.error(err);
         isUploading = false;
+        els.fileInput.disabled = false;
         activeUploadTasks.clear();
         resolveDetails = null;
         if (els.detailsDialog.open) els.detailsDialog.close();
         document.body.classList.remove('tip-dialog-open');
         showError(err?.message || 'Upload failed. Please try again.');
     }
-});
+}
 
 function resetProgressUI() {
+    els.progressTitle.textContent = 'Uploading Your Tip';
     els.progressBar.style.width = '0%';
     els.progressPercent.textContent = '0%';
     els.progressFile.textContent = 'Preparing…';
@@ -484,6 +504,7 @@ function resetProgressUI() {
 
 // ---------- SCREEN SWITCHING ----------
 function showScreen(name) {
+    els.tipIntro.hidden = name !== 'upload';
     els.uploader.hidden = name !== 'upload';
     els.progressScreen.hidden = name !== 'progress';
     els.thankyouScreen.hidden = name !== 'thankyou';
@@ -497,13 +518,13 @@ function showError(msg) {
 }
 
 els.sendAnother.addEventListener('click', resetForm);
-els.errorRetry.addEventListener('click', () => {
-    showScreen('upload');
-    els.submitBtn.focus();
-});
+els.errorRetry.addEventListener('click', () => { void startUpload(); });
 
 function resetForm() {
     pendingUpload = null;
+    els.selectionNotice.hidden = true;
+    els.selectionNotice.textContent = '';
+    els.fileInput.value = '';
     selectedFiles = [];
     renderFileList();
     els.progressBar.style.width = '0%';

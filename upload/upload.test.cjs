@@ -3,19 +3,20 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 
-function client({ failManifest = false, failContext = false } = {}) {
+function client({ failManifest = false, failContext = false, holdUploads = false } = {}) {
     const elements = new Map();
     const element = () => ({
-        handlers: {}, style: {}, value: '', checked: false, open: false,
+        handlers: {}, style: {}, value: '', checked: false, open: false, children: [],
         classList: { add() {}, remove() {}, toggle() {} },
         addEventListener(name, callback) { this.handlers[name] = callback; },
-        replaceChildren() {}, append() {}, appendChild() {}, setAttribute() {}, focus() {},
+        replaceChildren() { this.children=[]; }, append(...children) {this.children.push(...children);}, appendChild(child) {this.children.push(child);}, setAttribute() {}, focus() {},
         dataset: {}, querySelector: () => element(),
         showModal() { this.open = true; }, close() { this.open = false; },
         reset() {}, setCustomValidity() {}, reportValidity() { return true; },
     });
     const uploads = [];
     const manifests = [];
+    const tasks = [];
     const context = vm.createContext({
         document: {
             body: element(),
@@ -27,7 +28,7 @@ function client({ failManifest = false, failContext = false } = {}) {
         console: { error() {} }, initializeApp() {}, getStorage() {}, ref: (_, path) => path,
         uploadBytesResumable(path, file, metadata) {
             uploads.push({ path, metadata });
-            return { cancel() {}, on(_, progress, error, done) { queueMicrotask(done); } };
+            return { cancel() {}, on(_, progress, error, done) { tasks.push({progress,error,done}); if(!holdUploads) queueMicrotask(done); } };
         },
         async uploadBytes(path, blob, metadata) {
             manifests.push({ path, metadata, data: JSON.parse(await blob.text()) });
@@ -38,12 +39,14 @@ function client({ failManifest = false, failContext = false } = {}) {
     vm.runInContext(source, context);
     const flush = async () => { for(let i=0;i<100;i++) { if(elements.get('detailsDialog').open || elements.get('errorScreen').hidden===false || elements.get('thankyouScreen').hidden===false) break; await new Promise(resolve => setTimeout(resolve,2)); } };
     return {
-        uploads, manifests, elements,
+        uploads, manifests, elements, tasks,
+        choose: files => elements.get('fileInput').handlers.change({target:{files}}),
+        drop: files => elements.get('dropzone').handlers.drop({preventDefault(){},dataTransfer:{files}}),
         add: file => vm.runInContext(`addFiles([${JSON.stringify(file)}])`, context),
-        start: () => elements.get('submitBtn').handlers.click(),
+        start: () => vm.runInContext('startUpload()', context),
         flush,
         submit: async () => {
-            const run = elements.get('submitBtn').handlers.click();
+            const run = vm.runInContext('startUpload()', context);
             await flush();
             if (elements.get('detailsDialog').open) elements.get('skipDetails').handlers.click();
             return run;
@@ -70,7 +73,7 @@ test('retrying finalization keeps completed media and the original session', asy
     assert.equal(c.elements.get('thankyouScreen').hidden, false);
 });
 
-test('double clicking submit does not start a second upload', async () => {
+test('duplicate start calls do not start a second upload', async () => {
     const c = client();
     c.add({ name: 'photo.jpg', size: 100, type: 'image/jpeg' });
     await Promise.all([c.submit(), c.submit()]);
@@ -167,4 +170,44 @@ test('failed optional context retry retains details and never resends media or i
     assert.equal(c.manifests[2].path, c.manifests[1].path);
     assert.equal(c.manifests.filter(m=>m.path.endsWith('/_submission.json')).length,1);
     assert.equal(c.elements.get('detailsDialog').open, false);
+});
+
+const wait = () => new Promise(resolve => setTimeout(resolve, 12));
+test('choosing five large videos starts automatically, yields first, and streams only two at a time', async () => {
+    const c = client({holdUploads:true});
+    const files = Array.from({length:5}, (_,i) => ({name:`clip-${i+1}.mov`,size:100*1024*1024,type:'video/quicktime',lastModified:i,
+        arrayBuffer(){throw Error('Do not read entire videos during selection');},stream(){throw Error('Do not preload videos during selection');}}));
+    c.choose(files);
+    assert.equal(c.uploads.length,0,'picker change returns before starting streams');
+    await wait();
+    assert.equal(c.elements.get('progressScreen').hidden,false);
+    assert.equal(c.elements.get('fileList').children.length,5);
+    assert.equal(c.elements.get('progressFile').textContent,'0 of 5 files complete');
+    assert.equal(c.uploads.length,2);
+    c.choose(files);c.drop(files);await wait();assert.equal(c.uploads.length,2,'duplicate selection cannot restart active batch');
+    c.tasks[0].progress({bytesTransferred:50*1024*1024});
+    assert.match(c.elements.get('fileList').children[0].children[2].textContent,/50%/);
+    c.tasks[0].done();await wait();assert.equal(c.uploads.length,3);assert.equal(c.manifests.length,0);
+    c.tasks[1].done();await wait();assert.equal(c.uploads.length,4);
+    c.tasks[2].done();await wait();assert.equal(c.uploads.length,5);
+    c.tasks[3].done();c.tasks[4].done();await c.flush();
+    assert.equal(c.manifests.length,1);assert.equal(c.manifests[0].data.fileCount,5);assert.equal(c.manifests[0].data.totalBytes,500*1024*1024);
+    assert.equal(c.elements.get('progressPercent').textContent,'100%');
+    c.elements.get('skipDetails').handlers.click();await wait();assert.equal(c.elements.get('thankyouScreen').hidden,false);
+});
+test('cancelled picker does not upload and drag-and-drop also starts automatically', async () => {
+    const c=client();c.choose([]);await wait();assert.equal(c.uploads.length,0);
+    c.drop([{name:'drop.jpg',size:100,type:'image/jpeg'}]);await c.flush();
+    assert.equal(c.uploads.length,1);assert.equal(c.manifests.length,1);c.elements.get('skipDetails').handlers.click();await wait();
+});
+test('invalid batch is explained inline and never silently uploads only some selected videos', async () => {
+    const c=client();c.choose([{name:'valid.mov',size:100,type:'video/quicktime'},{name:'large.mov',size:501*1024*1024,type:'video/quicktime'}]);await wait();
+    assert.equal(c.uploads.length,0);assert.equal(c.elements.get('selectionNotice').hidden,false);assert.match(c.elements.get('selectionNotice').textContent,/Nothing has been sent.*[\s\S]*large.mov/);
+    c.choose([{name:'valid.mov',size:100,type:'video/quicktime'}]);await c.flush();assert.equal(c.uploads.length,1);assert.equal(c.elements.get('selectionNotice').hidden,true);c.elements.get('skipDetails').handlers.click();await wait();
+});
+test('retry button resumes automatically in one tap without resending completed media', async () => {
+    const c=client({failContext:true});c.choose([{name:'video.mov',size:100,type:'video/quicktime'}]);await c.flush();
+    c.elements.get('whatHappened').value='Keep these details';c.elements.get('identityForm').handlers.submit({preventDefault(){}});await wait();
+    assert.equal(c.elements.get('errorScreen').hidden,false);c.elements.get('errorRetry').handlers.click();await wait();
+    assert.equal(c.uploads.length,1);assert.equal(c.manifests.filter(x=>x.path.endsWith('_submission.json')).length,1);assert.equal(c.elements.get('thankyouScreen').hidden,false);
 });

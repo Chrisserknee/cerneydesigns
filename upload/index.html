@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/upload/style.css">
+    <link rel="stylesheet" href="/upload/style.css?v=20261004-auto">
     <link rel="stylesheet" href="/holographic.css">
     <link rel="stylesheet" href="/support-links.css">
 </head>
@@ -30,7 +30,7 @@
     </nav>
 
     <main class="page">
-        <header class="page-header">
+        <header class="page-header" id="tipIntro">
             <span class="badge">Tipline</span>
             <h1 class="title">Send a Tip</h1>
             <p class="lede">Submit news tips, photos, videos, or documents directly to independent journalist Chris Cerney.</p>
@@ -55,7 +55,8 @@
         </header>
 
         <section class="uploader" id="uploader">
-            <label for="fileInput" class="dropzone" id="dropzone">
+            <p class="auto-upload-note" id="autoUploadNote">Choose all your files, then tap Done or the checkmark. Uploading starts automatically.</p>
+            <label for="fileInput" class="dropzone" id="dropzone" role="button" tabindex="0" aria-describedby="autoUploadNote uploadLimits">
                 <input type="file" id="fileInput" accept="image/*,video/*,.pdf,.heic,.heif,.mov,.mp4" multiple hidden>
                 <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
                     <path d="M12 16V4M12 4l-5 5M12 4l5 5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -65,18 +66,16 @@
                 <p class="dropzone-secondary">or drag &amp; drop</p>
             </label>
 
-            <ul class="file-list" id="fileList" aria-live="polite"></ul>
-
-            <button type="button" class="submit-btn" id="submitBtn" disabled>
-                Send Tip
-            </button>
+            <p class="picker-note">Large or cloud-stored videos may take a moment to prepare in your phone’s picker. Uploading begins as soon as they’re ready.</p>
+            <p class="selection-notice" id="selectionNotice" role="alert" tabindex="-1" hidden></p>
+            <p class="upload-limits" id="uploadLimits">Up to 10 files · 500 MB per file · 750 MB total</p>
 
             <p class="privacy-note">After your files upload, a popup will ask what happened and whether we may use your name. You can choose to remain anonymous.</p>
-            <p class="privacy-note">By submitting, you confirm you have permission to share this material and understand it may be used in news coverage.</p>
+            <p class="privacy-note">By choosing files to upload, you confirm you have permission to share this material and understand it may be used in news coverage.</p>
         </section>
 
         <section class="progress-screen" id="progressScreen" hidden>
-            <h2 class="screen-title">Uploading Your Tip</h2>
+            <h2 class="screen-title" id="progressTitle" tabindex="-1">Uploading Your Tip</h2>
             <p class="progress-warning">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                     <circle cx="12" cy="12" r="10"/>
@@ -87,10 +86,11 @@
             </p>
             <div class="progress-bar-wrap">
                 <div class="progress-bar" id="progressBar"></div>
-                <span class="progress-percent" id="progressPercent">0%</span>
             </div>
+            <span class="progress-percent" id="progressPercent">0%</span>
             <p class="progress-file" id="progressFile">Preparing&hellip;</p>
-            <p class="progress-status" id="progressStatus">Starting upload&hellip;</p>
+            <p class="progress-status" id="progressStatus" role="status">Starting upload&hellip;</p>
+            <ul class="file-list" id="fileList" aria-label="Selected files and upload status"></ul>
         </section>
 
         <dialog class="tip-dialog" id="detailsDialog" aria-labelledby="detailsTitle" aria-describedby="detailsIntro">
@@ -200,6 +200,6 @@
     </footer>
 
     <script src="/holographic.js"></script>
-    <script type="module" src="/upload/upload.js?v=20261004-popup"></script>
+    <script type="module" src="/upload/upload.js?v=20261004-auto"></script>
 </body>
 </html>
