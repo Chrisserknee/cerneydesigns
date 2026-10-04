@@ -61,6 +61,33 @@ async function documents(prefix) {
     const [files] = await bucket().getFiles({prefix:ROOT + prefix});
     return (await Promise.all(files.map(f => read(f.name.slice(ROOT.length))))).filter(Boolean).map(r => r.data);
 }
+// Only tip summaries are cached. Every request still reads the current device
+// record, and every inbox refresh lists storage generations to detect changes.
+const inboxRecords = new Map();
+async function inboxDocuments() {
+    const [files] = await bucket().getFiles({prefix:ROOT + 'tips/'});
+    const names = new Set(files.map(f=>f.name));
+    for (const name of inboxRecords.keys()) if (!names.has(name)) inboxRecords.delete(name);
+    const records = await Promise.all(files.map(async file=>{
+        const generation=file.metadata?.generation;
+        const cached=inboxRecords.get(file.name);
+        if (generation && cached?.generation===generation) return cached.data;
+        if (!generation) return (await read(file.name.slice(ROOT.length)))?.data;
+        try {
+            const [bytes]=await bucket().file(file.name,{generation}).download();
+            const data=JSON.parse(bytes.toString());
+            if (inboxRecords.size>=1000) inboxRecords.delete(inboxRecords.keys().next().value);
+            inboxRecords.set(file.name,{generation,data});
+            return data;
+        } catch(e) {
+            // A record may have been replaced since the listing. Read the new
+            // version instead of losing that tip or failing the entire inbox.
+            if(e.code===404) return (await read(file.name.slice(ROOT.length)))?.data;
+            throw e;
+        }
+    }));
+    return records.filter(Boolean);
+}
 async function syncTip(object) {
     const record = tipRecord(object);
     if (!record) return null;
@@ -123,8 +150,10 @@ async function capture(event) {
 }
 async function authenticate(token) {
     if (!/^[A-Za-z0-9_-]{43}$/.test(token || '')) return null;
-    const record = await read(`devices/${hash(token)}.json`);
-    return activeDevice(record?.data) ? record.data : null;
+    let data;
+    try { const [bytes]=await bucket().file(ROOT + `devices/${hash(token)}.json`).download(); data=JSON.parse(bytes.toString()); }
+    catch(e) { if(e.code===404)return null; throw e; }
+    return activeDevice(data) ? data : null;
 }
 async function adminVerified(body) {
     if (typeof body.adminCookie !== 'string' || body.adminCookie.length > 2048
@@ -193,10 +222,10 @@ async function handleApi(req, res) {
                 const [latest] = await bucket().file(stored.data.path).getMetadata();
                 tips = [await syncTip(latest)];
             } else {
-                tips = (await documents('tips/')).filter(t => Date.parse(t.receivedAt) > Date.now()-30*86400000)
+                tips = (await inboxDocuments()).filter(t => Date.parse(t.receivedAt) > Date.now()-30*86400000)
                     .sort((a,b)=>Date.parse(b.receivedAt)-Date.parse(a.receivedAt)).slice(0,50);
             }
-            return res.json({tips:tips.map(({path,...t})=>t)});
+            return res.json({authenticated:true,expiresAt:device.expiresAt,tips:tips.map(({path,...t})=>t)});
         }
         if (body.op === 'test') {
             if (!device.subscription) return res.status(409).json({error:'Enable notifications on this device first.'});

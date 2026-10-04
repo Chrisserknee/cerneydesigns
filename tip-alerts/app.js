@@ -14,7 +14,7 @@ function clearSession() {
     show('selected',false); show('connected',false); show('login',true); show('intro',true);
 }
 async function api(op, data={}) {
-    const response = await fetch('/api/tip-alerts',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',cache:'no-store',body:JSON.stringify({op,...data})});
+    const response = await fetch('/api/tip-alerts',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',cache:'no-store',signal:AbortSignal.timeout(15000),body:JSON.stringify({op,...data})});
     const result = await response.json();
     if (!response.ok) { if (response.status === 401) clearSession(); const error = new Error(result.error || 'Something went wrong. Please try again.'); error.status=response.status; throw error; }
     return result;
@@ -54,16 +54,9 @@ async function loadInbox() {
     clearTimeout(retryTimer);
     show('install',isIOS && !standalone);
     const version = sessionVersion;
-    // Each endpoint authenticates independently. Recent tips need not wait for
-    // the separate notification configuration request or service worker setup.
-    const status = api('status').then(data=>{
-        if (version !== sessionVersion) return;
-        state = data;
-        show('sessionHelp',state.expiresAt === null);
-    });
-    const inbox = loadTips();
-    const selected = tipId ? openTip() : Promise.resolve();
-    const results = await Promise.allSettled([status, inbox, selected]);
+    // The list endpoint authenticates and supplies session information itself.
+    // Fetch push configuration only when notification settings are opened.
+    const results = await Promise.allSettled([loadTips(), tipId ? openTip() : Promise.resolve()]);
     if (version !== sessionVersion) return;
     const failure = results.find(r=>r.status === 'rejected');
     if (failure) message(failure.reason.message,true);
@@ -74,7 +67,11 @@ async function loadInbox() {
 }
 $('notificationSettings').addEventListener('toggle',async()=>{
     if (!$('notificationSettings').open || !state) return;
-    try { await prepareNotifications(); if (state) await updateControls(); }
+    try {
+        const version=sessionVersion;
+        const [data]=await Promise.all([api('status'),prepareNotifications()]);
+        if(version!==sessionVersion)return; state=data; await updateControls();
+    }
     catch { if (state) { registration=null; await updateControls(); } }
 });
 function dateLabel(value) { return new Intl.DateTimeFormat('en-US',{timeZone:'America/Los_Angeles',month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'}).format(new Date(value)); }
@@ -115,24 +112,27 @@ async function loadDevices() {
     }
 }
 $('showDevices').addEventListener('click',()=>loadDevices().catch(e=>message(e.message,true)));
-function loadTips() {
+function loadTips({quiet=false}={}) {
     if (inboxRequest) return inboxRequest;
-    inboxRequest=fetchTips().finally(()=>{inboxRequest=null; $('refresh').disabled=false;});
+    inboxRequest=fetchTips(quiet).finally(()=>{inboxRequest=null;});
     return inboxRequest;
 }
-async function fetchTips() {
+async function fetchTips(quiet) {
     clearTimeout(inboxTimer);
     const version=sessionVersion;
-    $('refresh').disabled=true;
-    $('inboxStatus').textContent=$('tips').children.length ? 'Updating…' : 'Loading recent tips…';
+    if (!quiet) $('inboxStatus').textContent=$('tips').children.length ? 'Updating…' : 'Loading recent tips…';
     let data;
     try { data=await api('list'); }
     catch(e) {
-        if (version===sessionVersion) $('inboxStatus').textContent='Could not update. Tap Refresh to retry.';
+        if (version===sessionVersion) {
+            $('inboxStatus').textContent='Could not update. Retrying automatically…';
+            scheduleInbox(10000);
+        }
         throw e;
     }
     if (version!==sessionVersion) return;
-    state = state || {};
+    state = {...state,expiresAt:data.expiresAt};
+    show('sessionHelp',data.expiresAt===null);
     show('login',false); show('intro',false); show('connected',true);
     message(); $('tips').replaceChildren(); show('empty',!data.tips.length);
     for(const tip of data.tips) {
@@ -146,7 +146,7 @@ async function fetchTips() {
     // Keep a newly arrived photo current without requiring manual refresh.
     if (!document.hidden) {
         const processing=data.tips.some(t=>!folderURL(t.driveUrl) && t.status==='processing' && Date.parse(t.receivedAt)>Date.now()-3600000);
-        inboxTimer=setTimeout(()=>loadTips().catch(e=>message(e.message,true)),processing ? 3000 : 30000);
+        scheduleInbox(processing ? 3000 : 30000);
     }
 }
 async function openTip() {
@@ -193,10 +193,51 @@ async function removeLocalSubscription() {
     catch { /* The server already stopped delivery or revoked this device. */ }
 }
 $('disable').addEventListener('click',async()=>{try{await api('unsubscribe');state.subscribed=false;await removeLocalSubscription();await updateControls();message('Alerts are off on this device.');}catch(e){message(e.message,true);}});
-$('refresh').addEventListener('click',async()=>{try{await loadTips();if(tipId){clearTimeout(retryTimer);openAttempts=0;await openTip();}message('Inbox updated.');}catch(e){message(e.message,true);}});
+function scheduleInbox(delay) {
+    clearTimeout(inboxTimer);
+    if (!document.hidden) inboxTimer=setTimeout(()=>loadTips({quiet:true}).catch(e=>message(e.message,true)),delay);
+}
+let refreshRequest, pullStart, pullReady=false;
+function resetPull() { pullStart=null; pullReady=false; if(!refreshRequest) show('pullIndicator',false); }
+function refreshInbox() {
+    if(refreshRequest) return refreshRequest;
+    $('pullIndicator').textContent='Refreshing…'; show('pullIndicator',true);
+    refreshRequest=(async()=>{
+        try {
+            clearTimeout(retryTimer); openAttempts=0;
+            await Promise.all([loadTips(),tipId ? openTip() : Promise.resolve()]);
+        } catch(e) { message(e.message,true); }
+        finally { refreshRequest=null; resetPull(); }
+    })();
+    return refreshRequest;
+}
+document.addEventListener('touchstart',event=>{
+    resetPull();
+    if (!state || refreshRequest || window.scrollY>0 || event.touches.length!==1
+        || event.target.closest('a,button,input,textarea,select,summary')) return;
+    pullStart={x:event.touches[0].clientX,y:event.touches[0].clientY};
+},{passive:true});
+document.addEventListener('touchmove',event=>{
+    if(!pullStart) return;
+    if(event.touches.length!==1 || window.scrollY>0) { resetPull(); return; }
+    const dy=event.touches[0].clientY-pullStart.y;
+    const dx=Math.abs(event.touches[0].clientX-pullStart.x);
+    if(dy<=0 || dx>Math.abs(dy)) { resetPull(); return; }
+    if(dy<10)return;
+    if(event.cancelable)event.preventDefault();
+    pullReady=dy>=70;
+    $('pullIndicator').textContent=pullReady ? 'Release to refresh' : 'Pull down to refresh';
+    show('pullIndicator',true);
+},{passive:false});
+document.addEventListener('touchend',()=>{
+    const ready=pullReady; resetPull();
+    if(ready && state && !document.hidden) refreshInbox();
+},{passive:true});
+document.addEventListener('touchcancel',resetPull,{passive:true});
+window.addEventListener('online',()=>{if(!document.hidden) load();});
 $('logout').addEventListener('click',async()=>{try{await api('logout');clearSession();await removeLocalSubscription();location.replace('/tip-alerts/');}catch(e){message(e.message,true);}});
 document.addEventListener('visibilitychange',()=>{
-    if(document.hidden) { clearTimeout(inboxTimer); clearTimeout(retryTimer); }
+    if(document.hidden) { resetPull(); clearTimeout(inboxTimer); clearTimeout(retryTimer); }
     else if(state) load();
 });
 load();

@@ -6,8 +6,8 @@ const now=Date.now();const tip={id:'a'.repeat(64),receivedAt:new Date(now-1000).
 const device={id:'b'.repeat(64),subscription,subscribedAt:new Date(now-60000).toISOString(),expiresAt:new Date(now+86400000).toISOString()};
 const keys={enabledAt:new Date(now-60000).toISOString(),publicKey:'public',privateKey:'private'};
 function harness({send=async()=>{},fetchImpl=async()=>({ok:false}), initial={}}={}){
- const files=new Map(Object.entries(initial).map(([name,data])=>[name,{data,generation:1}]));let generation=1;
- const b={file(name,opts={}){return {name,getMetadata:async()=>{const x=files.get(name);if(!x)throw Object.assign(Error(),{code:404});return [{generation:x.generation,...(x.metadata||{})}];},download:async()=>{const x=files.get(name);if(!x || (opts.generation && opts.generation!==x.generation))throw Object.assign(Error(),{code:404});return [Buffer.from(JSON.stringify(x.data))];},save:async(value,opts)=>{const old=files.get(name);const expected=opts.preconditionOpts?.ifGenerationMatch;if(expected!==undefined && expected!==(old?.generation || 0))throw Object.assign(Error(),{code:412});files.set(name,{data:JSON.parse(value),generation:++generation});}};},getFiles:async({prefix})=>[[...files.keys()].filter(n=>n.startsWith(prefix)).map(name=>({name}))]};
+ const files=new Map(Object.entries(initial).map(([name,data])=>[name,{data,generation:1}]));let generation=1;const counts={metadata:0,downloads:0};
+ const b={file(name,opts={}){return {name,getMetadata:async()=>{counts.metadata++;const x=files.get(name);if(!x)throw Object.assign(Error(),{code:404});return [{generation:x.generation,...(x.metadata||{})}];},download:async()=>{counts.downloads++;const x=files.get(name);if(!x || (opts.generation && opts.generation!==x.generation))throw Object.assign(Error(),{code:404});return [Buffer.from(JSON.stringify(x.data))];},save:async(value,opts)=>{const old=files.get(name);const expected=opts.preconditionOpts?.ifGenerationMatch;if(expected!==undefined && expected!==(old?.generation || 0))throw Object.assign(Error(),{code:412});files.set(name,{data:JSON.parse(value),generation:++generation});}};},getFiles:async({prefix})=>[[...files.keys()].filter(n=>n.startsWith(prefix)).map(name=>({name,metadata:{generation:files.get(name).generation}}))]};
  const c=vm.createContext({exports:{},Buffer,URL,Date,Intl,AbortSignal,fetch:fetchImpl,require(name){
  if(name==='firebase-functions/params')return {defineSecret:()=>({value:()=> 'test-secret'.repeat(4)})};
  if(name==='web-push')return {sendNotification:send,generateVAPIDKeys:()=>keys};
@@ -18,8 +18,8 @@ function harness({send=async()=>{},fetchImpl=async()=>({ok:false}), initial={}}=
  if(name==='firebase-functions/v2/https')return {onRequest:(_,f)=>f};
  return require(name);
  }});
- vm.runInContext(fs.readFileSync(__dirname+'/tip-alerts.js','utf8')+'\nthis.testing={deliver,authenticate,handleApi,syncTip,adminVerified,updateDevice,reserveLogin,secureHandleApi};',c);
- return {...c.testing,files};
+ vm.runInContext(fs.readFileSync(__dirname+'/tip-alerts.js','utf8')+'\nthis.testing={deliver,authenticate,handleApi,syncTip,adminVerified,updateDevice,reserveLogin,secureHandleApi,inboxDocuments};',c);
+ return {...c.testing,files,counts};
 }
 test('only supported HTTPS push endpoints and correctly sized keys are accepted',()=>{
  assert.equal(h.validSubscription(subscription),true);
@@ -124,4 +124,22 @@ test('remote disconnect leaves the current phone connected and invalidates the o
  assert.equal(res.body.devices.length,2);assert.doesNotMatch(JSON.stringify(res.body),/endpoint|p256dh|auth|subscription/);
  await x.handleApi({method:'POST',is:()=>true,body:{op:'revoke-device',token,id:target}},res);
  assert.equal(res.body.disconnected,true);assert.equal(await x.authenticate(other),null);assert.equal((await x.authenticate(token)).id,id);
+});
+
+test('inbox reuses listing generations, refreshes changed tips, and removes deleted tips',async()=>{
+ const name='_tipalerts/v1/tips/'+tip.id+'.json';const h=harness({initial:{[name]:tip}});
+ assert.equal((await h.inboxDocuments()).length,1);
+ assert.deepEqual(h.counts,{metadata:0,downloads:1});
+ await h.inboxDocuments();assert.equal(h.counts.downloads,1);
+ h.files.set(name,{generation:2,data:{...tip,status:'ready',driveUrl:'https://drive.google.com/drive/folders/new'}});
+ assert.equal((await h.inboxDocuments())[0].status,'ready');assert.equal(h.counts.downloads,2);
+ h.files.delete(name);assert.equal((await h.inboxDocuments()).length,0);
+});
+test('device authentication always reads fresh storage even with a warm inbox cache',async()=>{
+ const token='a'.repeat(43),name='_tipalerts/v1/devices/'+h.hash(token)+'.json';
+ const c=harness({initial:{[name]:device}});
+ assert.ok(await c.authenticate(token));
+ c.files.set(name,{generation:2,data:{...device,revokedAt:new Date().toISOString()}});
+ assert.equal(await c.authenticate(token),null);
+ assert.deepEqual(c.counts,{metadata:0,downloads:2});
 });

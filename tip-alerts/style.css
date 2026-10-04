@@ -3,4 +3,5 @@
 #connected{padding-top:25px}
 
 .inbox{margin-bottom:28px}.inbox .section-heading{margin-top:4px}.settings{margin-top:24px}summary{cursor:pointer;font-size:14px;font-weight:650;min-height:24px}summary:focus-visible{outline:3px solid #d89789;outline-offset:4px}.controls{padding-top:20px}.tip>div{min-width:0}.tip h3{overflow-wrap:anywhere}#inboxStatus{min-height:18px}.selected h2{line-height:1.4}
-@media(prefers-reduced-motion:no-preference){#refresh:disabled{animation:pulse 1s ease-in-out infinite}@keyframes pulse{50%{opacity:.35}}}
+
+html,body{overscroll-behavior-y:none}.pull-indicator{text-align:center;padding:12px;color:#315775;font-size:13px;font-weight:600}.refresh-hint{color:#617482;font-size:11px;max-width:90px;text-align:right;line-height:1.5}@media(hover:hover) and (pointer:fine){.refresh-hint{display:none}}
