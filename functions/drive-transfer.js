@@ -1,5 +1,16 @@
 const CHUNK_BYTES = 8 * 1024 * 1024;
 
+function driveTransferManifest(files) {
+    // Match Apps Script safeName_ and retain the exact original Storage key.
+    const seen = new Set();
+    return files.map(file => {
+        const name = String(file.name).replace(/[\\\/:*?"<>|]/g, '_').replace(/\s+/g, ' ').trim().slice(0, 180) || 'upload';
+        if (seen.has(name)) throw new Error('Drive filenames normalize to the same name.');
+        seen.add(name);
+        return { ...file, name, storageName: file.name };
+    });
+}
+
 async function transferToDrive(transfer, readChunk, { fetchImpl = fetch, deadline = Date.now() + 420000 } = {}) {
     if (transfer.verified) return;
     const url = new URL(transfer.uploadUrl);
@@ -36,4 +47,4 @@ async function transferToDrive(transfer, readChunk, { fetchImpl = fetch, deadlin
     throw new Error('Drive has not confirmed file completion.');
 }
 
-module.exports = { transferToDrive };
+module.exports = { transferToDrive, driveTransferManifest };

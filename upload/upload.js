@@ -80,9 +80,9 @@ let pendingUpload = null;
 
 // Warn the user if they try to close the tab mid-upload.
 window.addEventListener('beforeunload', (e) => {
-    if (isUploading) {
+    if (isUploading && (!pendingUpload?.sent || resolveDetails === null)) {
         e.preventDefault();
-        e.returnValue = 'Your upload is still in progress. Leaving will cancel it.';
+        e.returnValue = pendingUpload?.sent ? 'Your tip was sent, but extra details are still saving.' : 'Your upload is still in progress. Leaving will cancel it.';
         return e.returnValue;
     }
 });
@@ -198,11 +198,11 @@ let resolveDetails = null;
 function showDetailsStep(identity) {
     els.detailsForm.hidden = identity;
     els.identityForm.hidden = !identity;
-    els.detailsStepLabel.textContent = `Files uploaded · Step ${identity ? 2 : 1} of 2`;
+    els.detailsStepLabel.textContent = `Tip sent · Optional step ${identity ? 2 : 1} of 2`;
     els.detailsTitle.textContent = identity ? 'Can we use your name in our report?' : 'Help Chris understand your tip';
     els.detailsIntro.textContent = identity
         ? 'You choose. Your name will only be included if you give permission below.'
-        : 'What happened, when, and where? Please share as many details as you can. Only include information you are comfortable sharing.';
+        : 'Your media tip has already been sent to Chris. Add what happened, when, and where, with as many details as you can. This information will be added to the same tip.';
     els.detailsDialog.scrollTop = 0;
     els.detailsTitle.focus();
 }
@@ -396,11 +396,15 @@ els.submitBtn.addEventListener('click', async () => {
         const failure = outcomes.find(outcome => outcome.status === 'rejected');
         if (failure) throw failure.reason;
 
-        updateProgressUI('Files uploaded. Add details or skip the popup to finish sending.');
-        pendingUpload.meta ||= await collectDetails();
-        const meta = pendingUpload.meta;
+        // Publish the complete media manifest BEFORE asking for optional context.
+        // This immutable manifest is the tip identity used by alerts, Drive and Claude.
+        if (!pendingUpload.contextToken) {
+            pendingUpload.contextToken = Array.from(crypto.getRandomValues(new Uint8Array(32)), b => b.toString(16).padStart(2, '0')).join('');
+            const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pendingUpload.contextToken));
+            pendingUpload.contextKeyHash = Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, '0')).join('');
+        }
 
-        // Sidecar JSON written last — its presence signals a complete submission.
+        // All media is uploaded; optional details never delay discovery.
         updateProgressUI('Finishing up…');
         const submission = {
             submittedAt: new Date().toISOString(),
@@ -412,28 +416,44 @@ els.submitBtn.addEventListener('click', async () => {
                 size: f.size,
                 type: getAllowedContentType(f),
             })),
-            anonymous: meta.anonymous,
-            ...(meta.anonymous ? {} : {
-                senderName: meta.senderName,
-                senderContact: meta.senderContact,
-            }),
-            nameUsageConsent: meta.nameUsageConsent,
-            detailsStatus: meta.detailsStatus,
-            description: meta.description,
-            whatHappened: meta.whatHappened,
-            timing: meta.timing,
-            location: meta.location,
+            anonymous: true,
+            nameUsageConsent: 'anonymous',
+            detailsStatus: 'pending',
+            contextKeyHash: pendingUpload.contextKeyHash,
         };
-        const infoRef = ref(storage, `${sessionFolder}/_submission.json`);
-        const infoBlob = new Blob([JSON.stringify(submission, null, 2)], { type: 'application/json' });
-        try {
-            await uploadBytes(infoRef, infoBlob, {
-                contentType: 'application/json',
-                customMetadata: { anonymous: String(meta.anonymous) },
-            });
-        } catch (error) {
-            console.error('Submission finalization failed', error?.code);
-            throw new Error('Your files finished uploading, but we could not finalize your tip. Please retry without closing this tab; completed files will not upload again.');
+        if (!pendingUpload.sent) {
+            const infoRef = ref(storage, `${sessionFolder}/_submission.json`);
+            const infoBlob = new Blob([JSON.stringify(submission, null, 2)], { type: 'application/json' });
+            try {
+                await uploadBytes(infoRef, infoBlob, {
+                    contentType: 'application/json', customMetadata: { anonymous: 'true' },
+                });
+                pendingUpload.sent = true;
+            } catch (error) {
+                console.error('Submission finalization failed', error?.code);
+                throw new Error('Your files finished uploading, but we could not finalize your tip. Please retry without closing this tab; completed files will not upload again.');
+            }
+        }
+        updateProgressUI('Your tip has been sent. Extra details are optional.');
+        pendingUpload.meta ||= await collectDetails();
+        const meta = pendingUpload.meta;
+        if (meta.detailsStatus === 'provided') {
+            updateProgressUI('Tip sent. Adding your details to it…');
+            const context = {
+                contextToken: pendingUpload.contextToken,
+                anonymous: meta.anonymous, nameUsageConsent: meta.nameUsageConsent,
+                detailsStatus: 'provided', whatHappened: meta.whatHappened,
+                timing: meta.timing, location: meta.location,
+                ...(meta.anonymous ? {} : { senderName: meta.senderName, senderContact: meta.senderContact }),
+            };
+            try {
+                await uploadBytes(ref(storage, `${sessionFolder}/_context.json`),
+                    new Blob([JSON.stringify(context)], { type: 'application/json' }),
+                    { contentType: 'application/json', customMetadata: { anonymous: String(meta.anonymous) } });
+            } catch (error) {
+                console.error('Optional context upload failed', error?.code);
+                throw new Error('Your media tip was already sent. Only the extra details could not be saved. Keep this tab open and retry to add them to the same tip; your media will not upload again.');
+            }
         }
 
         els.progressBar.style.width = '100%';

@@ -108,6 +108,20 @@ test('a checksum mismatch never publishes a Drive link', async () => {
     assert.equal(published,false);
 });
 
+test('double-space filenames complete Drive delivery under the bridge-normalized name',async()=>{
+ const source={name:'01_video  clip.MP4',originalName:'original  clip.MP4',sizeBytes:4,md5Hash:Buffer.from('1234567890abcdef').toString('base64')};
+ const copied={name:'01_video clip.MP4',sizeBytes:4,verified:true,id:'video',md5Checksum:Buffer.from(source.md5Hash,'base64').toString('hex')};
+ const events=[];
+ const {mirrorSessionToDriveBridge}=delivery([{...copied,size:'4'}],{},async(url,options)=>{
+   const body=JSON.parse(options.body);events.push(body.action);
+   assert.equal(body.files[0].name,copied.name);assert.equal(body.files[0].originalName,source.originalName);
+   assert.equal(body.files[0].storageName,undefined);
+   return {ok:true,json:async()=>({ok:true,complete:true,transferMode:'direct-v1',transfers:[copied],folderUrl:'https://drive.google.com/drive/folders/test',copied:[copied]})};
+ });
+ await mirrorSessionToDriveBridge({deliveryId:'test',sessionLabel:'test',files:[source],onMediaReady:async()=>events.push('ready')});
+ assert.deepEqual(events,['prepare','ready','finalize','release']);assert.equal(source.name,'01_video  clip.MP4');
+});
+
 test('Drive reconciliation retries a recent stuck upload and ignores old NTFY backlog',async()=>{
     const manifest={name:'tips/test/_submission.json',metadata:{name:'tips/test/_submission.json',timeCreated:new Date(Date.now()-360000).toISOString(),generation:'1',metadata:{notificationStatus:'pending'}}};
     const {context}=delivery([],{getFiles:async()=>[[manifest,{name:'tips/test/photo.jpg'}]]});
@@ -115,4 +129,37 @@ test('Drive reconciliation retries a recent stuck upload and ignores old NTFY ba
     await context.exports.retryTipDeliveries();assert.equal(calls,1);
     manifest.metadata.metadata.driveCopyStatus='complete';
     await context.exports.retryTipDeliveries();assert.equal(calls,1);
+});
+
+function contextBucket({ready=false,wrongToken=false}={}) {
+ const {createHash}=require('node:crypto'), token='a'.repeat(64), records=new Map(), events=[];
+ const folder='tips/test';
+ const put=(name,data,generation,metadata={})=>records.set(name,{name,generation,size:String(Buffer.byteLength(JSON.stringify(data))),timeCreated:'2026-10-04T00:00:00Z',metadata,bytes:Buffer.from(JSON.stringify(data))});
+ put(folder+'/_submission.json',{contextKeyHash:createHash('sha256').update(token).digest('hex')},'11',ready?{driveCopyStatus:'complete',driveFolderUrl:'https://drive.google.com/drive/folders/original'}:{});
+ put(folder+'/_context.json',{contextToken:wrongToken?'b'.repeat(64):token,anonymous:true,nameUsageConsent:'anonymous',detailsStatus:'provided',whatHappened:'Test follow-up',location:'Salinas'},'12');
+ const bucket={name:'bucket',file(name){return {name,async getMetadata(){if(!records.has(name))throw Object.assign(Error('missing'),{code:404});return [records.get(name)];},async download(){return [records.get(name).bytes];},async save(data,options){assert.equal(options.preconditionOpts.ifGenerationMatch,0);if(records.has(name))throw Object.assign(Error('exists'),{code:412});put(name,JSON.parse(data),'13');events.push('verified-event');},async setMetadata(update){Object.assign(records.get(name).metadata,update.metadata);return [records.get(name)];}};}};
+ return {bucket,records,events,event:{data:{name:folder+'/_context.json',bucket:'bucket',generation:'12'}}};
+}
+test('context publishes one verified editing event before Drive is ready, then appends to ORIGINAL folder',async()=>{
+ const c=contextBucket(),d=delivery([],c.bucket);let uploads=0;
+ d.context.mirrorSessionToDriveBridge=async args=>{uploads++;assert.equal(args.appendOnly,true);assert.equal(args.expectedFolderUrl,'https://drive.google.com/drive/folders/original');assert.equal(args.sessionLabel,'test');assert.equal(args.files.length,2);assert.doesNotMatch(JSON.stringify(args.submission),/contextToken/);return {folderUrl:args.expectedFolderUrl};};
+ await assert.rejects(d.context.exports.notifyOnTip(c.event),/still pending/);
+ assert.deepEqual(c.events,['verified-event']);assert.equal(uploads,0);
+ Object.assign(c.records.get('tips/test/_submission.json').metadata,{driveCopyStatus:'complete',driveFolderUrl:'https://drive.google.com/drive/folders/original'});
+ await d.context.exports.notifyOnTip(c.event);await d.context.exports.notifyOnTip(c.event);
+ assert.deepEqual(c.events,['verified-event']);assert.equal(uploads,1);assert.equal(c.records.get('tips/test/_context.json').metadata.contextDriveStatus,'complete');
+ const canonical=JSON.parse(c.records.get('tips/test/_context_ready.json').bytes);assert.equal(canonical.submissionGeneration,'11');assert.equal(canonical.submissionName,'tips/test/_submission.json');assert.doesNotMatch(JSON.stringify(canonical),/contextToken/);
+});
+test('invalid follow-up capability cannot create a trusted event or write Drive',async()=>{
+ const c=contextBucket({ready:true,wrongToken:true}),d=delivery([],c.bucket);
+ await d.context.exports.notifyOnTip(c.event);assert.deepEqual(c.events,[]);assert.equal(c.records.get('tips/test/_context.json').metadata.processingStatus,'rejected');
+});
+test('append-only Drive copy validates same folder and never rewrites original completion marker',async()=>{
+ const source={name:'_additional_tip_context.json',sizeBytes:4,md5Hash:Buffer.from('1234567890abcdef').toString('base64')};
+ const copied={name:source.name,sizeBytes:4,verified:true,id:'context',md5Checksum:Buffer.from(source.md5Hash,'base64').toString('hex')};const actions=[];
+ const d=delivery([{...copied,size:'4'}],{},async(url,options)=>{const action=JSON.parse(options.body).action;actions.push(action);return {ok:true,json:async()=>({ok:true,transferMode:'direct-v1',folderUrl:'https://drive.google.com/drive/folders/original',transfers:[copied]})};});
+ await d.mirrorSessionToDriveBridge({deliveryId:'context',sessionLabel:'test',files:[source],appendOnly:true,expectedFolderUrl:'https://drive.google.com/drive/folders/original'});
+ assert.deepEqual(actions,['prepare','release']);
+ await assert.rejects(d.mirrorSessionToDriveBridge({deliveryId:'context',sessionLabel:'test',files:[source],appendOnly:true,expectedFolderUrl:'https://drive.google.com/drive/folders/WRONG'}),/destination/);
+ assert.deepEqual(actions,['prepare','release','prepare','release']);
 });

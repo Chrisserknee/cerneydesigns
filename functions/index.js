@@ -4,7 +4,10 @@
 // media is in Storage, then reliably mirrors it to Google Drive.
 // ============================================================
 const { randomUUID, createHash } = require('node:crypto');
-const { transferToDrive } = require('./drive-transfer');
+const { verifyContext, contextDocuments } = require('./tip-context');
+const CONTEXT_SIDECARS = new Set(['_context.json', '_context_ready.json']);
+const isMediaObject = file => !['_submission.json', ...CONTEXT_SIDECARS].includes(file.name.split('/').pop());
+const { transferToDrive, driveTransferManifest } = require('./drive-transfer');
 const { onObjectFinalized } = require('firebase-functions/v2/storage');
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { GoogleAuth } = require('google-auth-library');
@@ -33,6 +36,7 @@ async function processTip(event) {
         if (!filePath || !filePath.startsWith('tips/')) {
             return null;
         }
+        if (filePath.endsWith('/_context.json')) return processTipContext(event);
         if (!filePath.endsWith('/_submission.json')) {
             // Firebase can attach a bearer download token during intake. Revoke
             // it immediately, including when the sender never finishes a tip.
@@ -67,7 +71,7 @@ async function processTip(event) {
         }
 
         const [files] = await bucket.getFiles({ prefix: folder + '/' });
-        const tipFiles = files.filter((file) => !file.name.endsWith('/_submission.json'));
+        const tipFiles = files.filter(isMediaObject);
         const fileMetadata = tipFiles.map(fileMetadataForValidation);
         const processingErrors = validateSubmissionForProcessing(submission, fileMetadata);
         if (processingErrors.length) {
@@ -144,6 +148,49 @@ async function processTip(event) {
         return null;
 }
 
+// A second immutable object adds context without delaying the original tip.
+// _context_ready.json is admin-only under Storage rules and contains no capability.
+async function processTipContext(event) {
+    const object=event.data;
+    if (!/^tips\/[^/]+\/_context\.json$/.test(object.name)) return null;
+    const bucket=getStorage().bucket(object.bucket), folder=object.name.slice(0,object.name.lastIndexOf('/'));
+    const contextFile=bucket.file(object.name), manifestFile=bucket.file(folder+'/_submission.json');
+    await revokeDownloadTokens([contextFile]);
+    const [contextMeta]=await contextFile.getMetadata(), [manifestMeta]=await manifestFile.getMetadata();
+    if (String(contextMeta.generation)!==String(object.generation)) return null;
+    if (contextMeta.metadata?.processingStatus==='rejected' || contextMeta.metadata?.contextDriveStatus==='complete') return null;
+    let context;
+    try {
+        if (Number(contextMeta.size)>32*1024 || Number(manifestMeta.size)>100*1024 || manifestMeta.metadata?.processingStatus==='rejected') throw Error('INVALID_CONTEXT');
+        const [raw]=await contextFile.download(), [initial]=await manifestFile.download();
+        const manifest=JSON.parse(initial.toString('utf8'));
+        context={version:1, submissionName:manifestFile.name, submissionGeneration:String(manifestMeta.generation),
+            contextGeneration:String(contextMeta.generation),receivedAt:contextMeta.timeCreated,
+            submission:verifyContext(manifest,JSON.parse(raw.toString('utf8')))};
+    } catch(error) {
+        if (error instanceof SyntaxError || String(error.message).startsWith('INVALID_CONTEXT')) {
+            await mergeWorkflowMetadata(contextFile,{processingStatus:'rejected'}); return null;
+        }
+        throw error;
+    }
+    const ready=bucket.file(folder+'/_context_ready.json');
+    try {
+        await ready.save(JSON.stringify(context), {resumable:false,contentType:'application/json',preconditionOpts:{ifGenerationMatch:0}});
+    } catch(error) {
+        if (Number(error.code)!==412) throw error;
+        const [existing]=await ready.download();
+        if (JSON.stringify(JSON.parse(existing.toString('utf8')))!==JSON.stringify(context)) throw Error('Context receipt mismatch.');
+    }
+    // Publish the local editing event first. Drive may still be copying large media.
+    const workflow=await getWorkflowMetadata(manifestFile);
+    if (workflow.driveCopyStatus!=='complete' || !workflow.driveFolderUrl) throw Error('Original tip Drive delivery is still pending.');
+    const mirror=await mirrorSessionToDriveBridge({deliveryId:`context:${object.bucket}:${object.name}:${contextMeta.generation}`,
+        bucket,sessionLabel:folder.split('/').pop(),files:contextDocuments(context,object.bucket),submission:context.submission,
+        appendOnly:true,expectedFolderUrl:workflow.driveFolderUrl});
+    await mergeWorkflowMetadata(contextFile,{processingStatus:'verified',contextDriveStatus:'complete',driveFolderUrl:mirror.folderUrl});
+    return null;
+}
+
 const deliveryOptions = {
     region: 'us-west1',
     secrets: [driveBridgeUrl, driveBridgeToken],
@@ -162,12 +209,13 @@ exports.retryTipDeliveries = onSchedule({
     const started = Date.now();
     const bucket = getStorage().bucket();
     const [files] = await bucket.getFiles({ prefix: 'tips/' });
-    const mediaFolders = new Set(files.filter(file => !file.name.endsWith('/_submission.json'))
+    const mediaFolders = new Set(files.filter(isMediaObject)
         .map(file => file.name.slice(0, file.name.lastIndexOf('/'))));
     const pending = files.filter(file => {
         const metadata = file.metadata || {};
         const state = metadata.metadata || {};
         const age = started - Date.parse(metadata.timeCreated);
+        if (file.name.endsWith('/_context.json')) return state.processingStatus !== 'rejected' && state.contextDriveStatus !== 'complete' && age > 5 * 60 * 1000 && age < 30 * 24 * 60 * 60 * 1000;
         return file.name.endsWith('/_submission.json')
             && state.processingStatus !== 'rejected'
             && age > 5 * 60 * 1000 && age < 30 * 24 * 60 * 60 * 1000
@@ -283,7 +331,8 @@ async function mergeWorkflowMetadata(file, updates) {
  * Calls the Apps Script bridge. The bridge runs as Chris's Google account,
  * which avoids the personal-Drive quota issue service accounts hit.
  */
-async function mirrorSessionToDriveBridge({ deliveryId, bucket, sessionLabel, files, submission, onMediaReady }) {
+async function mirrorSessionToDriveBridge({ deliveryId, bucket, sessionLabel, files, submission, onMediaReady, appendOnly = false, expectedFolderUrl }) {
+    files = driveTransferManifest(files);
     const url = driveBridgeUrl.value();
     if (!isApprovedDriveBridgeUrl(url)) throw new Error('DRIVE_BRIDGE_URL is not configured.');
     const leaseId = randomUUID();
@@ -292,7 +341,7 @@ async function mirrorSessionToDriveBridge({ deliveryId, bucket, sessionLabel, fi
         const res = await fetch(url, {
             method: 'POST', signal: AbortSignal.timeout(action === 'release' ? 5000 : 60000),
             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify({ token: driveBridgeToken.value(), deliveryId, leaseId, action, sessionLabel, submission, files: files.map(({ inlineBytes, ...file }) => file) }),
+            body: JSON.stringify({ token: driveBridgeToken.value(), deliveryId, leaseId, action, sessionLabel, submission, files: files.map(({ inlineBytes, storageName, ...file }) => file) }),
         });
         let payload;
         try { payload = await res.json(); } catch { throw new Error('Drive bridge returned an invalid response.'); }
@@ -304,18 +353,20 @@ async function mirrorSessionToDriveBridge({ deliveryId, bucket, sessionLabel, fi
         const prepared = await callBridge('prepare');
         if (prepared.transferMode !== 'direct-v1' || !Array.isArray(prepared.transfers)) throw new Error('Drive bridge needs the direct-transfer update.');
         leased = true;
+        if (expectedFolderUrl && prepared.folderUrl !== expectedFolderUrl) throw new Error('Context destination does not match original tip folder.');
         if (prepared.transfers.length !== files.length || new Set(prepared.transfers.map(file => file.name)).size !== files.length) throw new Error('Drive transfer manifest mismatch.');
         for (const transfer of prepared.transfers) {
             const source = files.find(file => file.name === transfer.name);
             if (!source || Number(transfer.sizeBytes) !== source.sizeBytes) throw new Error('Drive transfer source mismatch.');
             await transferToDrive({ ...transfer, md5Hash: source.md5Hash, mimeType: source.mimeType }, async (start, end) => {
                 if (source.inlineBytes) return source.inlineBytes.subarray(start, end + 1);
-                const [bytes] = await bucket.file(`tips/${sessionLabel}/${source.name}`).download({ start, end });
+                const [bytes] = await bucket.file(`tips/${sessionLabel}/${source.storageName}`).download({ start, end });
                 return bytes;
             }, { deadline });
         }
         await verifyDriveContents(prepared.folderUrl, files);
         if (onMediaReady) await onMediaReady(prepared.folderUrl);
+        if (appendOnly) return {folderUrl:prepared.folderUrl, copied:files.map(f => ({name:f.name, verified:true}))};
         // Finalization is idempotent: a lost/invalid response must not delay
         // access to already verified media or require a whole new delivery.
         let finalized;

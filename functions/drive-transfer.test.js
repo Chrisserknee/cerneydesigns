@@ -1,6 +1,14 @@
 const test=require('node:test');
 const assert=require('node:assert/strict');
-const {transferToDrive}=require('./drive-transfer');
+const {transferToDrive,driveTransferManifest}=require('./drive-transfer');
+test('Drive normalization preserves exact original Storage names',()=>{
+ const raw={name:'01_phone  video:clip?.MP4',sizeBytes:4};
+ const [mapped]=driveTransferManifest([raw]);
+ assert.equal(mapped.name,'01_phone video_clip_.MP4');assert.equal(mapped.storageName,raw.name);
+ assert.equal(raw.name,'01_phone  video:clip?.MP4');
+ assert.equal(driveTransferManifest([{name:'x'.repeat(190)}])[0].name.length,180);
+ assert.throws(()=>driveTransferManifest([{name:'a  b.mp4'},{name:'a b.mp4'}]),/same name/);
+});
 const base={uploadUrl:'https://www.googleapis.com/upload/drive/v3/files?upload_id=test',sizeBytes:10,nextOffset:4,md5Hash:Buffer.from('1234567890123456').toString('base64')};
 const completed={id:'file',size:'10',md5Checksum:Buffer.from(base.md5Hash,'base64').toString('hex')};
 test('direct transfer resumes at Drive acknowledged offset and checks final integrity',async()=>{

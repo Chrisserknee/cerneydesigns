@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 
-function client({ failManifest = false } = {}) {
+function client({ failManifest = false, failContext = false } = {}) {
     const elements = new Map();
     const element = () => ({
         handlers: {}, style: {}, value: '', checked: false, open: false,
@@ -23,7 +23,7 @@ function client({ failManifest = false } = {}) {
             createElement: element,
         },
         window: { addEventListener() {}, scrollTo() {} }, navigator: { userAgent: 'test' },
-        crypto: require('node:crypto').webcrypto, Blob, setTimeout, alert() {},
+        crypto: require('node:crypto').webcrypto, TextEncoder, Blob, setTimeout, alert() {},
         console: { error() {} }, initializeApp() {}, getStorage() {}, ref: (_, path) => path,
         uploadBytesResumable(path, file, metadata) {
             uploads.push({ path, metadata });
@@ -31,19 +31,20 @@ function client({ failManifest = false } = {}) {
         },
         async uploadBytes(path, blob, metadata) {
             manifests.push({ path, metadata, data: JSON.parse(await blob.text()) });
-            if (failManifest) { failManifest = false; throw new Error('storage/unauthorized'); }
+            if ((failManifest && path.endsWith('/_submission.json')) || (failContext && path.endsWith('/_context.json'))) { failManifest = false; failContext = false; throw new Error('storage/unknown'); }
         },
     });
     const source = fs.readFileSync(__dirname + '/upload.js', 'utf8').replace(/import[\s\S]*?from "[^"]+";/g, '');
     vm.runInContext(source, context);
+    const flush = async () => { for(let i=0;i<100;i++) { if(elements.get('detailsDialog').open || elements.get('errorScreen').hidden===false || elements.get('thankyouScreen').hidden===false) break; await new Promise(resolve => setTimeout(resolve,2)); } };
     return {
         uploads, manifests, elements,
         add: file => vm.runInContext(`addFiles([${JSON.stringify(file)}])`, context),
         start: () => elements.get('submitBtn').handlers.click(),
-        flush: () => new Promise(resolve => setImmediate(resolve)),
+        flush,
         submit: async () => {
             const run = elements.get('submitBtn').handlers.click();
-            await new Promise(resolve => setImmediate(resolve));
+            await flush();
             if (elements.get('detailsDialog').open) elements.get('skipDetails').handlers.click();
             return run;
         },
@@ -90,20 +91,24 @@ test('supported file extension is accepted when the browser omits MIME type', as
 });
 
 
-test('popup appears after media upload and manifest waits for the details choice', async () => {
+test('media tip is committed BEFORE the optional popup, even if the sender never completes it', async () => {
     const c = client(); c.add({ name: 'photo.jpg', size: 100, type: 'image/jpeg' });
     const run = c.start(); await c.flush();
     assert.equal(c.uploads.length, 1);
-    assert.equal(c.manifests.length, 0);
+    assert.equal(c.manifests.length, 1);
+    assert.equal(c.manifests[0].data.detailsStatus, 'pending');
+    assert.match(c.manifests[0].data.contextKeyHash,/^[a-f0-9]{64}$/);
+    assert.equal('contextToken' in c.manifests[0].data,false);
     assert.equal(c.elements.get('detailsDialog').open, true);
     assert.equal(c.elements.get('thankyouScreen').hidden, true);
     c.elements.get('skipDetails').handlers.click(); await run;
     assert.equal(c.manifests[0].data.anonymous, true);
     assert.equal(c.manifests[0].data.nameUsageConsent, 'anonymous');
-    assert.equal(c.manifests[0].data.detailsStatus, 'skipped');
+    assert.equal(c.manifests[0].data.detailsStatus, 'pending');
+    assert.equal(c.manifests.length,1);
 });
 
-test('explicit name permission and separate what/when/where fields reach the same manifest', async () => {
+test('explicit name permission and separate what/when/where fields attach to the same tip folder without changing its media manifest', async () => {
     const c = client(); c.add({ name: 'photo.jpg', size: 100, type: 'image/jpeg' });
     const run = c.start(); await c.flush();
     const get = id => c.elements.get(id);
@@ -115,10 +120,12 @@ test('explicit name permission and separate what/when/where fields reach the sam
     get('useName').checked = true; get('useName').handlers.change();
     get('senderName').value = ' Test Contributor '; get('senderContact').value = 'example@example.com';
     get('identityForm').handlers.submit({ preventDefault() {} }); await run;
-    const data = c.manifests[0].data;
+    const data = c.manifests[1].data;
+    assert.equal(c.manifests[1].path.replace('_context.json','_submission.json'),c.manifests[0].path);
+    assert.equal(require('node:crypto').createHash('sha256').update(data.contextToken).digest('hex'),c.manifests[0].data.contextKeyHash);
     assert.equal(data.whatHappened, 'A tree fell across the road.');
     assert.equal(data.location, 'Test intersection'); assert.equal(data.timing, 'Today around 3 PM');
-    assert.match(data.description, /When: Today around 3 PM/);
+    assert.equal('files' in data,false);
     assert.equal(data.senderName, 'Test Contributor');
     assert.equal(data.anonymous, false); assert.equal(data.nameUsageConsent, 'use_name');
     assert.equal(JSON.stringify(c.uploads[0].metadata.customMetadata), JSON.stringify({ anonymous: 'true' }));
@@ -132,7 +139,9 @@ test('changing to anonymous removes name/contact but preserves the story details
     get('useName').checked = false; get('keepAnonymous').checked = true; get('keepAnonymous').handlers.change();
     assert.equal(get('senderName').value, ''); assert.equal(get('senderContact').value, '');
     get('identityForm').handlers.submit({ preventDefault() {} }); await run;
-    const data = c.manifests[0].data;
+    const data = c.manifests[1].data;
+    assert.equal(c.manifests[1].path.replace('_context.json','_submission.json'),c.manifests[0].path);
+    assert.equal(require('node:crypto').createHash('sha256').update(data.contextToken).digest('hex'),c.manifests[0].data.contextKeyHash);
     assert.equal(data.anonymous, true); assert.equal(data.whatHappened, 'Preserve this context');
     for (const key of ['senderName', 'senderContact', 'userAgent']) assert.equal(key in data, false);
 });
@@ -146,15 +155,16 @@ test('Escape finalizes anonymously instead of leaving uploaded media unsubmitted
     assert.equal('senderName' in c.manifests[0].data, false);
 });
 
-test('failed finalization retry retains collected details without opening another popup', async () => {
-    const c = client({ failManifest: true }); c.add({ name: 'photo.jpg', size: 100, type: 'image/jpeg' });
+test('failed optional context retry retains details and never resends media or initial manifest', async () => {
+    const c = client({ failContext: true }); c.add({ name: 'photo.jpg', size: 100, type: 'image/jpeg' });
     const run = c.start(); await c.flush();
     c.elements.get('whatHappened').value = 'Do not lose this';
     c.elements.get('keepAnonymous').checked = true;
     c.elements.get('identityForm').handlers.submit({ preventDefault() {} }); await run;
     await c.start();
-    assert.equal(c.uploads.length, 1); assert.equal(c.manifests.length, 2);
+    assert.equal(c.uploads.length, 1); assert.equal(c.manifests.length, 3);
     assert.equal(c.manifests[1].data.whatHappened, 'Do not lose this');
-    assert.equal(c.manifests[1].path, c.manifests[0].path);
+    assert.equal(c.manifests[2].path, c.manifests[1].path);
+    assert.equal(c.manifests.filter(m=>m.path.endsWith('/_submission.json')).length,1);
     assert.equal(c.elements.get('detailsDialog').open, false);
 });
