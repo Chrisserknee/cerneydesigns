@@ -163,6 +163,8 @@ body {
     max-width: 50ch;
 }
 
+#uploader[hidden] + .contact-card { display: none; }
+
 .contact-card {
     margin-top: 22px;
     padding: 18px 20px;
