@@ -55,11 +55,22 @@ const els = {
     errorBody: document.getElementById('errorBody'),
     sendAnother: document.getElementById('sendAnother'),
     errorRetry: document.getElementById('errorRetry'),
-    anonymous: document.getElementById('anonymous'),
+    detailsDialog: document.getElementById('detailsDialog'),
+    detailsForm: document.getElementById('detailsForm'),
+    identityForm: document.getElementById('identityForm'),
+    detailsTitle: document.getElementById('detailsTitle'),
+    detailsIntro: document.getElementById('detailsIntro'),
+    detailsStepLabel: document.getElementById('detailsStepLabel'),
+    detailsBack: document.getElementById('detailsBack'),
+    skipDetails: document.getElementById('skipDetails'),
+    whatHappened: document.getElementById('whatHappened'),
+    timing: document.getElementById('timing'),
+    location: document.getElementById('location'),
+    keepAnonymous: document.getElementById('keepAnonymous'),
+    useName: document.getElementById('useName'),
+    nameFields: document.getElementById('nameFields'),
     senderName: document.getElementById('senderName'),
     senderContact: document.getElementById('senderContact'),
-    description: document.getElementById('description'),
-    detailsToggle: document.getElementById('detailsToggle'),
 };
 
 let isUploading = false;
@@ -182,29 +193,79 @@ els.fileList.addEventListener('click', (e) => {
     renderFileList();
 });
 
-// ---------- ANONYMOUS TOGGLE ----------
-els.anonymous.addEventListener('change', () => {
-    const body = els.detailsToggle.querySelector('.details-body');
-    body.classList.toggle('anon-on', els.anonymous.checked);
-    if (els.anonymous.checked) {
+// ---------- POST-UPLOAD DETAILS ----------
+let resolveDetails = null;
+function showDetailsStep(identity) {
+    els.detailsForm.hidden = identity;
+    els.identityForm.hidden = !identity;
+    els.detailsStepLabel.textContent = `Files uploaded · Step ${identity ? 2 : 1} of 2`;
+    els.detailsTitle.textContent = identity ? 'Can we use your name in our report?' : 'Help Chris understand your tip';
+    els.detailsIntro.textContent = identity
+        ? 'You choose. Your name will only be included if you give permission below.'
+        : 'What happened, when, and where? Please share as many details as you can. Only include information you are comfortable sharing.';
+    els.detailsDialog.scrollTop = 0;
+    els.detailsTitle.focus();
+}
+function updateNameChoice() {
+    const named = els.useName.checked;
+    els.nameFields.hidden = !named;
+    els.senderName.disabled = !named;
+    els.senderName.required = named;
+    els.senderContact.disabled = !named;
+    if (!named) {
         els.senderName.value = '';
         els.senderContact.value = '';
     }
+    els.senderName.setCustomValidity('');
+}
+function finishDetails(skip = false) {
+    if (!resolveDetails) return;
+    const anonymous = skip || !els.useName.checked;
+    const whatHappened = skip ? '' : els.whatHappened.value.trim().slice(0, 2000);
+    const timing = skip ? '' : els.timing.value.trim().slice(0, 300);
+    const location = skip ? '' : els.location.value.trim().slice(0, 300);
+    const meta = {
+        anonymous,
+        nameUsageConsent: anonymous ? 'anonymous' : 'use_name',
+        detailsStatus: skip ? 'skipped' : 'provided',
+        senderName: anonymous ? '' : els.senderName.value.trim().slice(0, 180),
+        senderContact: anonymous ? '' : els.senderContact.value.trim().slice(0, 220),
+        whatHappened, timing, location,
+        description: [whatHappened, timing && `When: ${timing}`, location && `Where: ${location}`].filter(Boolean).join('\n\n'),
+    };
+    const resolve = resolveDetails;
+    resolveDetails = null;
+    els.detailsDialog.close();
+    document.body.classList.remove('tip-dialog-open');
+    resolve(meta);
+}
+function collectDetails() {
+    return new Promise(resolve => {
+        resolveDetails = resolve;
+        showDetailsStep(false);
+        document.body.classList.add('tip-dialog-open');
+        els.detailsDialog.showModal();
+        els.detailsTitle.focus();
+    });
+}
+els.detailsForm.addEventListener('submit', e => { e.preventDefault(); showDetailsStep(true); });
+els.detailsBack.addEventListener('click', () => showDetailsStep(false));
+els.useName.addEventListener('change', updateNameChoice);
+els.keepAnonymous.addEventListener('change', updateNameChoice);
+els.senderName.addEventListener('input', () => els.senderName.setCustomValidity(''));
+els.identityForm.addEventListener('submit', e => {
+    e.preventDefault();
+    if (els.useName.checked && !els.senderName.value.trim()) els.senderName.setCustomValidity('Enter the name you want us to use, or choose anonymous.');
+    if (!els.identityForm.reportValidity()) return;
+    finishDetails();
 });
+els.skipDetails.addEventListener('click', () => finishDetails(true));
+// Escape takes the same privacy-preserving path as the visible skip button.
+els.detailsDialog.addEventListener('cancel', e => { e.preventDefault(); finishDetails(true); });
 
 // ---------- SUBMIT ----------
 els.submitBtn.addEventListener('click', async () => {
     if (isUploading || !selectedFiles.length) return;
-
-    const meta = {
-        senderName: els.anonymous.checked ? '' : els.senderName.value.trim(),
-        senderContact: els.anonymous.checked ? '' : els.senderContact.value.trim(),
-        description: els.description.value.trim().slice(0, 6000),
-        anonymous: els.anonymous.checked,
-        // For anonymous submissions, don't leak the user-agent string — it
-        // partially de-anonymizes the sender (browser, OS, device model).
-        userAgent: els.anonymous.checked ? '' : navigator.userAgent,
-    };
 
     // Unique folder per submission: sortable UTC timestamp + cryptographic tag.
     const now = new Date();
@@ -262,14 +323,9 @@ els.submitBtn.addEventListener('click', async () => {
             els.progressStatus.textContent = phase || (rateStr ? `${rateStr}${etaStr}` : 'Uploading…');
         };
 
-        // Custom metadata attached to every uploaded file.
-        const customMetadata = { anonymous: String(meta.anonymous) };
-        if (!meta.anonymous) {
-            if (meta.senderName) customMetadata.senderName = meta.senderName.slice(0, 200);
-            if (meta.senderContact) customMetadata.senderContact = meta.senderContact.slice(0, 200);
-            if (meta.userAgent) customMetadata.userAgent = meta.userAgent.slice(0, 500);
-        }
-        if (meta.description) customMetadata.description = meta.description.slice(0, 1000);
+        // Name permission is collected after upload. Keep media metadata free of
+        // identity; the final manifest is authoritative for attribution and context.
+        const customMetadata = { anonymous: 'true' };
 
         const storedNames = selectedFiles.map((file, idx) =>
             `${String(idx + 1).padStart(2, '0')}_${safeName(file.name)}`
@@ -340,6 +396,10 @@ els.submitBtn.addEventListener('click', async () => {
         const failure = outcomes.find(outcome => outcome.status === 'rejected');
         if (failure) throw failure.reason;
 
+        updateProgressUI('Files uploaded. Add details or skip the popup to finish sending.');
+        pendingUpload.meta ||= await collectDetails();
+        const meta = pendingUpload.meta;
+
         // Sidecar JSON written last — its presence signals a complete submission.
         updateProgressUI('Finishing up…');
         const submission = {
@@ -356,9 +416,13 @@ els.submitBtn.addEventListener('click', async () => {
             ...(meta.anonymous ? {} : {
                 senderName: meta.senderName,
                 senderContact: meta.senderContact,
-                userAgent: meta.userAgent,
             }),
+            nameUsageConsent: meta.nameUsageConsent,
+            detailsStatus: meta.detailsStatus,
             description: meta.description,
+            whatHappened: meta.whatHappened,
+            timing: meta.timing,
+            location: meta.location,
         };
         const infoRef = ref(storage, `${sessionFolder}/_submission.json`);
         const infoBlob = new Blob([JSON.stringify(submission, null, 2)], { type: 'application/json' });
@@ -384,6 +448,9 @@ els.submitBtn.addEventListener('click', async () => {
         console.error(err);
         isUploading = false;
         activeUploadTasks.clear();
+        resolveDetails = null;
+        if (els.detailsDialog.open) els.detailsDialog.close();
+        document.body.classList.remove('tip-dialog-open');
         showError(err?.message || 'Upload failed. Please try again.');
     }
 });
@@ -420,7 +487,9 @@ function resetForm() {
     selectedFiles = [];
     renderFileList();
     els.progressBar.style.width = '0%';
-    els.description.value = '';
+    els.detailsForm.reset();
+    els.identityForm.reset();
+    updateNameChoice();
     showScreen('upload');
 }
 

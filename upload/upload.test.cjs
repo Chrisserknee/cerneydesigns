@@ -6,28 +6,31 @@ const vm = require('node:vm');
 function client({ failManifest = false } = {}) {
     const elements = new Map();
     const element = () => ({
-        handlers: {}, style: {}, value: '', checked: true,
+        handlers: {}, style: {}, value: '', checked: false, open: false,
         classList: { add() {}, remove() {}, toggle() {} },
         addEventListener(name, callback) { this.handlers[name] = callback; },
         replaceChildren() {}, append() {}, appendChild() {}, setAttribute() {}, focus() {},
         dataset: {}, querySelector: () => element(),
+        showModal() { this.open = true; }, close() { this.open = false; },
+        reset() {}, setCustomValidity() {}, reportValidity() { return true; },
     });
     const uploads = [];
     const manifests = [];
     const context = vm.createContext({
         document: {
+            body: element(),
             getElementById(id) { if (!elements.has(id)) elements.set(id, element()); return elements.get(id); },
             createElement: element,
         },
         window: { addEventListener() {}, scrollTo() {} }, navigator: { userAgent: 'test' },
         crypto: require('node:crypto').webcrypto, Blob, setTimeout, alert() {},
         console: { error() {} }, initializeApp() {}, getStorage() {}, ref: (_, path) => path,
-        uploadBytesResumable(path) {
-            uploads.push(path);
+        uploadBytesResumable(path, file, metadata) {
+            uploads.push({ path, metadata });
             return { cancel() {}, on(_, progress, error, done) { queueMicrotask(done); } };
         },
         async uploadBytes(path, blob, metadata) {
-            manifests.push({ path, metadata });
+            manifests.push({ path, metadata, data: JSON.parse(await blob.text()) });
             if (failManifest) { failManifest = false; throw new Error('storage/unauthorized'); }
         },
     });
@@ -36,7 +39,14 @@ function client({ failManifest = false } = {}) {
     return {
         uploads, manifests, elements,
         add: file => vm.runInContext(`addFiles([${JSON.stringify(file)}])`, context),
-        submit: () => elements.get('submitBtn').handlers.click(),
+        start: () => elements.get('submitBtn').handlers.click(),
+        flush: () => new Promise(resolve => setImmediate(resolve)),
+        submit: async () => {
+            const run = elements.get('submitBtn').handlers.click();
+            await new Promise(resolve => setImmediate(resolve));
+            if (elements.get('detailsDialog').open) elements.get('skipDetails').handlers.click();
+            return run;
+        },
     };
 }
 
@@ -77,4 +87,74 @@ test('empty files cannot produce a rejected backend submission', async () => {
 test('supported file extension is accepted when the browser omits MIME type', async () => {
     const c = client(); c.add({ name: 'photo.AVIF', type: '', size: 100 }); await c.submit();
     assert.equal(c.uploads.length, 1); assert.equal(c.manifests.length, 1);
+});
+
+
+test('popup appears after media upload and manifest waits for the details choice', async () => {
+    const c = client(); c.add({ name: 'photo.jpg', size: 100, type: 'image/jpeg' });
+    const run = c.start(); await c.flush();
+    assert.equal(c.uploads.length, 1);
+    assert.equal(c.manifests.length, 0);
+    assert.equal(c.elements.get('detailsDialog').open, true);
+    assert.equal(c.elements.get('thankyouScreen').hidden, true);
+    c.elements.get('skipDetails').handlers.click(); await run;
+    assert.equal(c.manifests[0].data.anonymous, true);
+    assert.equal(c.manifests[0].data.nameUsageConsent, 'anonymous');
+    assert.equal(c.manifests[0].data.detailsStatus, 'skipped');
+});
+
+test('explicit name permission and separate what/when/where fields reach the same manifest', async () => {
+    const c = client(); c.add({ name: 'photo.jpg', size: 100, type: 'image/jpeg' });
+    const run = c.start(); await c.flush();
+    const get = id => c.elements.get(id);
+    get('whatHappened').value = 'A tree fell across the road.';
+    get('timing').value = 'Today around 3 PM'; get('location').value = 'Test intersection';
+    get('detailsForm').handlers.submit({ preventDefault() {} });
+    assert.equal(get('identityForm').hidden, false);
+    assert.equal(get('detailsForm').hidden, true);
+    get('useName').checked = true; get('useName').handlers.change();
+    get('senderName').value = ' Test Contributor '; get('senderContact').value = 'example@example.com';
+    get('identityForm').handlers.submit({ preventDefault() {} }); await run;
+    const data = c.manifests[0].data;
+    assert.equal(data.whatHappened, 'A tree fell across the road.');
+    assert.equal(data.location, 'Test intersection'); assert.equal(data.timing, 'Today around 3 PM');
+    assert.match(data.description, /When: Today around 3 PM/);
+    assert.equal(data.senderName, 'Test Contributor');
+    assert.equal(data.anonymous, false); assert.equal(data.nameUsageConsent, 'use_name');
+    assert.equal(JSON.stringify(c.uploads[0].metadata.customMetadata), JSON.stringify({ anonymous: 'true' }));
+});
+
+test('changing to anonymous removes name/contact but preserves the story details', async () => {
+    const c = client(); c.add({ name: 'photo.jpg', size: 100, type: 'image/jpeg' });
+    const run = c.start(); await c.flush(); const get = id => c.elements.get(id);
+    get('whatHappened').value = 'Preserve this context';
+    get('useName').checked = true; get('senderName').value = 'Private name'; get('senderContact').value = 'Private phone';
+    get('useName').checked = false; get('keepAnonymous').checked = true; get('keepAnonymous').handlers.change();
+    assert.equal(get('senderName').value, ''); assert.equal(get('senderContact').value, '');
+    get('identityForm').handlers.submit({ preventDefault() {} }); await run;
+    const data = c.manifests[0].data;
+    assert.equal(data.anonymous, true); assert.equal(data.whatHappened, 'Preserve this context');
+    for (const key of ['senderName', 'senderContact', 'userAgent']) assert.equal(key in data, false);
+});
+
+test('Escape finalizes anonymously instead of leaving uploaded media unsubmitted', async () => {
+    const c = client(); c.add({ name: 'photo.jpg', size: 100, type: 'image/jpeg' });
+    const run = c.start(); await c.flush();
+    c.elements.get('senderName').value = 'Must not be sent'; c.elements.get('useName').checked = true;
+    c.elements.get('detailsDialog').handlers.cancel({ preventDefault() {} }); await run;
+    assert.equal(c.manifests.length, 1); assert.equal(c.manifests[0].data.anonymous, true);
+    assert.equal('senderName' in c.manifests[0].data, false);
+});
+
+test('failed finalization retry retains collected details without opening another popup', async () => {
+    const c = client({ failManifest: true }); c.add({ name: 'photo.jpg', size: 100, type: 'image/jpeg' });
+    const run = c.start(); await c.flush();
+    c.elements.get('whatHappened').value = 'Do not lose this';
+    c.elements.get('keepAnonymous').checked = true;
+    c.elements.get('identityForm').handlers.submit({ preventDefault() {} }); await run;
+    await c.start();
+    assert.equal(c.uploads.length, 1); assert.equal(c.manifests.length, 2);
+    assert.equal(c.manifests[1].data.whatHappened, 'Do not lose this');
+    assert.equal(c.manifests[1].path, c.manifests[0].path);
+    assert.equal(c.elements.get('detailsDialog').open, false);
 });

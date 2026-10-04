@@ -938,7 +938,7 @@ section {
 }
 
 /* ==================== RESPONSIVE ==================== */
-@media (max-width: 860px) {
+@media (max-width: 1080px) {
     .nav-toggle {
         display: flex;
     }

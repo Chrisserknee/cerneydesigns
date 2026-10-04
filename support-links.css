@@ -1,0 +1,14 @@
+/* Shared, optional support links. No tracking scripts or donation embeds. */
+.support-section { padding: 24px 0 64px; }
+.support-card { padding: clamp(24px, 5vw, 40px); border: 1px solid #426b9180; border-radius: 12px; background: #14212e; text-align: left; }
+.support-card h2 { font-family: 'Barlow Condensed', 'Inter', sans-serif; color: #edf1f5; font-size: clamp(1.7rem, 4vw, 2.2rem); line-height: 1.1; margin: 0 0 12px; }
+.support-card p { color: #bac7d5; font-size: .96rem; line-height: 1.6; margin: 0 0 22px; }
+.support-cta { display: inline-flex; align-items: center; justify-content: center; gap: 16px; min-height: 46px; padding: 13px 20px; background: #426b91; border: 1px solid #8dabc6; border-radius: 6px; color: #fff; text-decoration: none; font-family: 'Inter', sans-serif; font-size: .88rem; font-weight: 700; }
+.support-cta:hover { background: #527fa7; }
+.support-footer, .hero-support { color: #b6d2ed; text-decoration: underline; text-underline-offset: 4px; }
+.hero-support { display: inline-block; margin-top: 24px; font-size: .9rem; line-height: 1.6; }
+.nav-menu a.nav-donate { color: #b6d2ed; }
+.site-footer .support-footer { display: inline-block; margin-bottom: 14px; line-height: 1.7; }
+.thankyou-screen .support-card, .success-screen .support-card { margin-top: 32px; }
+.support-cta:focus-visible, .support-footer:focus-visible, .hero-support:focus-visible { outline: 3px solid #b6d2ed; outline-offset: 5px; }
+@media (max-width: 420px) { .support-cta { width: 100%; } }

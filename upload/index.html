@@ -17,6 +17,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/upload/style.css">
     <link rel="stylesheet" href="/holographic.css">
+    <link rel="stylesheet" href="/support-links.css">
 </head>
 <body>
     <nav class="top-nav">
@@ -66,33 +67,11 @@
 
             <ul class="file-list" id="fileList" aria-live="polite"></ul>
 
-            <details class="details-toggle" id="detailsToggle">
-                <summary>Add details <span class="optional">(optional)</span></summary>
-                <div class="details-body">
-                    <label class="field">
-                        <span class="field-label">Your name</span>
-                        <input type="text" id="senderName" autocomplete="name" maxlength="180" placeholder="Jane Doe">
-                    </label>
-                    <label class="field">
-                        <span class="field-label">Contact (email or phone)</span>
-                        <input type="text" id="senderContact" autocomplete="email" maxlength="220" placeholder="you@example.com">
-                    </label>
-                    <label class="field">
-                        <span class="field-label">What happened? Where? When?</span>
-                        <textarea id="description" rows="3" maxlength="1800" placeholder="What happened? Where did it happen? When was this taken?"></textarea>
-                    </label>
-                    <label class="checkbox">
-                        <input type="checkbox" id="anonymous">
-                        <span>Send anonymously</span>
-                    </label>
-                </div>
-            </details>
-
             <button type="button" class="submit-btn" id="submitBtn" disabled>
                 Send Tip
             </button>
 
-            <p class="privacy-note">Photos and videos may appear in news coverage. Your identity stays confidential if you submit anonymously.</p>
+            <p class="privacy-note">After your files upload, a popup will ask what happened and whether we may use your name. You can choose to remain anonymous.</p>
             <p class="privacy-note">By submitting, you confirm you have permission to share this material and understand it may be used in news coverage.</p>
         </section>
 
@@ -113,6 +92,58 @@
             <p class="progress-file" id="progressFile">Preparing&hellip;</p>
             <p class="progress-status" id="progressStatus">Starting upload&hellip;</p>
         </section>
+
+        <dialog class="tip-dialog" id="detailsDialog" aria-labelledby="detailsTitle" aria-describedby="detailsIntro">
+            <div class="tip-dialog-inner">
+                <p class="dialog-eyebrow" id="detailsStepLabel">Files uploaded · Step 1 of 2</p>
+                <h2 id="detailsTitle" tabindex="-1">Help Chris understand your tip</h2>
+                <p id="detailsIntro">What happened, when, and where? Please share as many details as you can. Only include information you are comfortable sharing.</p>
+                <form id="detailsForm">
+                    <label class="field">
+                        <span class="field-label">What happened?</span>
+                        <textarea id="whatHappened" rows="4" maxlength="2000" placeholder="Describe what you saw. What led up to it? What else should Chris know?"></textarea>
+                    </label>
+                    <label class="field">
+                        <span class="field-label">When did it happen?</span>
+                        <input type="text" id="timing" maxlength="300" placeholder="Date and approximate time, if you know">
+                    </label>
+                    <label class="field">
+                        <span class="field-label">Where did it happen?</span>
+                        <input type="text" id="location" maxlength="300" placeholder="City, street, intersection, or landmark">
+                    </label>
+                    <button class="submit-btn" type="submit">Continue</button>
+                </form>
+                <form id="identityForm" hidden>
+                    <fieldset class="identity-choices">
+                        <legend class="sr-only">May Chris use your name in the report?</legend>
+                        <label class="identity-choice">
+                            <input id="keepAnonymous" name="namePermission" type="radio" value="anonymous" required>
+                            <span><strong>Keep me anonymous</strong><small>Do not use my name in the report.</small></span>
+                        </label>
+                        <label class="identity-choice">
+                            <input id="useName" name="namePermission" type="radio" value="use_name" required>
+                            <span><strong>Yes, you may use my name</strong><small>Chris may credit or identify me in the report.</small></span>
+                        </label>
+                    </fieldset>
+                    <div class="name-fields" id="nameFields" hidden>
+                        <label class="field">
+                            <span class="field-label">Name to use in the report</span>
+                            <input id="senderName" type="text" autocomplete="name" maxlength="180" disabled>
+                        </label>
+                        <label class="field">
+                            <span class="field-label">Email or phone (optional, private)</span>
+                            <input id="senderContact" type="text" autocomplete="email" maxlength="220" placeholder="So Chris can follow up" disabled>
+                        </label>
+                    </div>
+                    <div class="dialog-actions">
+                        <button class="secondary-btn" id="detailsBack" type="button">Back</button>
+                        <button class="submit-btn" type="submit">Finish sending tip</button>
+                    </div>
+                </form>
+                <button class="dialog-skip" id="skipDetails" type="button">Skip details &amp; send anonymously</button>
+                <p class="dialog-note">Details are optional. Keep this page open until you see Thank You.</p>
+            </div>
+        </dialog>
 
         <section class="thankyou-screen" id="thankyouScreen" hidden>
             <div class="check-badge" aria-hidden="true">
@@ -152,6 +183,7 @@
             </div>
 
             <button type="button" class="secondary-btn" id="sendAnother">Send another tip</button>
+            <aside class="support-card" aria-label="Support independent reporting"><h2>Help keep local reporting going</h2><p>Support Chris’s independent reporting across Monterey County.</p><a href="/gofundme" target="_blank" rel="noopener noreferrer" class="support-cta">Donate on GoFundMe <span aria-hidden="true">↗</span></a></aside>
         </section>
 
         <section class="error-screen" id="errorScreen" hidden>
@@ -163,10 +195,11 @@
     </main>
 
     <footer class="site-footer">
+        <a class="support-footer" href="/gofundme" target="_blank" rel="noopener noreferrer">Support local news on GoFundMe ↗</a>
         <p>&copy; 2026 Chris Cerney &middot; chriscerney.org</p>
     </footer>
 
     <script src="/holographic.js"></script>
-    <script type="module" src="/upload/upload.js?v=20260904"></script>
+    <script type="module" src="/upload/upload.js?v=20261004-popup"></script>
 </body>
 </html>
