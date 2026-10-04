@@ -10,15 +10,15 @@
 <script src="/tip-alerts/app.js" defer></script>
 </head>
 <body>
+<div id="pullIndicator" class="pull-indicator" role="status" aria-live="polite" hidden></div>
 <main>
 <header><div class="brand"><img src="/tip-alerts/icon.svg" width="44" height="44" alt=""><div><span class="eyebrow">CHRIS CERNEY REPORTS</span><strong>Cerney Tips</strong></div></div><span class="private">Private inbox</span></header>
 <section id="intro" class="intro"><p class="eyebrow">YOUR NEWSROOM, WITH YOU</p><h1>Be there when<br>the story arrives.</h1><p>Get a phone alert for new tips. Open the matching Google Drive folder with a tap.</p></section>
 <section id="install" class="card install" hidden><span class="step">ONE-TIME IPHONE SETUP</span><h2>Add Tip Alerts to your Home Screen</h2><p>In Safari, tap <strong>Share</strong>, then <strong>Add to Home Screen</strong>. Open the new <strong>Cerney Tips</strong> icon, sign in, and enable alerts.</p><p class="muted">Notifications work from the Home Screen app.</p></section>
 <section id="login" class="card" hidden><h2>Your private tip inbox</h2><p>Sign in with your website administrator password to connect this device.</p><form id="loginForm"><label for="password">Administrator password</label><input id="password" type="password" autocomplete="current-password" required minlength="12" maxlength="256"><button type="submit">Sign in</button></form></section>
 <section id="connected" hidden>
-<div id="pullIndicator" class="pull-indicator" role="status" aria-live="polite" hidden></div>
 <div id="selected" class="card selected" hidden></div>
-<section class="inbox"><div class="section-heading"><div><p class="eyebrow">LAST 30 DAYS</p><h2>Recent tips</h2></div><span class="refresh-hint">Pull down to refresh</span></div><p id="inboxStatus" class="muted small" role="status" aria-live="polite">Loading recent tips…</p><p id="empty" class="muted" hidden>No tips received in the past 30 days.</p><div id="tips"></div><p class="muted small">Up to 50 recent submissions. Files stay in your existing private storage.</p></section>
+<section class="inbox"><div class="section-heading"><div><p class="eyebrow">LAST 30 DAYS</p><h2>Recent tips</h2></div></div><p id="inboxStatus" class="muted small" role="status" aria-live="polite">Loading recent tips…</p><p id="empty" class="muted" hidden>No tips received in the past 30 days.</p><div id="tips"></div><p class="muted small">Up to 50 recent submissions. Files stay in your existing private storage.</p></section>
 <details id="notificationSettings" class="card settings"><summary>Notification settings</summary><div class="controls"><div class="statusline"><span id="statusDot" class="dot"></span><h2 id="pushStatus">Checking notifications…</h2></div><p id="pushHelp" class="muted"></p><div class="buttons"><button id="enable" hidden>Enable phone alerts</button><button id="disable" class="text-button" hidden>Turn off on this device</button></div></div></details>
 <details class="card"><summary>Connected devices</summary><p class="muted">If a device is lost or unfamiliar, disconnect it here to stop its access and alerts.</p><button id="showDevices" class="text-button">Check connected devices</button><div id="devices"></div></details>
 <p id="sessionHelp" class="muted small" hidden>This device stays signed in. Signing out disconnects its alerts.</p>

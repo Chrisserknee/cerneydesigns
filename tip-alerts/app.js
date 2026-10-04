@@ -2,12 +2,12 @@
 const $ = id => document.getElementById(id);
 const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
-let state, registration, retryTimer, inboxTimer, inboxRequest, loadRequest, sessionVersion = 0, openAttempts = 0;
+let renderedTips, state, registration, retryTimer, inboxTimer, inboxRequest, loadRequest, sessionVersion = 0, openAttempts = 0;
 const tipId = new URLSearchParams(location.search).get('tip');
 const show = (id, visible) => { $(id).hidden = !visible; };
 function message(text='', error=false) { $('message').textContent=text; $('message').classList.toggle('error',error); }
 function clearSession() {
-    state = null; sessionVersion++; message();
+    state = null; renderedTips=null; sessionVersion++; message(); resetPull();
     $('inboxStatus').textContent = '';
     clearTimeout(retryTimer); clearTimeout(inboxTimer);
     for (const id of ['tips','devices','selected']) $(id).replaceChildren();
@@ -134,13 +134,18 @@ async function fetchTips(quiet) {
     state = {...state,expiresAt:data.expiresAt};
     show('sessionHelp',data.expiresAt===null);
     show('login',false); show('intro',false); show('connected',true);
-    message(); $('tips').replaceChildren(); show('empty',!data.tips.length);
+    message(); show('empty',!data.tips.length);
+    const signature=JSON.stringify(data.tips);
+    if(signature!==renderedTips) {
+    $('tips').replaceChildren();
     for(const tip of data.tips) {
         const row=document.createElement('article');row.className='tip';
         const info=document.createElement('div'); const title=document.createElement('h3');title.textContent=(tip.type==='story'?'Story submission':'Tipline upload')+(tip.incomplete?' · Incomplete':'');
         const time=document.createElement('time');time.dateTime=tip.receivedAt;time.textContent=dateLabel(tip.receivedAt);info.append(title,time);row.append(info);
         if(folderURL(tip.driveUrl)) row.append(folderLink(tip)); else {const status=document.createElement('span');status.className='state';status.textContent=tip.status==='review'?'Needs review':'Files processing';row.append(status);}
         $('tips').append(row);
+    }
+    renderedTips=signature;
     }
     $('inboxStatus').textContent=`${data.tips.length} recent ${data.tips.length===1?'tip':'tips'} · Updated ${new Intl.DateTimeFormat('en-US',{hour:'numeric',minute:'2-digit'}).format(new Date())}`;
     // Keep a newly arrived photo current without requiring manual refresh.
@@ -197,43 +202,76 @@ function scheduleInbox(delay) {
     clearTimeout(inboxTimer);
     if (!document.hidden) inboxTimer=setTimeout(()=>loadTips({quiet:true}).catch(e=>message(e.message,true)),delay);
 }
-let refreshRequest, pullStart, pullReady=false;
-function resetPull() { pullStart=null; pullReady=false; if(!refreshRequest) show('pullIndicator',false); }
+let refreshRequest, pullStart, pullReady=false, pullFrame, pullDistance=0;
+const pullRoot=document.documentElement;
+pullRoot.classList.toggle('standalone-app',!!standalone);
+function paintPull() {
+    pullFrame=null;
+    pullRoot.style.setProperty('--pull-distance',`${pullDistance}px`);
+    pullRoot.style.setProperty('--pull-opacity',String(Math.min(1,pullDistance/45)));
+    pullRoot.style.setProperty('--pull-turn',`${pullDistance*4}deg`);
+}
+function movePull(distance) {
+    pullDistance=distance;
+    if(!pullFrame)pullFrame=requestAnimationFrame(paintPull);
+}
+function resetPull() {
+    pullStart=null; pullReady=false;
+    pullRoot.classList.toggle('pull-dragging',false);
+    if(!refreshRequest) {
+        pullRoot.classList.toggle('pull-refreshing',false);
+        if(pullFrame)cancelAnimationFrame(pullFrame);
+        pullFrame=null; pullDistance=0; paintPull();
+        show('pullIndicator',false);
+    }
+}
 function refreshInbox() {
     if(refreshRequest) return refreshRequest;
-    $('pullIndicator').textContent='Refreshing…'; show('pullIndicator',true);
+    $('pullIndicator').textContent='Refreshing'; show('pullIndicator',true);
+    pullRoot.classList.toggle('pull-dragging',false);
+    pullRoot.classList.toggle('pull-refreshing',true);
+    movePull(56);
     refreshRequest=(async()=>{
         try {
             clearTimeout(retryTimer); openAttempts=0;
-            await Promise.all([loadTips(),tipId ? openTip() : Promise.resolve()]);
+            await Promise.all([loadTips({quiet:true}),tipId ? openTip() : Promise.resolve()]);
         } catch(e) { message(e.message,true); }
         finally { refreshRequest=null; resetPull(); }
     })();
     return refreshRequest;
 }
-document.addEventListener('touchstart',event=>{
-    resetPull();
-    if (!state || refreshRequest || window.scrollY>0 || event.touches.length!==1
-        || event.target.closest('a,button,input,textarea,select,summary')) return;
-    pullStart={x:event.touches[0].clientX,y:event.touches[0].clientY};
-},{passive:true});
-document.addEventListener('touchmove',event=>{
-    if(!pullStart) return;
-    if(event.touches.length!==1 || window.scrollY>0) { resetPull(); return; }
-    const dy=event.touches[0].clientY-pullStart.y;
-    const dx=Math.abs(event.touches[0].clientX-pullStart.x);
-    if(dy<=0 || dx>Math.abs(dy)) { resetPull(); return; }
-    if(dy<10)return;
-    if(event.cancelable)event.preventDefault();
-    pullReady=dy>=70;
-    $('pullIndicator').textContent=pullReady ? 'Release to refresh' : 'Pull down to refresh';
-    show('pullIndicator',true);
-},{passive:false});
-document.addEventListener('touchend',()=>{
-    const ready=pullReady; resetPull();
-    if(ready && state && !document.hidden) refreshInbox();
-},{passive:true});
-document.addEventListener('touchcancel',resetPull,{passive:true});
+// Safari keeps its own native refresh. Only the Home Screen app needs this
+// gesture. The indicator is outside layout; dragging changes transforms only.
+if(standalone) {
+    document.addEventListener('touchstart',event=>{
+        resetPull();
+        if (!state || refreshRequest || window.scrollY>0 || event.touches.length!==1
+            || (window.visualViewport && window.visualViewport.scale!==1)
+            || event.target.closest('button,input,textarea,select,summary')) return;
+        pullStart={x:event.touches[0].clientX,y:event.touches[0].clientY};
+    },{passive:true});
+    document.addEventListener('touchmove',event=>{
+        if(!pullStart) return;
+        if(event.touches.length!==1 || window.scrollY>0 || !event.cancelable) { resetPull(); return; }
+        const dy=event.touches[0].clientY-pullStart.y;
+        const dx=Math.abs(event.touches[0].clientX-pullStart.x);
+        if(dy<=0 || dx>Math.abs(dy)) { resetPull(); return; }
+        event.preventDefault();
+        // Diminishing travel gives the pull resistance without moving layout.
+        const distance=110*(1-Math.exp(-dy/120));
+        const ready=distance>=60;
+        if(ready!==pullReady || !$('pullIndicator').textContent)
+            $('pullIndicator').textContent=ready ? 'Release to refresh' : 'Pull to refresh';
+        pullReady=ready;
+        pullRoot.classList.toggle('pull-dragging',true);
+        show('pullIndicator',true); movePull(distance);
+    },{passive:false});
+    document.addEventListener('touchend',()=>{
+        if(pullReady && state && !document.hidden) { pullStart=null; pullReady=false; refreshInbox(); }
+        else resetPull();
+    },{passive:true});
+    document.addEventListener('touchcancel',resetPull,{passive:true});
+}
 window.addEventListener('online',()=>{if(!document.hidden) load();});
 $('logout').addEventListener('click',async()=>{try{await api('logout');clearSession();await removeLocalSubscription();location.replace('/tip-alerts/');}catch(e){message(e.message,true);}});
 document.addEventListener('visibilitychange',()=>{

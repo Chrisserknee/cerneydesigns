@@ -3,16 +3,17 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 
-function client({ tip = false, serviceWorker, respond, ios = false } = {}) {
+function client({ tip = false, serviceWorker, respond, ios = false, homeScreen = true } = {}) {
     const elements = new Map(), calls = [], destinations = [], events = {}, timers = [];
     const element = () => ({ hidden: false, children: [], handlers: {}, classList: { toggle() {} },
         replaceChildren(...children) { this.children = children; }, append(...children) { this.children.push(...children); },
         addEventListener(name, callback) { this.handlers[name] = callback; } });
     const get = id => { if (!elements.has(id)) elements.set(id, element()); return elements.get(id); };
     const context = vm.createContext({
-        document: { getElementById: get, createElement: element, addEventListener: (name,fn) => { events[name]=fn; }, hidden: false },
+        document: { documentElement: { classList: {toggle(){}}, style: {setProperty(){}} }, getElementById: get, createElement: element, addEventListener: (name,fn) => { events[name]=fn; }, hidden: false },
         navigator: { userAgent: ios ? 'iPhone' : 'test', ...(serviceWorker ? { serviceWorker } : {}) }, window: {scrollY:0, addEventListener: (name,fn) => {events[name]=fn;}},
-        matchMedia: () => ({ matches: false }), URL, URLSearchParams, AbortSignal, Intl, Date, Uint8Array,
+        matchMedia: () => ({ matches: homeScreen }), URL, URLSearchParams, AbortSignal, Intl, Date, Uint8Array,
+        requestAnimationFrame: fn=>setTimeout(fn,0), cancelAnimationFrame: clearTimeout,
         setTimeout: (fn, ms) => { timers.push({fn,ms}); const timer=setTimeout(fn,ms); timer.unref(); return timer; }, clearTimeout,
         location: { search: tip ? '?tip=' + 'a'.repeat(64) : '', replace: url => destinations.push(url) },
         fetch: async (_, options) => {
@@ -126,4 +127,17 @@ test('a failed automatic refresh schedules recovery and keeps existing tips visi
  fail=false;await c.timers.at(-1).fn();
  assert.equal(c.timers.at(-1).ms,30000);
  assert.equal(c.elements.get('message').textContent,'');
+});
+
+test('regular Safari has no custom gesture handlers',async()=>{
+ const c=client({homeScreen:false,ios:true});await c.ready;
+ assert.equal(c.events.touchstart,undefined);assert.equal(c.events.touchmove,undefined);
+});
+test('unchanged auto refresh preserves the actual rendered card nodes',async()=>{
+ const record={type:'upload',receivedAt:new Date().toISOString(),status:'ready',driveUrl:'https://drive.google.com/drive/folders/test'};
+ const c=client({respond:()=>({status:200,body:{tips:[record]}})});await c.ready;
+ const row=c.elements.get('tips').children[0];await c.run('loadTips({quiet:true})');
+ assert.equal(c.elements.get('tips').children[0],row);
+ record.status='processing';await c.run('loadTips({quiet:true})');
+ assert.notEqual(c.elements.get('tips').children[0],row);
 });
