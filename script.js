@@ -49,7 +49,7 @@
     const navMenu = document.getElementById('navMenu');
     const navbar = document.getElementById('navbar');
 
-    const mobileNavigation = window.matchMedia('(max-width: 1080px)');
+    const mobileNavigation = window.matchMedia('(max-width: 1140px)');
     function setNavigationOpen(open) {
         navToggle.classList.toggle('active', open);
         navToggle.setAttribute('aria-expanded', String(open));
