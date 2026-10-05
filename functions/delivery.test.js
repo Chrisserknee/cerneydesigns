@@ -102,7 +102,7 @@ test('verified media becomes accessible before a failed bridge finalization is r
     assert.deepEqual(events,['prepare','ready','finalize','finalize','release']);
 });
 
-test('a checksum mismatch never publishes a Drive link', async () => {
+test('a checksum mismatch never marks media ready', async () => {
     let published=false;
     const {mirrorSessionToDriveBridge}=delivery([{name:'photo.jpg',size:'4',md5Checksum:'wrong'}],{},async(url,options)=>({ok:true,json:async()=>({ok:true,transferMode:'direct-v1',folderUrl:'https://drive.google.com/drive/folders/test',transfers:[{name:'photo.jpg',sizeBytes:4,verified:true}]})}));
     await assert.rejects(mirrorSessionToDriveBridge({files:[{name:'photo.jpg',sizeBytes:4,md5Hash:Buffer.from('1234567890abcdef').toString('base64')}],onMediaReady:async()=>{published=true;}}),/verification failed/);
@@ -163,4 +163,35 @@ test('append-only Drive copy validates same folder and never rewrites original c
  assert.deepEqual(actions,['prepare','release']);
  await assert.rejects(d.mirrorSessionToDriveBridge({deliveryId:'context',sessionLabel:'test',files:[source],appendOnly:true,expectedFolderUrl:'https://drive.google.com/drive/folders/WRONG'}),/destination/);
  assert.deepEqual(actions,['prepare','release','prepare','release']);
+});
+
+test('folder link is published before copying, but failed copies never become media-ready', async()=>{
+ const source={name:'video.mov',sizeBytes:4,md5Hash:Buffer.from('1234567890abcdef').toString('base64')};
+ const events=[];
+ const bucket={file:()=>({download:async()=>{events.push('download');throw Error('Source temporarily unavailable');}})};
+ const {mirrorSessionToDriveBridge}=delivery([],bucket,async(url,options)=>{
+  const action=JSON.parse(options.body).action;events.push(action);
+  return {ok:true,json:async()=>({ok:true,transferMode:'direct-v1',folderUrl:'https://drive.google.com/drive/folders/test',transfers:[{...source,nextOffset:0,uploadUrl:'https://www.googleapis.com/upload/drive/v3/files?upload_id=test'}]})};
+ });
+ await assert.rejects(mirrorSessionToDriveBridge({bucket,files:[source],sessionLabel:'test',onFolderReady:async url=>{assert.match(url,/folders\/test$/);events.push('folder');},onMediaReady:async()=>events.push('ready')}),/temporarily unavailable/);
+ assert.deepEqual(events,['prepare','folder','download','release']);
+});
+
+test('lost prepare responses release only their own lease instead of waiting ten minutes',async()=>{
+ const calls=[];
+ const {mirrorSessionToDriveBridge}=delivery([],{},async(url,options)=>{
+  const body=JSON.parse(options.body);calls.push(body);
+  if(body.action==='prepare')throw Error('fetch failed');
+  return {ok:true,json:async()=>({ok:true})};
+ });
+ await assert.rejects(mirrorSessionToDriveBridge({files:[],sessionLabel:'test'}),error=>error.message==='fetch failed' && error.driveStage==='prepare');
+ assert.deepEqual(calls.map(c=>c.action),['prepare','release']);
+ assert.ok(calls[0].leaseId);assert.equal(calls[0].leaseId,calls[1].leaseId);
+});
+
+test('untrusted folder URLs are never published',async()=>{
+ let published=false;
+ const {mirrorSessionToDriveBridge}=delivery([],{},async()=>({ok:true,json:async()=>({ok:true,transferMode:'direct-v1',folderUrl:'https://evil.example/drive/folders/test',transfers:[]})}));
+ await assert.rejects(mirrorSessionToDriveBridge({files:[],onFolderReady:async()=>{published=true;}}),/Invalid Drive folder/);
+ assert.equal(published,false);
 });

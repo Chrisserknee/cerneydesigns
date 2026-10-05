@@ -107,6 +107,9 @@ async function syncTip(object) {
     for (let attempt=0; attempt<3; attempt++) {
         const old = await read(name);
         const next = {...old?.data, ...record};
+        // Metadata events can arrive out of order while files are copying.
+        if (!record.driveUrl && old?.data.sourceGeneration === record.sourceGeneration)
+            next.driveUrl = old.data.driveUrl || null;
         // A stale finalize event cannot revert a completed metadata event.
         if (old?.data.status === 'ready' && record.status === 'processing') {
             next.status = 'ready'; next.driveUrl = old.data.driveUrl;

@@ -7,6 +7,7 @@ const { randomUUID, createHash } = require('node:crypto');
 const { verifyContext, contextDocuments } = require('./tip-context');
 const CONTEXT_SIDECARS = new Set(['_context.json', '_context_ready.json']);
 const isMediaObject = file => !['_submission.json', ...CONTEXT_SIDECARS].includes(file.name.split('/').pop());
+const { driveUrl } = require('./tip-alerts-helpers');
 const { transferToDrive, driveTransferManifest } = require('./drive-transfer');
 const { onObjectFinalized } = require('firebase-functions/v2/storage');
 const { onSchedule } = require('firebase-functions/v2/scheduler');
@@ -104,9 +105,15 @@ async function processTip(event) {
                     bucket,
                     sessionLabel,
                     files: driveFiles,
+                    onFolderReady: async (folderUrl) => {
+                        // Folder access is independent of media/report completion.
+                        workflow = await mergeWorkflowMetadata(submissionFile, {
+                            driveCopyStatus: 'copying', driveFolderUrl: folderUrl,
+                            driveFolderReadyAt: new Date().toISOString(),
+                        });
+                    },
                     onMediaReady: async (folderUrl) => {
-                        // Publish only after an independent size/checksum check. The
-                        // photo can open while the bridge writes its summary files.
+                        // Keep verification separate from the early folder link.
                         workflow = await mergeWorkflowMetadata(submissionFile, {
                             driveCopyStatus: 'finalizing', driveFolderUrl: folderUrl,
                             driveMediaReadyAt: new Date().toISOString(),
@@ -135,7 +142,7 @@ async function processTip(event) {
                 });
                 await revokeDownloadTokens(tipFiles);
             } catch (err) {
-                logger.error('Drive mirror failed; Eventarc will retry', {code:Number(err.code || err.status) || 0});
+                logger.error('Drive mirror failed; Eventarc will retry', {code:Number(err.code || err.status) || 0, stage:err.driveStage || 'unknown', reason:driveFailureReason(err)});
                 await mergeWorkflowMetadata(submissionFile, {
                     driveLastFailureAt: new Date().toISOString(),
                 });
@@ -332,7 +339,7 @@ async function mergeWorkflowMetadata(file, updates) {
  * Calls the Apps Script bridge. The bridge runs as Chris's Google account,
  * which avoids the personal-Drive quota issue service accounts hit.
  */
-async function mirrorSessionToDriveBridge({ deliveryId, bucket, sessionLabel, files, submission, onMediaReady, appendOnly = false, expectedFolderUrl }) {
+async function mirrorSessionToDriveBridge({ deliveryId, bucket, sessionLabel, files, submission, onFolderReady, onMediaReady, appendOnly = false, expectedFolderUrl }) {
     files = driveTransferManifest(files);
     const url = driveBridgeUrl.value();
     if (!isApprovedDriveBridgeUrl(url)) throw new Error('DRIVE_BRIDGE_URL is not configured.');
@@ -349,36 +356,57 @@ async function mirrorSessionToDriveBridge({ deliveryId, bucket, sessionLabel, fi
         if (!res.ok || !payload.ok) throw new Error(String(payload.error || `Drive bridge HTTP ${res.status}`).replace(/https?:\/\/\S+/g, '[URL]'));
         return payload;
     };
-    let leased = false;
+    let stage = 'prepare';
     try {
         const prepared = await callBridge('prepare');
         if (prepared.transferMode !== 'direct-v1' || !Array.isArray(prepared.transfers)) throw new Error('Drive bridge needs the direct-transfer update.');
-        leased = true;
+        if (!driveUrl(prepared.folderUrl)) throw new Error('Invalid Drive folder destination.');
         if (expectedFolderUrl && prepared.folderUrl !== expectedFolderUrl) throw new Error('Context destination does not match original tip folder.');
         if (prepared.transfers.length !== files.length || new Set(prepared.transfers.map(file => file.name)).size !== files.length) throw new Error('Drive transfer manifest mismatch.');
         for (const transfer of prepared.transfers) {
             const source = files.find(file => file.name === transfer.name);
             if (!source || Number(transfer.sizeBytes) !== source.sizeBytes) throw new Error('Drive transfer source mismatch.');
+        }
+        stage = 'folder';
+        if (onFolderReady) await onFolderReady(prepared.folderUrl);
+        stage = 'transfer';
+        for (const transfer of prepared.transfers) {
+            const source = files.find(file => file.name === transfer.name);
             await transferToDrive({ ...transfer, md5Hash: source.md5Hash, mimeType: source.mimeType }, async (start, end) => {
                 if (source.inlineBytes) return source.inlineBytes.subarray(start, end + 1);
                 const [bytes] = await bucket.file(`tips/${sessionLabel}/${source.storageName}`).download({ start, end });
                 return bytes;
             }, { deadline });
         }
+        stage = 'verify';
         await verifyDriveContents(prepared.folderUrl, files);
         if (onMediaReady) await onMediaReady(prepared.folderUrl);
         if (appendOnly) return {folderUrl:prepared.folderUrl, copied:files.map(f => ({name:f.name, verified:true}))};
         // Finalization is idempotent: a lost/invalid response must not delay
         // access to already verified media or require a whole new delivery.
+        stage = 'finalize';
         let finalized;
         try { finalized = await callBridge('finalize'); }
         catch { finalized = await callBridge('finalize'); }
         return normalizeDriveBridgeResponse(finalized, files);
+    } catch (err) {
+        err.driveStage = stage;
+        throw err;
     } finally {
-        if (leased) {
-            try { await callBridge('release'); } catch { logger.warn('Drive transfer lease will expire automatically.'); }
-        }
+        // A lost prepare response can still leave a server-side lease. Release
+        // our ID even then; the bridge never releases another writer's lease.
+        try { await callBridge('release'); } catch { logger.warn('Drive transfer lease will expire automatically.'); }
     }
+}
+
+function driveFailureReason(err) {
+    const message = String(err.message || '');
+    if (/in progress/i.test(message)) return 'lease_busy';
+    if (/timeout|timed out/i.test(message) || err.name === 'TimeoutError') return 'timeout';
+    if (/fetch failed|network/i.test(message)) return 'network';
+    if (/verification|checksum/i.test(message)) return 'verification';
+    if (/invalid response/i.test(message)) return 'bridge_response';
+    return 'delivery_error';
 }
 
 function isApprovedDriveBridgeUrl(value) {

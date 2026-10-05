@@ -151,3 +151,16 @@ test('source details and verified follow-up enrich one canonical inbox record',a
  assert.equal(r.sourceTitle,'Updated context');assert.equal(r.sourceLocation,'Monterey');assert.doesNotMatch(JSON.stringify(r),/SECRET/);
  assert.equal([...c.files.keys()].filter(n=>n.startsWith('_tipalerts/v1/tips/')).length,1);
 });
+
+test('Drive folder opens while files copy and survives an older metadata event',async()=>{
+ const path='tips/2026-10-04_12-00-00_abcdefghijkl/_submission.json';
+ const c=harness({initial:{[path]:{}}});
+ const event={name:path,generation:1,timeCreated:'2026-10-04T12:00:00Z',metadata:{driveFolderUrl:'https://drive.google.com/drive/folders/early',driveCopyStatus:'copying'}};
+ const r=await c.syncTip(event);
+ assert.equal(r.status,'processing');assert.equal(r.driveUrl,event.metadata.driveFolderUrl);
+ const stale=await c.syncTip({...event,metadata:{}});
+ assert.equal(stale.status,'processing');assert.equal(stale.driveUrl,r.driveUrl);
+ c.files.set(path,{generation:2,data:{}});
+ const replaced=await c.syncTip({...event,generation:2,metadata:{}});
+ assert.equal(replaced.driveUrl,null);
+});
