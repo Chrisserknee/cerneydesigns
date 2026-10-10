@@ -1,4 +1,5 @@
 'use strict';
+const {thumbnailDescriptor}=require('./tip-thumbnail');
 // Only descriptive fields enter the private inbox. Never forward the manifest,
 // contact fields, source identity, capabilities, or Claude's internal notes.
 function text(value, limit) {
@@ -24,6 +25,8 @@ function displayContext(tip, report) {
     if (report.contextSource==='claude' && text(report.title,100)) {
         result.title=text(report.title,100);result.summary=text(report.summary,420);result.contextSource='claude';
     }
+    const thumbnail=thumbnailDescriptor(tip,report);
+    if(thumbnail)result.thumbnail=thumbnail;
     return result;
 }
 module.exports={text,sourceContext,displayContext};

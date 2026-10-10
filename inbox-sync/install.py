@@ -2,7 +2,7 @@
 import os, pathlib, plistlib, shutil, subprocess, sys
 home=pathlib.Path.home();base=home/'Library/Application Support/Cerney Tips Inbox Sync'
 base.mkdir(parents=True,exist_ok=True,mode=0o700);base.chmod(0o700)
-for name in ('sync.py','publish.cjs'):
+for name in ('banner_thumbnail.py','thumbnail-upload.cjs','publish.cjs','sync.py'):
  shutil.copy2(pathlib.Path(__file__).with_name(name),base/name);(base/name).chmod(0o600)
 config=home/'Library/Application Support/Chris Cerney Tipline Producer/config.json'
 if not config.is_file():raise SystemExit('Existing producer configuration is required')

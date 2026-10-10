@@ -32,3 +32,36 @@ test('each authenticated request renews the protected device cookie, but failure
  const logout=proxy(false,{authenticated:false});await logout.run(req({op:'logout'},headers),logout.res);
  assert.match(logout.res.headers['Set-Cookie'],/cc_tip_device=; Max-Age=0;/);
 });
+
+test('thumbnail requests require the same paired cookie and canonical origin',async()=>{
+ const p=proxy();
+ await p.run(req({op:'thumbnail',id:'a'.repeat(64)}),p.res);assert.equal(p.res.code,401);
+ await p.run(req({op:'thumbnail'},{origin:'https://evil.test',cookie:'cc_tip_device='+'x'.repeat(43)}),p.res);assert.equal(p.res.code,403);
+ assert.equal(p.calls.length,0);assert.equal(p.res.headers['Cache-Control'],'no-store');
+});
+
+test('thumbnail proxy forwards only current descriptor fields and its protected device token',async()=>{
+ const expected={op:'thumbnail',id:'a'.repeat(64),generation:'123456789',sha256:'b'.repeat(64),revision:2,contextVersion:3};
+ const p=proxy(false,{thumbnail:{mimeType:'image/jpeg',base64:'synthetic'}});
+ await p.run(req({...expected,token:'attacker',adminCookie:'attacker',path:'unrelated/private/file',url:'https://evil.test'},
+   {cookie:'cc_tip_device='+'x'.repeat(43)}),p.res);
+ assert.equal(p.res.code,200);
+ assert.deepEqual(JSON.parse(JSON.stringify(p.calls[0].body)),{...expected,token:'x'.repeat(43)});
+ assert.equal(p.res.headers['Cache-Control'],'no-store');
+ assert.match(p.res.headers['Set-Cookie'],/HttpOnly; Secure; SameSite=Strict/);
+});
+
+test('a revoked thumbnail request does not refresh its cookie or become cacheable',async()=>{
+ const p=proxy(false,{error:'Sign in again.'},401);
+ await p.run(req({op:'thumbnail'},{cookie:'cc_tip_device='+'x'.repeat(43)}),p.res);
+ assert.equal(p.res.code,401);assert.equal(p.res.headers['Set-Cookie'],undefined);assert.equal(p.res.headers['Cache-Control'],'no-store');
+});
+
+test('private preview Blob policy is restricted to the inbox and retains no-store',()=>{
+ const config=JSON.parse(fs.readFileSync(__dirname+'/../vercel.json','utf8'));
+ const inbox=config.headers.find(rule=>rule.source==='/tip-alerts/(.*)');
+ assert.equal(inbox.headers.find(h=>h.key==='Cache-Control').value,'no-store');
+ const policy=inbox.headers.find(h=>h.key==='Content-Security-Policy').value;
+ assert.match(policy,/img-src 'self' blob:;/);assert.match(policy,/connect-src 'self';/);assert.match(policy,/script-src 'self';/);
+ assert(!policy.includes('unsafe-inline'));assert(!config.headers.filter(rule=>rule!==inbox).some(rule=>rule.headers.some(h=>h.value.includes('blob:'))));
+});
