@@ -22,6 +22,7 @@ function client({ tip = false, serviceWorker, respond, ios = false, homeScreen =
             return { ok: answer.status === 200, status: answer.status, json: async () => answer.body };
         },
     });
+    vm.runInContext(fs.readFileSync(__dirname + '/../tip-alerts/thumbnail.js', 'utf8'), context);
     const source = fs.readFileSync(__dirname + '/../tip-alerts/app.js', 'utf8').replace(/load\(\);\s*$/, 'globalThis.started = load();');
     vm.runInContext(source, context);
     return { elements, calls, destinations, events, timers, ready: context.started, run: code => vm.runInContext(code, context) };
@@ -147,7 +148,7 @@ test('Claude titles and context replace a generic card safely on automatic refre
  const c=client({respond:()=>({status:200,body:{tips:[{...tip}]}})});await c.ready;
  Object.assign(tip,{title:'Bicycle riders in Monterey',summary:'<img src=x onerror=alert(1)>',contextSource:'claude',reportState:'ready'});
  await c.run('loadTips({quiet:true})');
- const info=c.elements.get('tips').children[0].children[0];
+ const info=c.elements.get('tips').children[0].children[0].children[0];
  assert.equal(info.children[0].textContent,tip.title);
  assert.equal(info.children[2].textContent,tip.summary);
  assert.match(info.children.at(-1).textContent,/Claude draft.*Draft ready for your review/);

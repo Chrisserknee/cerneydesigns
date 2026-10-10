@@ -11,6 +11,7 @@ const {gatewayAuthenticated}=require('./request-auth');
 const proxySecret=defineSecret('TIP_ALERTS_PROXY_SECRET');
 const { SITE, hash, activeDevice, validSubscription, tipRecord, retryTime, notification } = require('./tip-alerts-helpers');
 const {sourceContext,displayContext}=require('./tip-inbox-context');
+const {thumbnailDescriptor,requestedThumbnail,sameThumbnail,verifiedThumbnailBytes,MAX_BYTES}=require('./tip-thumbnail');
 const ROOT = '_tipalerts/v1/';
 const bucket = () => getStorage().bucket('tip-line-8c2d7.firebasestorage.app');
 const options = {region:'us-west1', memory:'256MiB', timeoutSeconds:120, maxInstances:3};
@@ -177,6 +178,35 @@ async function adminVerified(body) {
     const res = await fetch(SITE + '/api/admin-auth', {headers:{Cookie:body.adminCookie, 'User-Agent':String(body.userAgent || '').slice(0,512)}, redirect:'error', signal:AbortSignal.timeout(10000)});
     return res.ok && (await res.json()).authenticated === true;
 }
+async function readThumbnail(body){
+    const [stored,enrichment]=await Promise.all([read(`tips/${body.id}.json`),read(`enrichment/${body.id}.json`)]);
+    const tip=stored?.data,report=enrichment?.data;
+    const descriptor=thumbnailDescriptor(tip,report);
+    if(!sameThumbnail(descriptor,body))return null;
+    // The inbox event can lag a replacement or follow-up. Recheck both before
+    // serving any image; the immutable generation prevents overwritten bytes.
+    const [source]=await bucket().file(tip.path).getMetadata();
+    if(String(source.generation)!==String(tip.sourceGeneration)
+        || source.metadata?.processingStatus==='rejected'
+        || source.metadata?.driveCopyStatus!=='complete')return null;
+    try{
+        const [bytes]=await bucket().file(tip.path.replace('_submission.json','_context_ready.json')).download();
+        const context=JSON.parse(bytes.toString());
+        if(context.submissionName===tip.path && String(context.submissionGeneration)===String(tip.sourceGeneration)
+            && (!Number.isFinite(Date.parse(report.sourceContextAt)) || !Number.isFinite(Date.parse(context.receivedAt))
+                || Date.parse(report.sourceContextAt)<Date.parse(context.receivedAt)))return null;
+    }catch(e){if(e.code!==404)throw e;}
+    const image=bucket().file(report.thumbnail.name,{generation:descriptor.generation});
+    const [metadata]=await image.getMetadata();
+    if(String(metadata.generation)!==descriptor.generation || Number(metadata.size)!==report.thumbnail.sizeBytes
+        || Number(metadata.size)>MAX_BYTES || metadata.contentType!=='image/jpeg')return null;
+    const [bytes]=await image.download();
+    if(!verifiedThumbnailBytes(bytes,report.thumbnail))return null;
+    // A new report during the image read must not leak an obsolete revision.
+    const latest=await read(`enrichment/${body.id}.json`);
+    if(!sameThumbnail(thumbnailDescriptor(tip,latest?.data),descriptor))return null;
+    return {...descriptor,mimeType:'image/jpeg',base64:bytes.toString('base64')};
+}
 async function handleApi(req, res) {
     res.set('Cache-Control','no-store'); res.set('X-Content-Type-Options','nosniff');
     if (req.method !== 'POST') return res.status(405).json({error:'Method not allowed.'});
@@ -199,6 +229,13 @@ async function handleApi(req, res) {
         }
         const device = await authenticate(body.token);
         if (!device) return res.status(401).json({error:'Sign in to connect this device.'});
+        if(body.op==='thumbnail'){
+            if(!requestedThumbnail(body))return res.status(400).json({error:'Invalid thumbnail.'});
+            let thumbnail;
+            try{thumbnail=await readThumbnail(body);}catch(e){if(e.code!==404)throw e;}
+            if(!thumbnail)return res.status(404).json({error:'Thumbnail is no longer available. Refresh the inbox.'});
+            return res.json({thumbnail});
+        }
         if(body.op === 'devices') {
             const devices=(await documents('devices/')).filter(d=>activeDevice(d));
             return res.json({devices:devices.map(d=>({id:d.id,label:deviceLabel(d),createdAt:d.createdAt,current:d.id===device.id,alertsOn:!!d.subscription}))});

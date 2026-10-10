@@ -1,6 +1,7 @@
 """Read-only bridge from existing Claude report artifacts to the private inbox."""
 import argparse, datetime, fcntl, hashlib, json, os, re, sqlite3, subprocess
 from pathlib import Path
+from banner_thumbnail import banner_thumbnail
 
 SOURCE=re.compile(r'^tips/(?:submit-story_)?\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}_[a-z0-9]{12}/_submission\.json$')
 
@@ -21,8 +22,13 @@ def describe(job,plan,context):
     summary=clean(plan.get('instagram_description','').split('\n\n')[0],420) if title else ''
     return dict(version=1,id=hashlib.sha256(source.encode()).hexdigest(),source=source,
         sourceGeneration=str(job['generation']),sourceContextAt=context.get('receivedAt',''),
-        state=job['state'],revision=job['revision'],contextVersion=job['context_version'],
+        state=job['state'],revision=job['revision'],contextVersion=job['context_version'],planContextVersion=job['plan_context_version'],
         title=title,summary=summary,contextSource='claude' if title else 'pending',updatedAt=job['updated'])
+
+def delivered(job,receipt):
+    return bool(job['state'] in ('ready','approved') and job['plan_context_version']>=job['context_version']
+        and receipt.get('verified') is True and receipt.get('source')==job['source']
+        and str(receipt.get('generation'))==str(job['generation']) and receipt.get('revision')==job['revision'])
 
 def run(config_path,state_dir):
     cfg=json.loads(config_path.read_text());runtime=Path(cfg['runtime']);state_dir.mkdir(parents=True,exist_ok=True,mode=0o700)
@@ -38,7 +44,7 @@ def run(config_path,state_dir):
             if not SOURCE.fullmatch(key) or not str(row['generation']).isdigit():continue
             if key not in latest or int(row['generation'])>int(latest[key]['generation']):latest[key]=row
         jobs=list(latest.values())
-        receipt_path=state_dir/'receipts.json';receipts=read_json(receipt_path,state_dir);changed=[];digests={};skipped=0
+        receipt_path=state_dir/'receipts.json';receipts=read_json(receipt_path,state_dir);changed=[];digests={};skipped=0;thumbnail_files={};thumbnail_unavailable=0
         for row in jobs:
             job=dict(row)
             if not SOURCE.fullmatch(job['source']) or not re.fullmatch('[a-f0-9]{20}',job['id']):continue
@@ -46,19 +52,31 @@ def run(config_path,state_dir):
                 plan=read_json(runtime/'jobs'/job['id']/f'r{int(job["revision"])}'/'edit-plan.json',runtime)
                 context=json.loads(job['payload']) if job['payload'] else {}
                 item=describe(job,plan,context)
+                receipt=read_json(runtime/'jobs'/job['id']/f'r{int(job["revision"])}'/'drive-upload-receipt.json',runtime)
+                item.update(draftDelivered=delivered(job,receipt),draftJobId=job['id'])
+                item['thumbnail']=None
+                if item['draftDelivered']:
+                    preview=banner_thumbnail(cfg,state_dir,job)
+                    if preview.get('ok'):
+                        name=f'_tipalerts/v1/thumbnails/{item["id"]}/{job["id"]}/r{job["revision"]}-c{job["context_version"]}-{preview["sha256"]}.jpg'
+                        item['thumbnail']={'version':1,'name':name,'sha256':preview['sha256'],'mimeType':'image/jpeg',
+                            'width':preview['width'],'height':preview['height'],'sizeBytes':preview['bytes'],
+                            'revision':job['revision'],'contextVersion':job['context_version'],'jobId':job['id']}
+                        thumbnail_files[item['id']]=preview['path']
+                    else:thumbnail_unavailable+=1
                 digest=hashlib.sha256(json.dumps(item,sort_keys=True).encode()).hexdigest();digests[item['id']]=digest
                 if receipts.get(item['id'])!=digest:changed.append(item)
             except (ValueError,OSError,TypeError):skipped+=1
         if changed:
-            # Batched, private storage writes only. No AI requests, notifications,
-            # queue changes, renderer restarts, or original-media modifications.
-            proc=subprocess.run([cfg['node'],str(Path(__file__).with_name('publish.cjs'))],input=json.dumps({'config':str(config_path),'items':changed[:25]}),text=True,capture_output=True,timeout=180)
+            # Publish the small rendered previews and their descriptions privately.
+            # No AI requests, queue changes or original-media modifications.
+            proc=subprocess.run([cfg['node'],str(Path(__file__).with_name('publish.cjs'))],input=json.dumps({'config':str(config_path),'stateDir':str(state_dir),'thumbnailFiles':thumbnail_files,'items':changed[:25]}),text=True,capture_output=True,timeout=180)
             if proc.returncode:raise RuntimeError('Inbox publish failed; will retry')
             result=json.loads(proc.stdout)
             for id in result['saved']:receipts[id]=digests[id]
             tmp=state_dir/'receipts.tmp';tmp.write_text(json.dumps(receipts));tmp.chmod(0o600);tmp.replace(receipt_path)
         else:result={'saved':[]}
-        status={'checkedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'jobsChecked':len(jobs),'updated':len(result['saved']),'skipped':skipped}
+        status={'checkedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'jobsChecked':len(jobs),'updated':len(result['saved']),'skipped':skipped,'thumbnailsPrepared':len(thumbnail_files),'thumbnailsUnavailable':thumbnail_unavailable}
         (state_dir/'health.json').write_text(json.dumps(status));print(json.dumps(status))
 
 if __name__=='__main__':

@@ -15,7 +15,7 @@ module.exports = async (request, response) => {
     let body;
     try { body = parseBody(request); if (Buffer.byteLength(JSON.stringify(body)) > 8192) return sendJson(response,413,{error:'Request too large.'}); }
     catch { return sendJson(response,400,{error:'Invalid request.'}); }
-    const ops = ['pair','status','subscribe','unsubscribe','logout','list','tip','test','devices','revoke-device'];
+    const ops = ['pair','status','subscribe','unsubscribe','logout','list','tip','test','devices','revoke-device','thumbnail'];
     if (!ops.includes(body?.op)) return sendJson(response,400,{error:'Unknown request.'});
     let payload;
     if (body.op === 'pair') {
@@ -24,7 +24,8 @@ module.exports = async (request, response) => {
     } else {
         const token = readCookie(request,COOKIE);
         if (!/^[A-Za-z0-9_-]{43}$/.test(token)) return sendJson(response,401,{error:'Sign in to connect this device.'});
-        payload = {op:body.op,token,...(body.op === 'subscribe' ? {subscription:body.subscription} : {}),...(['tip','revoke-device'].includes(body.op) ? {id:body.id} : {})};
+        payload = {op:body.op,token,...(body.op === 'subscribe' ? {subscription:body.subscription} : {}),...(['tip','revoke-device','thumbnail'].includes(body.op) ? {id:body.id} : {})};
+        if (body.op === 'thumbnail') Object.assign(payload,{generation:body.generation,sha256:body.sha256,revision:body.revision,contextVersion:body.contextVersion});
     }
     try {
         const remote = await callTipBackend(payload);

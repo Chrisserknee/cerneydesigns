@@ -3,20 +3,33 @@ const $ = id => document.getElementById(id);
 const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
 let renderedTips, state, registration, retryTimer, inboxTimer, inboxRequest, loadRequest, sessionVersion = 0, openAttempts = 0;
+const thumbnails = new TipThumbnails(api);
 const tipId = new URLSearchParams(location.search).get('tip');
 const show = (id, visible) => { $(id).hidden = !visible; };
 function message(text='', error=false) { $('message').textContent=text; $('message').classList.toggle('error',error); }
 function clearSession() {
+    thumbnails.reset();
     state = null; renderedTips=null; sessionVersion++; message(); resetPull();
     $('inboxStatus').textContent = '';
     clearTimeout(retryTimer); clearTimeout(inboxTimer);
     for (const id of ['tips','devices','selected']) $(id).replaceChildren();
     show('selected',false); show('connected',false); show('login',true); show('intro',true);
 }
-async function api(op, data={}) {
-    const response = await fetch('/api/tip-alerts',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',cache:'no-store',signal:AbortSignal.timeout(15000),body:JSON.stringify({op,...data})});
-    const result = await response.json();
-    if (!response.ok) { if (response.status === 401) clearSession(); const error = new Error(result.error || 'Something went wrong. Please try again.'); error.status=response.status; throw error; }
+async function api(op, data={}, options={}) {
+    const response = await fetch('/api/tip-alerts',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',cache:'no-store',signal:options.signal || AbortSignal.timeout(15000),body:JSON.stringify({op,...data})});
+    let result;
+    try { result = await response.json(); }
+    catch(error) {
+        // An upstream gateway may return HTML or an empty body with its 5xx.
+        // Preserve that status so transient preview failures can still retry.
+        if(!response.ok) {
+            if(response.status===401) clearSession();
+            const unavailable=new Error('Could not load the inbox. Please try again.');
+            unavailable.status=response.status; throw unavailable;
+        }
+        throw error;
+    }
+    if (!response.ok) { if (response.status === 401) clearSession(); const error = new Error(result?.error || 'Something went wrong. Please try again.'); error.status=response.status; throw error; }
     return result;
 }
 function bytes(base64) { return Uint8Array.from(atob(base64.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0)); }
@@ -137,9 +150,11 @@ async function fetchTips(quiet) {
     message(); show('empty',!data.tips.length);
     const signature=JSON.stringify(data.tips);
     if(signature!==renderedTips) {
+    thumbnails.reset();
     $('tips').replaceChildren();
     for(const tip of data.tips) {
-        const row=document.createElement('article');row.className='tip';
+        const row=document.createElement('article');row.className='tip tip-card';
+        const body=document.createElement('div');body.className='tip-body';
         const info=document.createElement('div'); const title=document.createElement('h3');title.textContent=(tip.title || (tip.type==='story'?'Story submission':'Tipline upload'))+(tip.incomplete?' · Incomplete':'');
         const time=document.createElement('time');time.dateTime=tip.receivedAt;time.textContent=dateLabel(tip.receivedAt);info.append(title,time);
         if(tip.summary) { const summary=document.createElement('p');summary.className='tip-summary';summary.textContent=tip.summary;info.append(summary); }
@@ -147,8 +162,9 @@ async function fetchTips(quiet) {
         const provenance=document.createElement('p');provenance.className='tip-provenance';
         const reportStates={queued:'Report queued',analyzing:'Analyzing media',awaiting_editor:'Preparing report',editing:'Editing report',rendering:'Rendering report',qc_pending:'Checking draft',ready:'Draft ready for your review',approved:'Draft approved',needs_review:'Draft needs attention',held:'Report held',declined:'Not selected for a report',paused:'Report paused',failed:'Report processing stopped'};
         provenance.textContent=(tip.contextSource==='claude'?'Claude draft':tip.contextSource==='tipster'?'Tipster context · Unverified':'Context pending')+(tip.reportState?' · '+(reportStates[tip.reportState] || 'Report processing'):'');
-        info.append(provenance);row.append(info);
-        if(folderURL(tip.driveUrl)) row.append(folderLink(tip)); else {const status=document.createElement('span');status.className='state';status.textContent=tip.status==='review'?'Needs review':'Files processing';row.append(status);}
+        info.append(provenance);body.append(info);
+        if(folderURL(tip.driveUrl)) body.append(folderLink(tip)); else {const status=document.createElement('span');status.className='state';status.textContent=tip.status==='review'?'Needs review':'Files processing';body.append(status);}
+        row.append(body);thumbnails.add(tip,row);
         $('tips').append(row);
     }
     renderedTips=signature;
@@ -241,6 +257,7 @@ function refreshInbox() {
         try {
             clearTimeout(retryTimer); openAttempts=0;
             await Promise.all([loadTips({quiet:true}),tipId ? openTip() : Promise.resolve()]);
+            thumbnails.retryFailed({manual:true});
         } catch(e) { message(e.message,true); }
         finally { refreshRequest=null; resetPull(); }
     })();
