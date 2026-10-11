@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="How Chris Cerney Tipline Newsroom prepares private news drafts and handles connected Google data.">
+  <title>Tipline Newsroom &amp; Privacy — Chris Cerney</title>
+  <style>
+    :root { color-scheme: dark; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #11151c; color: #eff3f8; }
+    * { box-sizing: border-box; }
+    body { margin: 0; line-height: 1.65; }
+    main { max-width: 780px; margin: 0 auto; padding: 48px 24px 72px; }
+    a { color: #b1d2ff; text-underline-offset: 3px; }
+    a:focus-visible { outline: 2px solid #b1d2ff; outline-offset: 5px; }
+    .brand { font-weight: 750; text-decoration: none; color: #fff; }
+    .eyebrow { margin: 42px 0 10px; color: #b5c2d5; letter-spacing: .1em; font-size: .8rem; text-transform: uppercase; }
+    h1 { font-size: clamp(2rem, 6vw, 3rem); line-height: 1.15; letter-spacing: -.035em; margin: 0 0 20px; }
+    h2 { font-size: 1.55rem; line-height: 1.3; margin: 36px 0 12px; }
+    h3 { font-size: 1.05rem; margin: 28px 0 8px; }
+    p { margin: 0 0 16px; }
+    .intro { font-size: 1.12rem; color: #d5deeb; }
+    .note { padding: 18px 20px; background: #202a38; border-left: 3px solid #85b8ff; border-radius: 8px; margin: 26px 0; }
+    .muted { color: #b5c2d5; font-size: .92rem; }
+    hr { border: 0; border-top: 1px solid #344052; margin: 38px 0; }
+    footer { margin-top: 36px; }
+    @media (max-width: 480px) { main { padding: 28px 20px 48px; } .eyebrow { margin-top: 32px; } }
+  </style>
+</head>
+<body>
+<main>
+  <a class="brand" href="/">Chris Cerney</a>
+  <p class="eyebrow">Reporting tools</p>
+  <h1>Chris Cerney Tipline Newsroom</h1>
+  <p class="intro">A private production tool that helps Chris turn incoming news tips and public incident logs into video drafts for review.</p>
+  <p>The tool brings together uploaded tips, Google Voice voicemail transcripts delivered to the connected Gmail account, and available public dispatch information. It prepares location graphics and short video reports with Claude, then saves the drafts in Chris’s private reporting workspace.</p>
+  <p>It can begin a draft before a tip is confirmed. Source claims, official records, and unknown details are kept distinct. New information can update a draft or create a follow-up report. Chris makes the publication decisions.</p>
+  <div class="note">This is an owner-operated reporting tool. It does not offer public Gmail connections or post news reports automatically. To send a tip, use the <a href="/upload/">tipline</a>. For an emergency, call 911.</div>
+  <p><a href="#privacy">Read the privacy policy</a></p>
+  <hr>
+  <section id="privacy" aria-labelledby="privacy-heading">
+    <h2 id="privacy-heading">Privacy policy</h2>
+    <p class="muted">Updated October 10, 2026. This policy applies to the Chris Cerney Tipline Newsroom tool and its Google connection.</p>
+    <h3>Google access and information used</h3>
+    <p>The tool requests read-only Gmail access for the owner’s connected account. Google’s permission allows mailbox reading; the tool filters for Google Voice voicemail emails and processes their transcripts, message identifiers, delivery times, and sender-authentication headers. It cannot send, change, mark read, or delete email.</p>
+    <p>Unrelated email is not imported into the reporting workflow. Caller contact details and email footer content are filtered from the incident notes passed to production. Automated filtering can make mistakes, so source and privacy checks remain part of Chris’s review.</p>
+    <h3>How information is used and shared</h3>
+    <p>Relevant incident notes and submitted media are used to organize tips, compare available sources, prepare location graphics, and create or revise news drafts. The production workflow sends relevant material to Claude for analysis and editing. Drafts and supporting incident notes are saved in Chris’s private Google Drive and authenticated tip inbox, using Google’s services.</p>
+    <p>The tool does not sell Google data, use it for advertising or credit decisions, or train its own AI models with it. Google-sourced data is handled under the <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>, including its Limited Use requirements.</p>
+    <h3>Storage and retention</h3>
+    <p>Connection credentials and the working incident journal are stored on the owner’s Mac with restricted local file permissions. Large production files are stored on the attached workspace drive. Private report packages are also delivered to Google Drive. Relevant incident notes and report files remain until the owner removes them; the tool does not automatically erase prior reports when an email is deleted or access is disconnected.</p>
+    <h3>Control and contact</h3>
+    <p>The owner can pause intake and revoke the Google connection from <a href="https://myaccount.google.com/connections">Google Account connections</a>. Revoking access stops future Gmail reads once the authorization is invalidated. For a question or a request concerning retained reporting material, contact <a href="mailto:chrisserknee@gmail.com">chrisserknee@gmail.com</a>.</p>
+  </section>
+  <footer class="muted">© 2026 Chris Cerney · <a href="/">chriscerney.org</a></footer>
+</main>
+</body>
+</html>
