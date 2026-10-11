@@ -1,4 +1,5 @@
 'use strict';
+const {incidentRecord}=require('./incident-record');
 const { randomBytes, randomUUID } = require('node:crypto');
 const webpush = require('web-push');
 const { onRequest } = require('firebase-functions/v2/https');
@@ -270,17 +271,23 @@ async function handleApi(req, res) {
             if (body.op === 'tip') {
                 if (!/^[a-f0-9]{64}$/.test(body.id || '')) return res.status(400).json({error:'Invalid tip.'});
                 const stored = await read(`tips/${body.id}.json`);
-                if (!stored) return res.status(404).json({error:'Tip not found.'});
+                if (!stored) {
+                    const incident=incidentRecord((await read(`incidents/${body.id}.json`))?.data);
+                    if(!incident)return res.status(404).json({error:'Tip not found.'});
+                    return res.json({authenticated:true,expiresAt:device.expiresAt,tips:[incident]});
+                }
                 // Resolve the current destination even while a storage event is catching up.
                 const [latest] = await bucket().file(stored.data.path).getMetadata();
                 tips = [await syncTip(latest)];
             } else {
-                tips = (await inboxDocuments()).filter(t => Date.parse(t.receivedAt) > Date.now()-30*86400000)
+                const incidents=(await inboxDocuments('incidents/')).map(incidentRecord).filter(Boolean);
+                tips = [...await inboxDocuments(),...incidents].filter(t => Date.parse(t.receivedAt) > Date.now()-30*86400000)
                     .sort((a,b)=>Date.parse(b.receivedAt)-Date.parse(a.receivedAt)).slice(0,50);
             }
             const reports=await inboxDocuments('enrichment/');
             const byId=new Map(reports.map(r=>[r.id,r]));
-            return res.json({authenticated:true,expiresAt:device.expiresAt,tips:tips.map(t=>displayContext(t,byId.get(t.id))).map(({path,sourceGeneration,sourceTitle,sourceSummary,sourceLocation,contextReceivedAt,...t})=>t)});
+            const deliveries=new Map((await inboxDocuments('deliveries/')).map(d=>[d.id,d]));
+            return res.json({authenticated:true,expiresAt:device.expiresAt,tips:tips.map(t=>t.type==='incident'?t:displayContext(t,byId.get(t.id),deliveries.get(t.id))).map(({path,sourceGeneration,sourceTitle,sourceSummary,sourceLocation,contextReceivedAt,...t})=>t)});
         }
         if (body.op === 'test') {
             if (!device.subscription) return res.status(409).json({error:'Enable notifications on this device first.'});

@@ -4,9 +4,12 @@
 //
 // Required Script Properties:
 //   DRIVE_BRIDGE_TOKEN = same secret stored in Firebase
+//   AUTO_TIPLINE_FOLDER_ID = private automatic-report destination
 // ============================================================
 
-const PARENT_FOLDER_ID = '1bYqiGoCQ9cyx4OHIoM3rJADvkAUh6TIQ';
+// Set the existing source-tip folder ID in the private Apps Script editor.
+// Keep that deployment-specific value out of the public repository.
+const PARENT_FOLDER_ID = 'SET_EXISTING_TIPS_FOLDER_ID';
 const CHUNK_SIZE = 5 * 1024 * 1024; // Bound Apps Script byte-array memory and request time.
 const MAX_FILES = 10;
 const MAX_TOTAL_BYTES = 750 * 1024 * 1024;
@@ -118,31 +121,38 @@ function doPost(e) {
   }
 }
 
+function reportParentId_(folder) {
+  const parents = folder.getParents();
+  if (!parents.hasNext()) throw new Error('Report folder has no parent.');
+  return parents.next().getId();
+}
+
 function getOrCreateSessionFolder_(sessionLabel) {
-  {
-    const properties = PropertiesService.getScriptProperties();
-    const propertyKey = 'folder_' + hash_(sessionLabel);
-    const knownId = properties.getProperty(propertyKey);
-    if (knownId) {
-      try {
-        return DriveApp.getFolderById(knownId);
-      } catch (err) {
-        properties.deleteProperty(propertyKey);
-      }
-    }
-
-    const parent = DriveApp.getFolderById(PARENT_FOLDER_ID);
-    const existing = parent.getFoldersByName(sessionLabel);
-    if (existing.hasNext()) {
-      const folder = existing.next();
-      properties.setProperty(propertyKey, folder.getId());
-      return folder;
-    }
-
-    const created = parent.createFolder(sessionLabel);
-    properties.setProperty(propertyKey, created.getId());
-    return created;
+  const properties = PropertiesService.getScriptProperties();
+  const automatic = /^(NEWS_|AUTO_TIP_)[a-f0-9]{20}$/.test(sessionLabel);
+  let destination;
+  if (automatic) {
+    const id = properties.getProperty('AUTO_TIPLINE_FOLDER_ID');
+    if (!id || !/^[A-Za-z0-9_-]{10,200}$/.test(id)) throw new Error('Automatic report destination is not configured.');
+    destination = DriveApp.getFolderById(id);
+    if (destination.isTrashed()) throw new Error('Automatic report destination is in Trash.');
   }
+  const propertyKey = 'folder_' + hash_(sessionLabel);
+  const knownId = properties.getProperty(propertyKey);
+  let known;
+  if (knownId) {
+    try { known = DriveApp.getFolderById(knownId); }
+    catch (err) { properties.deleteProperty(propertyKey); }
+  }
+  if (known) {
+    if (automatic && reportParentId_(known) !== destination.getId()) known.moveTo(destination);
+    return known;
+  }
+  const parent = destination || DriveApp.getFolderById(PARENT_FOLDER_ID);
+  const existing = parent.getFoldersByName(sessionLabel);
+  const folder = existing.hasNext() ? existing.next() : parent.createFolder(sessionLabel);
+  properties.setProperty(propertyKey, folder.getId());
+  return folder;
 }
 
 function readValidCompletion_(folder, sessionLabel, expectedFiles) {
@@ -653,7 +663,7 @@ function prepareTransfers_(payload, folder) {
     return {name: name, sizeBytes: size, uploadUrl: uploadUrl, nextOffset: nextOffset};
   });
   properties.setProperty(key, JSON.stringify({id: payload.leaseId, until: Date.now() + 600000}));
-  return {ok: true, transferMode: 'direct-v1', transfers: transfers, folderUrl: folder.getUrl()};
+  return {ok: true, transferMode: 'direct-v1', transfers: transfers, folderUrl: folder.getUrl(), parentFolderId: reportParentId_(folder)};
 }
 function checkTransferLease_(payload, folder) {
   const lease = JSON.parse(PropertiesService.getScriptProperties().getProperty('lease_' + folder.getId()) || '{}');

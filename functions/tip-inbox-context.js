@@ -1,5 +1,6 @@
 'use strict';
 const {thumbnailDescriptor}=require('./tip-thumbnail');
+const {reportDelivery}=require('./report-delivery');
 // Only descriptive fields enter the private inbox. Never forward the manifest,
 // contact fields, source identity, capabilities, or Claude's internal notes.
 function text(value, limit) {
@@ -12,7 +13,7 @@ function sourceContext(initial={}, followup) {
         contextReceivedAt:followup ? text(followup.receivedAt,40) : ''};
 }
 const states=new Set(['queued','analyzing','awaiting_editor','editing','rendering','qc_pending','ready','approved','needs_review','held','failed','declined','paused']);
-function displayContext(tip, report) {
+function displayContext(tip, report, delivery) {
     const result={...tip,title:tip.sourceTitle || '',summary:tip.sourceSummary || '',location:tip.sourceLocation || '',contextSource:tip.sourceSummary?'tipster':'pending'};
     if (!report || report.version!==1 || report.source!==tip.path || report.id!==tip.id
         || (tip.sourceGeneration && String(report.sourceGeneration)!==String(tip.sourceGeneration))) return result;
@@ -27,6 +28,8 @@ function displayContext(tip, report) {
     }
     const thumbnail=thumbnailDescriptor(tip,report);
     if(thumbnail)result.thumbnail=thumbnail;
+    const finishedFolder=reportDelivery(tip,report,delivery);
+    if(finishedFolder)result.driveUrl=finishedFolder;
     return result;
 }
 module.exports={text,sourceContext,displayContext};

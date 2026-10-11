@@ -43,7 +43,7 @@ test('Drive resume status is read as HTTP 308 rather than followed as a redirect
 test('direct preparation resumes saved uploads and leases prevent duplicate writers',()=>{
  const saved=new Map([['upload_state',JSON.stringify({uploadUrl:'https://www.googleapis.com/upload/test'})]]);
  const props={getProperty:k=>saved.get(k),setProperty:(k,v)=>saved.set(k,v),deleteProperty:k=>saved.delete(k)};
- const folder={getId:()=> 'folder',getUrl:()=> 'folder-url',getFilesByName:()=>({hasNext:()=>false})};
+ const folder={getId:()=> 'folder',getUrl:()=> 'folder-url',getFilesByName:()=>({hasNext:()=>false}),getParents:()=>({hasNext:()=>true,next:()=>({getId:()=> 'parent'})})};
  const c=bridge({PropertiesService:{getScriptProperties:()=>props}});
  c.hash_=()=> 'state';c.md5Base64ToHex_=()=> 'hash';c.queryDriveUpload_=()=>({nextOffset:8});
  c.startDriveUpload_=()=>{throw new Error('must reuse session');};
