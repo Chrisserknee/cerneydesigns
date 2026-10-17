@@ -93,7 +93,10 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 24px;
 }
+
+.nav-brand { flex-shrink: 0; }
 
 .nav-brand .brand-link {
     font-family: 'Barlow Condensed', 'Inter', sans-serif;
@@ -114,7 +117,7 @@ body {
     list-style: none;
     display: flex;
     align-items: center;
-    gap: 1.5rem;
+    gap: 1rem;
 }
 
 .nav-menu a {

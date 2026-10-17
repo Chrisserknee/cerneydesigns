@@ -10,3 +10,7 @@
 *.test.cjs
 
 /inbox-sync
+
+# Keep local credentials and deployment metadata out of uploaded source.
+/.env*
+/.vercel
