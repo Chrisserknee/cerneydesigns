@@ -112,3 +112,37 @@
 .directory-page .directory-card-category{font-size:.66rem;letter-spacing:.045em;line-height:1.5}
 .directory-page .directory-card .directory-city{font-size:.76rem}
 .directory-page .directory-card .directory-description{font-size:.84rem}
+
+
+/* Keep the site’s navy palette; give logos a shared open display area. */
+.directory-page .directory-card{--card-paper:#14212d;--card-ink:#d9e5ed;background:var(--card-paper);border-color:#344656;overflow:hidden}
+.directory-page .directory-card[data-tone="1"]{--card-paper:#18242f;--card-ink:#d9e5ed}
+.directory-page .directory-card[data-tone="2"]{--card-paper:#162432;--card-ink:#d9e5ed}
+.directory-page .directory-card[data-tone="3"]{--card-paper:#18232e;--card-ink:#d9e5ed}
+.directory-page .directory-card-top{margin:-24px -24px 22px;padding:20px 24px;min-height:130px;background:#e3e9ed;border:0}
+.directory-page .directory-card[data-tone="1"] .directory-card-top{background:#e7e7e2}
+.directory-page .directory-card[data-tone="2"] .directory-card-top{background:#dce6ed}
+.directory-page .directory-card[data-tone="3"] .directory-card-top{background:#e2e6e7}
+.directory-page .directory-mark,.directory-page .directory-mark.has-logo{color:#385365}
+.directory-page .directory-mark img{mix-blend-mode:multiply}
+.directory-page .directory-card .directory-name{color:#edf3f7}
+.directory-page .directory-card .directory-city{color:#a7bbc9}
+.directory-page .directory-card .directory-description{color:#bdcbd5}
+.directory-page .directory-card-category{color:#a9c3d6}
+.directory-page .directory-site-link,.directory-page .directory-phone{color:#b9d4e7}
+.directory-page .directory-heading p:not(.directory-eyebrow){max-width:530px;line-height:1.65}
+.directory-page .directory-tools{grid-template-columns:minmax(0,1fr) 220px}
+.directory-page .category-chips{display:flex;flex-wrap:wrap;gap:9px;margin-bottom:20px}
+.directory-page .category-chip{display:inline-flex;align-items:center;gap:8px;min-height:44px;border:1px solid #344d61;border-radius:24px;padding:9px 15px;background:#131f2b;color:#bfd0de;font-size:.78rem;line-height:1.3;transition:background .15s,border-color .15s}
+.directory-page .category-chip>span{font-size:1.05rem;color:#91b7d2}
+.directory-page .category-chip:hover{background:#203449;border-color:#779db9}
+.directory-page .category-chip[aria-pressed="true"]{background:#9bbbd6;color:#102331;border-color:#9bbbd6;font-weight:600}
+.directory-page .category-chip[aria-pressed="true"]>span{color:#284b64}
+@media(max-width:800px){.directory-page .directory-tools{grid-template-columns:minmax(0,1fr) 180px}.directory-page .search-field{grid-column:auto}}
+@media(max-width:600px){
+.directory-page .directory-card-top{margin:-21px -21px 18px;padding:18px 21px;min-height:108px}
+.directory-page .category-chips{gap:8px;margin-bottom:16px}
+.directory-page .category-chip{font-size:.76rem;padding:9px 12px}
+.directory-page .directory-tools{grid-template-columns:minmax(0,1fr)}
+.directory-page .directory-tools .city-field{max-width:100%}
+}

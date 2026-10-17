@@ -155,14 +155,22 @@
         byId('retryDirectory').hidden = !retry;
     }
 
+    function matchesCategory(listing, category) {
+        const text = `${listing.businessName} ${listing.description}`.toLowerCase();
+        if (category === 'wine') return /\b(wine|winery|wineries|vineyard|vineyards|tasting room)\b/.test(text);
+        if (category === 'hotels') return /\b(hotel|hotels|motel|motels|inn|resort|resorts|lodge|cottages)\b/.test(text);
+        return !category || listing.category === category;
+    }
+
     function renderDirectory() {
         if (!directoryLoaded) return;
         const search = byId('businessSearch').value.trim().toLocaleLowerCase();
         const category = byId('categoryFilter').value;
         const city = byId('cityFilter').value;
+        document.querySelectorAll('[data-category]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.category === category)));
         const filtered = listings.filter((listing) => {
             const searchable = `${listing.businessName} ${listing.city} ${listing.category} ${listing.description}`.toLocaleLowerCase();
-            return (!category || listing.category === category) && (!city || listing.city === city) && (!search || searchable.includes(search));
+            return matchesCategory(listing, category) && (!city || listing.city === city) && (!search || searchable.includes(search));
         });
         filteredCount = filtered.length;
         const pages = Math.max(1, Math.ceil(filtered.length / pageSize));
@@ -226,7 +234,9 @@
 
     function resetPage() { page = 1; renderDirectory(); }
     byId('businessSearch').addEventListener('input', resetPage);
-    byId('categoryFilter').addEventListener('change', resetPage);
+    document.querySelectorAll('[data-category]').forEach(button => {
+        button.addEventListener('click', () => { byId('categoryFilter').value = button.dataset.category; resetPage(); });
+    });
     byId('cityFilter').addEventListener('change', resetPage);
     byId('clearFilters').addEventListener('click', () => {
         byId('businessSearch').value = ''; byId('categoryFilter').value = ''; byId('cityFilter').value = '';
