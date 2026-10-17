@@ -93,6 +93,13 @@ $('notificationSettings').addEventListener('toggle',async()=>{
     catch { if (state) { registration=null; await updateControls(); } }
 });
 function dateLabel(value) { return new Intl.DateTimeFormat('en-US',{timeZone:'America/Los_Angeles',month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'}).format(new Date(value)); }
+// Source stays independent of report status: Claude can prepare either kind.
+function sourceClass(tip) { return tip.type==='incident' ? 'source-found' : 'source-community'; }
+function sourceBadge(tip) {
+    const badge=document.createElement('p');badge.className='source-badge';
+    badge.textContent=tip.type==='incident' ? 'Found report' : 'Community tip';
+    return badge;
+}
 function folderURL(value) {
     try {
         const u = new URL(value);
@@ -138,7 +145,7 @@ function loadTips({quiet=false}={}) {
 async function fetchTips(quiet) {
     clearTimeout(inboxTimer);
     const version=sessionVersion;
-    if (!quiet) $('inboxStatus').textContent=$('tips').children.length ? 'Updating…' : 'Loading recent tips…';
+    if (!quiet) $('inboxStatus').textContent=$('tips').children.length ? 'Updating…' : 'Loading community tips…';
     let data;
     try { data=await api('list'); }
     catch(e) {
@@ -154,16 +161,16 @@ async function fetchTips(quiet) {
     show('login',false); show('intro',false); show('connected',true);
     const reports=Array.isArray(data.reports) ? data.reports : data.tips.filter(t=>t.type==='incident');
     const tips=data.tips.filter(t=>t.type!=='incident');
-    message(); show('empty',!tips.length);show('reportsSection',reports.length>0);
+    message(); show('empty',!tips.length);show('reportsSection',reports.length>0);show('foundReportsLink',reports.length>0);
     const signature=JSON.stringify({tips,reports});
     if(signature!==renderedTips) {
     thumbnails.reset();
     $('tips').replaceChildren();$('reports').replaceChildren();
     for(const [container,records] of [[$('reports'),reports],[$('tips'),tips]]) for(const tip of records) {
-        const row=document.createElement('article');row.className='tip tip-card';
+        const row=document.createElement('article');row.className='tip tip-card '+sourceClass(tip);
         const body=document.createElement('div');body.className='tip-body';
         const info=document.createElement('div'); const title=document.createElement('h3');title.textContent=(tip.title || (tip.type==='story'?'Story submission':'Tipline upload'))+(tip.incomplete?' · Incomplete':'');
-        const time=document.createElement('time');time.dateTime=tip.receivedAt;time.textContent=dateLabel(tip.receivedAt);info.append(title,time);
+        const time=document.createElement('time');time.dateTime=tip.receivedAt;time.textContent=dateLabel(tip.receivedAt);info.append(title,sourceBadge(tip),time);
         if(tip.summary) { const summary=document.createElement('p');summary.className='tip-summary';summary.textContent=tip.summary;info.append(summary); }
         if(tip.location) { const place=document.createElement('p');place.className='tip-location';place.textContent='Reported location: '+tip.location;info.append(place); }
         const provenance=document.createElement('p');provenance.className='tip-provenance';
@@ -177,8 +184,8 @@ async function fetchTips(quiet) {
     renderedTips=signature;
     }
     const updated=new Intl.DateTimeFormat('en-US',{hour:'numeric',minute:'2-digit'}).format(new Date());
-    $('reportsStatus').textContent=`${reports.length} video ${reports.length===1?'report':'reports'} · Updated ${updated}`;
-    $('inboxStatus').textContent=`${tips.length} recent ${tips.length===1?'tip':'tips'} · Updated ${updated}`;
+    $('reportsStatus').textContent=`${reports.length} found video ${reports.length===1?'report':'reports'} · Updated ${updated}`;
+    $('inboxStatus').textContent=`${tips.length} community ${tips.length===1?'tip':'tips'} · Updated ${updated}`;
     // Keep a newly arrived photo current without requiring manual refresh.
     if (!document.hidden) {
         const processing=data.tips.some(t=>!folderURL(t.driveUrl) && t.status==='processing' && Date.parse(t.receivedAt)>Date.now()-3600000);
@@ -192,6 +199,7 @@ async function openTip() {
     if(version!==sessionVersion || requestedId!==tipId || !tip) return false;
     state=state || {};
     show('login',false); show('intro',false); show('connected',true);
+    $('selected').className='card selected '+sourceClass(tip);
     if(folderURL(tip.driveUrl)) {
         // Retain only the opaque selection, never private copy or media. A
         // Home Screen relaunch still authenticates and reads the report fresh.
@@ -200,13 +208,13 @@ async function openTip() {
         const title=document.createElement('h2');title.textContent='Your tip is ready to open';
         const text=document.createElement('p');text.textContent=isIOS ? 'Tap below to open this folder in the Google Drive app.' : 'Open this tip’s Google Drive folder.';
         title.textContent=tip.title || 'Your report is ready';
-        $('selected').replaceChildren(title,text,folderLink(tip));
+        $('selected').replaceChildren(title,sourceBadge(tip),text,folderLink(tip));
         CerneyReportCopy.appendReportCopy(tip,$('selected'));
         return true;
     }
     show('selected',true); $('selected').replaceChildren();
     const title=document.createElement('h2');title.textContent='Your tip has arrived';const text=document.createElement('p');text.textContent=tip.status==='review'?'This submission needs review before its files can be copied to Drive.':'Its files are still being copied to Google Drive. The Open in Drive button will appear here when the folder is ready.';
-    $('selected').append(title,text);
+    $('selected').append(title,sourceBadge(tip),text);
     if(tip.status!=='review' && openAttempts++<24) retryTimer=setTimeout(()=>openTip().catch(e=>message(e.message,true)),5000);
     else if(tip.status!=='review') { const note=document.createElement('p'); note.textContent='The transfer is taking longer than usual. Refresh this page to check again.'; $('selected').append(note); }
 }

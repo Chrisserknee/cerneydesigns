@@ -28,3 +28,16 @@ html.standalone-app,html.standalone-app body{overscroll-behavior-y:none}
 @media(max-width:540px){.tip-body{flex-wrap:wrap;gap:12px}.tip-body>div{flex-basis:100%}.tip-body .folder{min-height:44px}}
 
 .report-copy{margin:12px 0 0;padding:12px;border:1px solid #52545b;border-radius:12px}.report-copy summary{cursor:pointer;font-weight:600}.report-copy textarea{box-sizing:border-box;width:100%;margin-top:12px;padding:12px;border-radius:8px;resize:vertical;font:inherit;line-height:1.5;color:inherit;background:rgba(128,128,128,.12);border:1px solid #52545b}.copy-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:8px}.copy-status{font-size:.9rem}
+
+/* Color identifies the source, never verification or production status. */
+.source-found{--source-ink:#185b82;--source-accent:#357da6;--source-tint:#eaf3fa;--source-border:#bdd5e6}
+.source-community{--source-ink:#69448b;--source-accent:#8a63ad;--source-tint:#f4eef9;--source-border:#d9c8e8}
+.source-nav{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:24px}
+.source-nav a{display:flex;align-items:center;justify-content:center;gap:12px;flex:1;min-height:48px;padding:12px;border:1px solid var(--source-border);border-radius:12px;background:var(--source-tint);color:var(--source-ink);font-size:13px;font-weight:700;text-decoration:none;white-space:nowrap}
+.inbox{scroll-margin-top:20px}
+.inbox .section-heading{padding:16px;border-left:4px solid var(--source-accent);border-radius:0 12px 12px 0;background:var(--source-tint)}
+.inbox .section-heading h2,.inbox .section-heading .eyebrow{color:var(--source-ink)}
+.inbox .section-heading .section-description{margin-top:8px;color:#506574;font-size:13px;line-height:1.5}
+.tip.tip-card{border-color:var(--source-border,#dce2e4);border-top:4px solid var(--source-accent,#dce2e4)}
+.source-badge{display:table;width:fit-content;margin:9px 0 10px;padding:4px 9px;border-radius:6px;background:var(--source-tint);color:var(--source-ink);font-size:11px;font-weight:750;line-height:1.5}
+.selected.source-found,.selected.source-community{border-color:var(--source-border);border-top:4px solid var(--source-accent)}

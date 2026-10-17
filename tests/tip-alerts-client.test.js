@@ -154,7 +154,7 @@ test('Claude titles and context replace a generic card safely on automatic refre
  await c.run('loadTips({quiet:true})');
  const info=c.elements.get('tips').children[0].children[0].children[0];
  assert.equal(info.children[0].textContent,tip.title);
- assert.equal(info.children[2].textContent,tip.summary);
+ assert.equal(info.children.find(e=>e.className==='tip-summary').textContent,tip.summary);
  assert.match(info.children.at(-1).textContent,/Claude draft.*Draft ready for your review/);
 });
 
@@ -188,7 +188,7 @@ test('a resumed inbox selects the report sent by its service worker',async()=>{
  for(let i=0;i<20;i++)await Promise.resolve();
  assert.equal(c.run('tipId'),id);assert.equal(c.elements.get('selected').hidden,false);
  assert.equal(c.elements.get('selected').children[0].textContent,'Soledad report');
- assert.equal(c.elements.get('selected').children[2].href,'googledrive://https://drive.google.com/drive/folders/report');
+ assert.equal(c.elements.get('selected').children.find(e=>e.className==='folder').href,'googledrive://https://drive.google.com/drive/folders/report');
  assert.deepEqual(c.destinations,['/tip-alerts/?tip='+id]);
  assert.equal(c.elements.get('selected').children.filter(e=>e.className==='report-copy').length,2);
 });
