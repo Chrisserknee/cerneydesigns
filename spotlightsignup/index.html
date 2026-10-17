@@ -37,14 +37,28 @@
     </header>
 
     <main id="main" class="signup-main shell">
-        <header class="page-heading signup-heading">
+        <header class="page-heading signup-heading" id="signupHeading">
             <a class="back-link" href="/localspotlight">← Local Spotlight</a>
             <h1>Feature your business.</h1>
             <p><strong>$100 per month.</strong> Your business profile, optional logo, website link, and phone in Local Spotlight.</p>
             <p class="offer-detail">Paid listing only; news coverage is not included. Cancel future renewals any time.</p>
         </header>
-        <aside class="review-policy" aria-labelledby="reviewPolicyTitle"><h2 id="reviewPolicyTitle">Payment first. A personal review before you appear.</h2><p>You pay <strong>$100 today</strong>. We review your business within <strong>2 days</strong>. Your listing appears only if approved, and we email you the decision.</p><p>If approved, your subscription renews at $100 per month until canceled. If declined, we cancel your subscription, refund the full $100 payment, and email you the reason. Your bank may take additional time to show the refund. No further monthly payment is collected while your application awaits review.</p></aside>
-        <section class="signup-layout" aria-label="Create your business listing">
+        <aside class="review-policy" id="reviewPolicy" aria-labelledby="reviewPolicyTitle"><h2 id="reviewPolicyTitle">How your listing is reviewed</h2><p>You pay <strong>$100 today</strong>. We review your business within <strong>2 days</strong>. Your listing appears only if approved, and we email you the decision.</p><p>If approved, your subscription renews at $100 per month until canceled. If declined, we cancel your subscription, refund the full $100 payment, and email you the reason. Your bank may take additional time to show the refund. No further monthly payment is collected while your application awaits review.</p></aside>
+        <section class="payment-confirmation" id="paymentConfirmation" aria-labelledby="paymentConfirmationTitle" tabindex="-1" hidden>
+            <div class="confirmation-topline"><a class="back-link" href="/localspotlight">← Local Spotlight</a><span class="confirmation-badge"><span aria-hidden="true">✓</span> Payment confirmed</span></div>
+            <h1 id="paymentConfirmationTitle">Payment received — your application is under review.</h1>
+            <p class="confirmation-intro">Thank you for applying to Local Spotlight. We’ve received your <strong>$100 payment</strong> and your business details. There’s nothing else you need to submit right now.</p>
+            <p id="confirmationBusiness" class="confirmation-business" hidden></p>
+            <div class="confirmation-next"><h2>What happens next</h2><ol>
+                <li><span class="confirmation-step" aria-hidden="true">1</span><div><h3>We review your business</h3><p>Your application stays private. Your business will appear in the directory only after approval.</p></div></li>
+                <li><span class="confirmation-step" aria-hidden="true">2</span><div><h3>You hear from us within 2 days of payment</h3><p>We’ll send the decision to your billing email. If approved, your listing goes live and your $100 monthly subscription continues.</p></div></li>
+                <li><span class="confirmation-step" aria-hidden="true">3</span><div><h3>If your application isn’t approved</h3><p>We’ll email you the reason, cancel future billing, and refund your full $100 payment. Your bank may take additional time to show the refund.</p></div></li>
+            </ol></div>
+            <p class="confirmation-billing-note">No additional monthly payment is collected while your application awaits review.</p>
+            <div class="confirmation-actions"><a class="button button-primary" href="#manage">View application &amp; billing</a><a class="text-link" href="/localspotlight">Browse Local Spotlight <span aria-hidden="true">↗</span></a></div>
+            <p class="confirmation-support">Questions or a correction? <a href="mailto:cerneymedia@gmail.com?subject=Local%20Spotlight%20application">Email Chris</a> and we’ll help.</p>
+        </section>
+        <section class="signup-layout" id="signupLayout" aria-label="Create your business listing">
             <div class="signup-column">
                 <div class="notice" id="checkoutNotice" role="status" aria-live="polite">Checking availability…</div>
                 <div class="notice" id="returnNotice" role="status" aria-live="polite" tabindex="-1" hidden></div>
@@ -57,7 +71,13 @@
                                 </div>
                                 <div class="field"><label for="description">About your business <span class="field-detail" id="descriptionCount">0 / 400</span></label><textarea id="description" name="description" required maxlength="400" rows="4" aria-describedby="descriptionHelp" placeholder="What do you offer, and what makes your business worth a visit?"></textarea><p class="field-help" id="descriptionHelp">Up to 400 characters. This description appears on your public listing.</p></div>
                                 <div class="field"><label for="website">Website or business social page</label><input id="website" name="website" type="url" required maxlength="300" inputmode="url" autocomplete="url" placeholder="https://yourbusiness.com" pattern="https://.+" aria-describedby="websiteHelp"><p class="field-help" id="websiteHelp">Use a full link beginning with https://.</p></div>
-                                <div class="field"><label for="logoUrl">Logo image link <span class="optional">Optional</span></label><input id="logoUrl" name="logoUrl" type="url" maxlength="500" inputmode="url" placeholder="https://yourbusiness.com/logo.png" pattern="https://.+" aria-describedby="logoHelp"><p class="field-help" id="logoHelp">A direct HTTPS link to a logo you are authorized to use. No logo? We’ll use your business initials.</p></div>
+                                <div class="field logo-upload" data-signup-only>
+                                    <span class="logo-upload-heading">Business logo <span class="optional">Optional</span></span>
+                                    <div class="logo-upload-actions"><label class="button button-outline logo-file-button" for="logoFile"><span>Choose logo</span><input id="logoFile" type="file" accept="image/jpeg,image/png,image/webp" aria-describedby="logoUploadHelp logoUploadStatus"></label><button class="text-button" id="removeLogo" type="button" hidden>Remove logo</button><button class="text-button" id="retryLogoUpload" type="button" hidden>Try upload again</button></div>
+                                    <p class="field-help" id="logoUploadHelp">Upload a JPG, PNG, or WebP image up to 2 MB. Use a still image, no larger than 8,192 pixels on either side or 16 megapixels. Only upload a logo you’re authorized to use. Without a logo, we’ll show your business initials.</p>
+                                    <p class="logo-upload-status" id="logoUploadStatus" role="status" aria-live="polite"></p>
+                                </div>
+                                <div class="field logo-link-field"><label for="logoUrl">Or paste a logo image link <span class="optional">Optional</span></label><input id="logoUrl" name="logoUrl" type="url" maxlength="500" inputmode="url" placeholder="https://yourbusiness.com/logo.png" pattern="https://.+" aria-describedby="logoHelp"><p class="field-help" id="logoHelp">Use a direct HTTPS image link instead of uploading. Pasting a link replaces your uploaded logo.</p></div>
                                 <div class="field"><label for="phone">Business phone <span class="optional">Optional</span></label><input id="phone" name="phone" type="tel" maxlength="40" autocomplete="tel" placeholder="(831) 555-0123"><p class="field-help">If provided, this number appears on your public listing.</p></div>
                             </div>
                             <div class="private-fields"><div class="field"><label for="email">Billing email <span class="private-label">Private</span></label><input id="email" name="email" type="email" required maxlength="254" autocomplete="email" placeholder="you@yourbusiness.com"><p class="field-help">For your review decision, receipts, and billing. Never shown in the directory.</p></div></div>

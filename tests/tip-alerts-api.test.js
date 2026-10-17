@@ -57,11 +57,18 @@ test('a revoked thumbnail request does not refresh its cookie or become cacheabl
  assert.equal(p.res.code,401);assert.equal(p.res.headers['Set-Cookie'],undefined);assert.equal(p.res.headers['Cache-Control'],'no-store');
 });
 
-test('private preview Blob policy is restricted to the inbox and retains no-store',()=>{
+test('Blob image previews are limited to inbox and signup without relaxing scripts or connections',()=>{
  const config=JSON.parse(fs.readFileSync(__dirname+'/../vercel.json','utf8'));
  const inbox=config.headers.find(rule=>rule.source==='/tip-alerts/(.*)');
  assert.equal(inbox.headers.find(h=>h.key==='Cache-Control').value,'no-store');
  const policy=inbox.headers.find(h=>h.key==='Content-Security-Policy').value;
  assert.match(policy,/img-src 'self' blob:;/);assert.match(policy,/connect-src 'self';/);assert.match(policy,/script-src 'self';/);
- assert(!policy.includes('unsafe-inline'));assert(!config.headers.filter(rule=>rule!==inbox).some(rule=>rule.headers.some(h=>h.value.includes('blob:'))));
+ assert(!policy.includes('unsafe-inline'));
+ const signup=config.headers.find(rule=>rule.source==='/spotlightsignup/(.*)');
+ const signupPolicy=signup.headers.find(h=>h.key==='Content-Security-Policy').value;
+ assert.match(signupPolicy,/img-src 'self' data: blob: https:;/);
+ assert(!config.headers.filter(rule=>rule!==inbox&&rule!==signup).some(rule=>rule.headers.some(h=>h.value.includes('blob:'))));
+ for(const rule of config.headers)for(const header of rule.headers.filter(h=>h.key==='Content-Security-Policy')) {
+  for(const directive of header.value.split(';').map(value=>value.trim()).filter(Boolean)) if(directive.includes('blob:')) assert(directive.startsWith('img-src '));
+ }
 });

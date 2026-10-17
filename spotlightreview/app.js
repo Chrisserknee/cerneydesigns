@@ -6,6 +6,9 @@
     const suggested = fragment.get('action');
     // Keep the credential in memory, away from history, referrers, and server logs.
     history.replaceState(null, '', location.pathname);
+    // A second emailed application can open in this same tab. Reload its new
+    // fragment so the previous application's token and decision form are cleared.
+    window.addEventListener('hashchange', () => { if (location.hash) location.reload(); });
     let state = null;
     let busy = false;
     let decisionNeedsRefresh = false;

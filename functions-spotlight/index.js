@@ -6,6 +6,8 @@ const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { defineSecret, defineString, defineBoolean } = require('firebase-functions/params');
 const { createStore } = require('./storage');
 const { createGateway } = require('./gateway');
+const { createLogoGateway } = require('./logos-gateway');
+const { createLogoService } = require('./logos');
 
 if (!getApps().length) initializeApp();
 const proxySecret = defineSecret('SPOTLIGHT_MODERATION_PROXY_SECRET');
@@ -34,3 +36,10 @@ exports.retrySpotlightModeration = onSchedule({ ...options, schedule: 'every 5 m
     try { await moderation().retry(); }
     catch { console.error('Spotlight moderation retry needs attention.'); throw new Error('Moderation retry failed.'); }
 });
+exports.spotlightLogoApi = onRequest({
+    region: 'us-west1', memory: '512MiB', timeoutSeconds: 60, maxInstances: 2, concurrency: 1,
+    secrets: [proxySecret],
+}, createLogoGateway({
+    getSecret: () => proxySecret.value(),
+    makeLogos: () => createLogoService({ bucket: getStorage().bucket('tip-line-8c2d7.firebasestorage.app') }),
+}));

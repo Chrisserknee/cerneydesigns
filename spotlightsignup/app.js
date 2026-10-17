@@ -18,6 +18,10 @@
     let statusAttempts = 0;
     let pollTimer = null;
     let checkoutReturn = new URLSearchParams(window.location.search).get('checkout');
+    let confirmationAnnounced = false;
+    const LOGO_FILE_LIMIT = 2 * 1024 * 1024;
+    const LOGO_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+    const logoUpload = { file: null, previewUrl: '', phase: 'idle', generation: 0 };
 
     function stored(key) {
         try { return JSON.parse(sessionStorage.getItem(key) || 'null'); } catch { return null; }
@@ -63,7 +67,7 @@
         return Object.fromEntries(PUBLIC_FIELDS.map((field) => [field, string(source[field], field === 'description' ? 400 : field === 'logoUrl' ? 500 : field === 'website' ? 300 : field === 'phone' ? 40 : field === 'city' ? 80 : 100)]));
     }
 
-    function businessCard(profile, preview = false) {
+    function businessCard(profile, preview = false, localLogoPreview = '') {
         const safe = publicProfile(profile);
         const name = safe.businessName || (preview ? 'Your business name' : 'Local business');
         const initials = name.split(/\s+/).slice(0, 2).map((word) => Array.from(word)[0] || '').join('').toUpperCase();
@@ -71,7 +75,7 @@
         const top = node('div', 'card-top');
         const mark = node('span', 'business-mark', safe.businessName ? initials : 'CC');
         mark.setAttribute('aria-hidden', 'true');
-        const logo = websiteUrl(safe.logoUrl);
+        const logo = preview && localLogoPreview ? localLogoPreview : websiteUrl(safe.logoUrl);
         if (logo) {
             const img = node('img', 'business-logo');
             img.alt = ''; img.referrerPolicy = 'no-referrer'; img.src = logo;
@@ -128,7 +132,7 @@
     function updatePreview() {
         const profile = readForm(signupForm, true);
         byId('descriptionCount').textContent = `${profile.description.length} / 400`;
-        byId('profilePreview').replaceChildren(businessCard(profile, true));
+        byId('profilePreview').replaceChildren(businessCard(profile, true, logoUpload.previewUrl));
         saveStored(DRAFT_KEY, profile);
     }
 
@@ -137,11 +141,12 @@
         byId(id).classList.toggle('success', success);
     }
 
-    async function request(body) {
+    async function request(body, endpoint = API) {
         const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 25000);
+        const timeoutMs = endpoint === '/api/spotlight-logo' ? 45000 : 25000;
+        const timer = setTimeout(() => controller.abort(), timeoutMs);
         try {
-            const response = await fetch(API, {
+            const response = await fetch(endpoint, {
                 method: body ? 'POST' : 'GET',
                 credentials: 'same-origin',
                 cache: 'no-store',
@@ -163,7 +168,9 @@
 
     function refreshCheckout() {
         const hasSubscription = ownerState && ['active', 'past_due'].includes(ownerState.status);
-        byId('checkoutButton').disabled = !checkoutEnabled || submitting || forgetting || !byId('forgetConfirm').hidden || Boolean(hasSubscription);
+        ['logoFile', 'removeLogo', 'retryLogoUpload'].forEach((id) => { byId(id).disabled = submitting || forgetting; });
+        byId('logoUrl').readOnly = submitting || forgetting;
+        byId('checkoutButton').disabled = !checkoutEnabled || submitting || forgetting || logoUploadBlocked() || !byId('forgetConfirm').hidden || Boolean(hasSubscription);
         if (hasSubscription) {
             byId('checkoutNotice').textContent = 'You already have a subscription on this device. Check your review status and manage billing below.';
             byId('checkoutNotice').classList.add('ready-notice');
@@ -175,6 +182,88 @@
             byId('checkoutNotice').classList.remove('ready-notice');
         }
     }
+
+    function logoUploadBlocked() {
+        return ['uploading', 'failed'].includes(logoUpload.phase);
+    }
+
+    function releaseLogoPreview() {
+        if (logoUpload.previewUrl) URL.revokeObjectURL(logoUpload.previewUrl);
+        logoUpload.previewUrl = '';
+    }
+
+    function refreshLogoControls(text = '') {
+        byId('logoUploadStatus').textContent = text;
+        byId('logoUploadStatus').classList.toggle('upload-error', logoUpload.phase === 'failed');
+        byId('logoUploadStatus').classList.toggle('upload-success', logoUpload.phase === 'uploaded');
+        byId('retryLogoUpload').hidden = logoUpload.phase !== 'failed' || !logoUpload.file;
+        byId('removeLogo').hidden = logoUpload.phase === 'idle' && !byId('logoUrl').value.trim();
+        byId('logoFile').setAttribute('aria-invalid', String(logoUpload.phase === 'failed'));
+        refreshCheckout();
+    }
+
+    function resetLogoUpload({ clearUrl = false, text = '' } = {}) {
+        logoUpload.generation += 1;
+        releaseLogoPreview();
+        logoUpload.file = null;
+        logoUpload.phase = 'idle';
+        byId('logoFile').value = '';
+        if (clearUrl) byId('logoUrl').value = '';
+        byId('logoUrl').setCustomValidity('');
+        refreshLogoControls(text);
+        updatePreview();
+    }
+
+    async function uploadLogo(file) {
+        const generation = ++logoUpload.generation;
+        releaseLogoPreview();
+        logoUpload.file = null;
+        logoUpload.phase = 'uploading';
+        byId('logoUrl').value = '';
+        byId('logoUrl').setCustomValidity('');
+        // Clear any previous URL immediately, including from the saved draft.
+        updatePreview();
+        if (!LOGO_TYPES.includes(file.type) || file.size < 1 || file.size > LOGO_FILE_LIMIT) {
+            logoUpload.phase = 'failed';
+            refreshLogoControls(file.size > LOGO_FILE_LIMIT ? 'That image is too large. Choose a JPG, PNG, or WebP up to 2 MB, paste an image link, or remove the logo to continue.' : 'Choose a JPG, PNG, or WebP image, paste an image link, or remove the logo to continue.');
+            return;
+        }
+        logoUpload.file = file;
+        logoUpload.previewUrl = URL.createObjectURL(file);
+        updatePreview();
+        refreshLogoControls(`Uploading ${string(file.name, 160) || 'your logo'}… Please wait before continuing to payment.`);
+        try {
+            const bytes = new Uint8Array(await file.arrayBuffer());
+            if (generation !== logoUpload.generation) return;
+            let binary = '';
+            for (let offset = 0; offset < bytes.length; offset += 32768) binary += String.fromCharCode(...bytes.subarray(offset, offset + 32768));
+            const result = await request({ imageBase64: btoa(binary), mimeType: file.type }, '/api/spotlight-logo');
+            if (generation !== logoUpload.generation) return;
+            const url = typeof result.logoUrl === 'string' && result.logoUrl.trim().length <= 500 ? websiteUrl(result.logoUrl) : '';
+            if (!url) throw new Error('We couldn’t save that logo. Please try again.');
+            byId('logoUrl').value = url;
+            releaseLogoPreview();
+            logoUpload.phase = 'uploaded';
+            updatePreview();
+            refreshLogoControls('Logo uploaded and ready. It will appear with your listing if your application is approved.');
+        } catch (error) {
+            if (generation !== logoUpload.generation) return;
+            logoUpload.phase = 'failed';
+            refreshLogoControls(`${string(error.message, 240) || 'We couldn’t upload your logo.'} Try again, paste an image link, or remove the logo to continue.`);
+        }
+    }
+
+    byId('logoFile').addEventListener('change', () => {
+        const file = byId('logoFile').files?.[0];
+        if (file) uploadLogo(file);
+    });
+    byId('retryLogoUpload').addEventListener('click', () => {
+        if (logoUpload.file && logoUpload.phase === 'failed') uploadLogo(logoUpload.file);
+    });
+    byId('removeLogo').addEventListener('click', () => {
+        resetLogoUpload({ clearUrl: true, text: 'Logo removed. We’ll use your business initials.' });
+        byId('logoFile').focus();
+    });
 
     async function loadConfiguration() {
         try {
@@ -198,6 +287,23 @@
         return new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).format(date);
     }
 
+    function renderPaymentConfirmation(data) {
+        const confirmed = checkoutReturn === 'success' && data.status === 'active' && data.paymentConfirmed === true && data.published !== true && ['pending', 'approving'].includes(data.reviewStatus);
+        byId('paymentConfirmation').hidden = !confirmed;
+        byId('signupHeading').hidden = confirmed;
+        byId('reviewPolicy').hidden = confirmed;
+        byId('signupLayout').hidden = confirmed;
+        if (!confirmed) return;
+        const name = string(data.profile?.businessName, 100);
+        byId('confirmationBusiness').textContent = name ? `Application for ${name}` : '';
+        byId('confirmationBusiness').hidden = !name;
+        if (!confirmationAnnounced) {
+            confirmationAnnounced = true;
+            byId('paymentConfirmation').focus({ preventScroll: true });
+            byId('paymentConfirmation').scrollIntoView({ block: 'start', behavior: 'instant' });
+        }
+    }
+
     function renderOwner(data, updateFields = true) {
         ownerState = data;
         const active = data.status === 'active';
@@ -208,7 +314,7 @@
         const reviewDeclining = ['declining', 'declined'].includes(data.reviewStatus);
         let label = 'No subscription';
         let description = 'No subscription is linked to this browser. On another device? Sign in to billing with your subscription email. Contact Chris for listing changes.';
-        if (data.status === 'pending' || (active && reviewPending && data.paymentConfirmed === false)) {
+        if (data.status === 'pending' || (active && reviewPending && data.paymentConfirmed !== true)) {
             label = 'Awaiting payment';
             description = 'Your listing is saved, and payment has not been confirmed yet. If you finished checkout, refresh your status in a moment.';
         } else if (reviewDeclining) {
@@ -244,6 +350,7 @@
             updateManageCount();
         }
         refreshCheckout();
+        renderPaymentConfirmation(data);
         if (checkoutReturn === 'success') {
             const notice = byId('returnNotice');
             notice.hidden = false;
@@ -257,7 +364,7 @@
             } else if (reviewDeclining || data.reviewStatus === 'needs_attention') {
                 notice.textContent = description;
                 clearTimeout(pollTimer);
-            } else if (active && reviewPending && data.paymentConfirmed !== false) {
+            } else if (active && reviewPending && data.paymentConfirmed === true) {
                 notice.textContent = 'Payment received. Your application is awaiting review. Allow up to 2 days; we’ll email you when it is approved or declined. Your business is not public yet.';
                 notice.classList.add('ready-notice');
                 removeStored(DRAFT_KEY); removeStored(REQUEST_KEY);
@@ -289,7 +396,7 @@
             const data = await statusRequest;
             if (forgetting) return;
             renderOwner(data, updateFields);
-            const stillWaiting = !data.hidden && (data.status === 'pending' || (data.status === 'active' && data.paymentConfirmed === false && data.reviewStatus === 'pending'));
+            const stillWaiting = !data.hidden && (data.status === 'pending' || (data.status === 'active' && data.paymentConfirmed !== true && data.reviewStatus === 'pending'));
             if (!stillWaiting) clearTimeout(pollTimer);
             if (poll && stillWaiting && statusAttempts < 12) {
                 statusAttempts += 1;
@@ -342,12 +449,13 @@
 
     signupForm.addEventListener('input', (event) => {
         if (['website', 'logoUrl'].includes(event.target.name)) event.target.setCustomValidity('');
-        updatePreview();
+        if (event.target.name === 'logoUrl') resetLogoUpload({ text: event.target.value.trim() ? 'Image link selected. Check the listing preview before continuing.' : '' });
+        else updatePreview();
     });
     signupForm.addEventListener('change', updatePreview);
     signupForm.addEventListener('submit', async (event) => {
         event.preventDefault();
-        if (submitting || forgetting || !byId('forgetConfirm').hidden || !checkoutEnabled || !validateProfile(signupForm) || !byId('consent').checked) return;
+        if (submitting || forgetting || logoUploadBlocked() || !byId('forgetConfirm').hidden || !checkoutEnabled || !validateProfile(signupForm) || !byId('consent').checked) return;
         if (ownerState && ['active', 'past_due'].includes(ownerState.status)) return;
         const profile = readForm(signupForm, true);
         submitting = true;
@@ -368,6 +476,7 @@
     // Reuse the public fields for editing, with distinct IDs and label associations.
     const manageFields = byId('profileFields').cloneNode(true);
     manageFields.id = 'manageProfileFields';
+    manageFields.querySelectorAll('[data-signup-only]').forEach((element) => element.remove());
     manageFields.querySelectorAll('[id]').forEach((element) => { element.id = `manage-${element.id}`; });
     manageFields.querySelectorAll('[for]').forEach((element) => { element.htmlFor = `manage-${element.htmlFor}`; });
     manageFields.querySelectorAll('[aria-describedby]').forEach((element) => {
@@ -443,8 +552,10 @@
             const data = await request({ op: 'logout' });
             if (data.status !== 'none') throw new Error('We couldn’t forget this device. Please try again.');
             checkoutReturn = null;
+            confirmationAnnounced = false;
             statusAttempts = 0;
             signupForm.reset();
+            resetLogoUpload({ clearUrl: true });
             manageForm.reset();
             updatePreview();
             removeStored(DRAFT_KEY);
@@ -492,6 +603,7 @@
     });
 
     fillForm(signupForm, stored(DRAFT_KEY));
+    refreshLogoControls();
     updatePreview();
     if (checkoutReturn === 'canceled') {
         byId('returnNotice').hidden = false;
