@@ -164,7 +164,7 @@ async function fetchTips(quiet) {
         provenance.textContent=(tip.contextSource==='claude'?'Claude draft':tip.contextSource==='tipster'?'Tipster context · Unverified':'Context pending')+(tip.reportState?' · '+(reportStates[tip.reportState] || 'Report processing'):'');
         info.append(provenance);body.append(info);
         if(folderURL(tip.driveUrl)) body.append(folderLink(tip)); else {const status=document.createElement('span');status.className='state';status.textContent=tip.status==='review'?'Needs review':'Files processing';body.append(status);}
-        row.append(body);thumbnails.add(tip,row);
+        row.append(body);CerneyReportCopy.appendReportCopy(tip,row);thumbnails.add(tip,row);
         $('tips').append(row);
     }
     renderedTips=signature;
@@ -187,7 +187,9 @@ async function openTip() {
         show('selected',true);
         const title=document.createElement('h2');title.textContent='Your tip is ready to open';
         const text=document.createElement('p');text.textContent=isIOS ? 'Tap below to open this folder in the Google Drive app.' : 'Open this tip’s Google Drive folder.';
+        title.textContent=tip.title || 'Your report is ready';
         $('selected').replaceChildren(title,text,folderLink(tip));
+        CerneyReportCopy.appendReportCopy(tip,$('selected'));
         return true;
     }
     show('selected',true); $('selected').replaceChildren();

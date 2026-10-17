@@ -7,7 +7,7 @@ function client({ tip = false, serviceWorker, respond, ios = false, homeScreen =
     const elements = new Map(), calls = [], destinations = [], events = {}, timers = [];
     const element = () => ({ hidden: false, children: [], handlers: {}, classList: { toggle() {} },
         replaceChildren(...children) { this.children = children; }, append(...children) { this.children.push(...children); },
-        addEventListener(name, callback) { this.handlers[name] = callback; } });
+        setAttribute(name,value){this[name]=value;}, focus(){this.focused=true;}, select(){this.selected=true;}, setSelectionRange(a,b){this.selection=[a,b];}, addEventListener(name, callback) { this.handlers[name] = callback; } });
     const get = id => { if (!elements.has(id)) elements.set(id, element()); return elements.get(id); };
     const context = vm.createContext({
         document: { documentElement: { classList: {toggle(){}}, style: {setProperty(){}} }, getElementById: get, createElement: element, addEventListener: (name,fn) => { events[name]=fn; }, hidden: false },
@@ -23,6 +23,8 @@ function client({ tip = false, serviceWorker, respond, ios = false, homeScreen =
         },
     });
     vm.runInContext(fs.readFileSync(__dirname + '/../tip-alerts/thumbnail.js', 'utf8'), context);
+    vm.runInContext(fs.readFileSync(__dirname + '/../tip-alerts/report-copy.js', 'utf8'), context);
+    context.CerneyReportCopy=context.window.CerneyReportCopy;
     const source = fs.readFileSync(__dirname + '/../tip-alerts/app.js', 'utf8').replace(/load\(\);\s*$/, 'globalThis.started = load();');
     vm.runInContext(source, context);
     return { elements, calls, destinations, events, timers, ready: context.started, run: code => vm.runInContext(code, context) };
@@ -152,4 +154,25 @@ test('Claude titles and context replace a generic card safely on automatic refre
  assert.equal(info.children[0].textContent,tip.title);
  assert.equal(info.children[2].textContent,tip.summary);
  assert.match(info.children.at(-1).textContent,/Claude draft.*Draft ready for your review/);
+});
+
+
+test('selected report copies the complete VO and caption instead of its summary',async()=>{
+ const caption='A complete caption.\n\n'+('Important detail. '.repeat(60));
+ const vo='Recording script.\n\n'+('More of the report. '.repeat(80));
+ const c=client({tip:true,respond:op=>op==='tip'?{status:200,body:{tips:[{title:'Test',summary:'Short summary',driveUrl:'https://drive.google.com/drive/folders/test',instagramDescription:caption,voiceover:vo}]}}:null});
+ await c.ready;c.run('globalThis.copied=[];navigator.clipboard={writeText:async text=>copied.push(text)}');
+ const sections=c.elements.get('selected').children.filter(e=>e.className==='report-copy');
+ assert.equal(sections.length,2);
+ await sections[0].children[2].children[0].handlers.click();
+ await sections[1].children[2].children[0].handlers.click();
+ assert.equal(c.run('copied[0]'),caption);assert.equal(c.run('copied[1]'),vo);
+});
+
+test('clipboard denial selects the full text for manual copying',async()=>{
+ const vo='Full recording script.\n\nSecond paragraph.';
+ const c=client({tip:true,respond:op=>op==='tip'?{status:200,body:{tips:[{driveUrl:'https://drive.google.com/drive/folders/test',voiceover:vo}]}}:null});await c.ready;
+ const section=c.elements.get('selected').children.find(e=>e.className==='report-copy');
+ await section.children[2].children[0].handlers.click();
+ assert.equal(section.open,true);assert.equal(section.children[1].value,vo);assert.equal(section.children[1].selection[1],vo.length);
 });

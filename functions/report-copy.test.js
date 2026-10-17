@@ -1,0 +1,10 @@
+'use strict';
+const test=require('node:test'),assert=require('node:assert/strict');
+const {reportCopy}=require('./report-copy');
+const {incidentRecord}=require('./incident-record');
+const {createHash}=require('node:crypto');
+const source='incident:'+'a'.repeat(20)+':e1',hash=s=>createHash('sha256').update(s).digest('hex');
+const record={version:1,id:hash(source),source,jobId:hash(JSON.stringify(source)).slice(0,20),incidentId:'a'.repeat(20),edition:1,revision:1,state:'ready',draftDelivered:true,receivedAt:'2026-10-17T10:00:00Z',updatedAt:'2026-10-17T11:00:00Z',title:'Test release',driveUrl:'https://drive.google.com/drive/folders/example'};
+test('full caption and VO preserve paragraphs and unicode',()=>{const copy={instagramDescription:'Police released an update.\n\n#Salinas #News',voiceover:'First paragraph.\n\nSecond paragraph. 📍'};assert.deepEqual(reportCopy(copy),copy);const result=incidentRecord({...record,...copy});assert.equal(result.voiceover,copy.voiceover);assert.equal(result.instagramDescription,copy.instagramDescription);});
+test('oversized values withheld rather than truncated',()=>{assert.equal(reportCopy({voiceover:'x'.repeat(6001)}).voiceover,'');assert.equal(reportCopy({instagramDescription:{secret:'bad'}}).instagramDescription,'');});
+test('unfinished report cannot expose copy',()=>{assert.equal(incidentRecord({...record,state:'rendering',voiceover:'not ready'}),null);});

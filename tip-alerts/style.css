@@ -26,3 +26,5 @@ html.standalone-app,html.standalone-app body{overscroll-behavior-y:none}
 .tip-thumbnail img{display:block;width:100%;height:100%;object-fit:contain}
 .thumbnail-loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#617482;font-size:12px}
 @media(max-width:540px){.tip-body{flex-wrap:wrap;gap:12px}.tip-body>div{flex-basis:100%}.tip-body .folder{min-height:44px}}
+
+.report-copy{margin:12px 0 0;padding:12px;border:1px solid #52545b;border-radius:12px}.report-copy summary{cursor:pointer;font-weight:600}.report-copy textarea{box-sizing:border-box;width:100%;margin-top:12px;padding:12px;border-radius:8px;resize:vertical;font:inherit;line-height:1.5;color:inherit;background:rgba(128,128,128,.12);border:1px solid #52545b}.copy-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:8px}.copy-status{font-size:.9rem}

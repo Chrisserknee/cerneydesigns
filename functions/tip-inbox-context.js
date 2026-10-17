@@ -1,6 +1,7 @@
 'use strict';
 const {thumbnailDescriptor}=require('./tip-thumbnail');
 const {reportDelivery}=require('./report-delivery');
+const {reportCopy}=require('./report-copy');
 // Only descriptive fields enter the private inbox. Never forward the manifest,
 // contact fields, source identity, capabilities, or Claude's internal notes.
 function text(value, limit) {
@@ -29,7 +30,7 @@ function displayContext(tip, report, delivery) {
     const thumbnail=thumbnailDescriptor(tip,report);
     if(thumbnail)result.thumbnail=thumbnail;
     const finishedFolder=reportDelivery(tip,report,delivery);
-    if(finishedFolder)result.driveUrl=finishedFolder;
+    if(finishedFolder){result.driveUrl=finishedFolder;Object.assign(result,reportCopy(delivery));}
     return result;
 }
 module.exports={text,sourceContext,displayContext};
