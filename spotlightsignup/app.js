@@ -13,9 +13,11 @@
     let submitting = false;
     let ownerState = null;
     let checkingStatus = false;
+    let statusRequest = null;
+    let forgetting = false;
     let statusAttempts = 0;
     let pollTimer = null;
-    const checkoutReturn = new URLSearchParams(window.location.search).get('checkout');
+    let checkoutReturn = new URLSearchParams(window.location.search).get('checkout');
 
     function stored(key) {
         try { return JSON.parse(sessionStorage.getItem(key) || 'null'); } catch { return null; }
@@ -154,7 +156,7 @@
 
     function refreshCheckout() {
         const hasSubscription = ownerState && ['active', 'past_due'].includes(ownerState.status);
-        byId('checkoutButton').disabled = !checkoutEnabled || submitting || Boolean(hasSubscription);
+        byId('checkoutButton').disabled = !checkoutEnabled || submitting || forgetting || !byId('forgetConfirm').hidden || Boolean(hasSubscription);
         if (hasSubscription) {
             byId('checkoutNotice').textContent = 'You already have a subscription on this device. Use Manage your listing below to update your details or billing.';
             byId('checkoutNotice').classList.add('ready-notice');
@@ -217,6 +219,7 @@
         byId('manageStatus').textContent = label;
         byId('manageMessage').textContent = description;
         byId('portalButton').hidden = data.canManage !== true;
+        byId('forgetDevice').hidden = !data.status || data.status === 'none';
         byId('editDetails').hidden = data.canManage !== true || !data.profile;
         if (data.profile && updateFields) {
             fillForm(manageForm, data.profile);
@@ -226,6 +229,7 @@
         if (checkoutReturn === 'success') {
             const notice = byId('returnNotice');
             notice.hidden = false;
+            notice.classList.remove('ready-notice');
             if (active && published) {
                 notice.textContent = 'Payment confirmed. Your business is now in Local Spotlight. You can manage your listing below.';
                 notice.classList.add('ready-notice');
@@ -238,6 +242,12 @@
                 notice.textContent = 'Your listing is not published yet. We’re checking for payment confirmation. If this continues, contact Chris for help.';
             } else if (data.status === 'past_due') {
                 notice.textContent = 'Your payment needs attention. Open Manage billing below to check your subscription.';
+            } else if (data.status === 'canceled') {
+                notice.textContent = 'This subscription has ended. Your listing is no longer featured. You can start a new subscription using the form above.';
+            } else if (data.status === 'expired') {
+                notice.textContent = 'This checkout expired without an active subscription. You can restart using the form above.';
+            } else if (data.status === 'none') {
+                notice.textContent = 'No subscription is linked to this browser. Use billing email sign-in below to check an existing purchase, or contact Chris for help.';
             } else {
                 notice.textContent = 'Thanks for returning. We’re waiting for payment confirmation before publishing your listing. This may take a little time.';
             }
@@ -245,19 +255,24 @@
     }
 
     async function loadStatus({ poll = false, updateFields = true } = {}) {
-        if (checkingStatus) return;
+        if (checkingStatus || forgetting) return;
         checkingStatus = true;
         byId('refreshStatus').disabled = true;
         try {
-            const data = await request({ op: 'status' });
+            statusRequest = request({ op: 'status' });
+            const data = await statusRequest;
+            if (forgetting) return;
             renderOwner(data, updateFields);
-            if (poll && !data.hidden && !(data.status === 'active' && data.published) && !['past_due', 'canceled', 'expired'].includes(data.status) && statusAttempts < 12) {
+            const stillWaiting = !data.hidden && (data.status === 'pending' || (data.status === 'active' && !data.published));
+            if (!stillWaiting) clearTimeout(pollTimer);
+            if (poll && stillWaiting && statusAttempts < 12) {
                 statusAttempts += 1;
                 pollTimer = setTimeout(() => loadStatus({ poll: true, updateFields: !byId('editDetails').open }), 5000);
-            } else if (poll && statusAttempts >= 12 && !(data.status === 'active' && data.published)) {
+            } else if (poll && stillWaiting && statusAttempts >= 12) {
                 byId('returnNotice').textContent = 'Payment confirmation is still pending. Your listing will appear after payment is confirmed. You can refresh your status below or return later.';
             }
         } catch {
+            if (forgetting) return;
             byId('manageStatus').textContent = 'Unavailable';
             byId('manageMessage').textContent = 'We couldn’t check your subscription. Try refreshing your status, or contact Chris if you need help.';
             if (checkoutReturn === 'success') {
@@ -265,8 +280,9 @@
                 byId('returnNotice').textContent = 'We couldn’t confirm your payment status yet. Please refresh your status below before starting another checkout.';
             }
         } finally {
+            statusRequest = null;
             checkingStatus = false;
-            byId('refreshStatus').disabled = false;
+            byId('refreshStatus').disabled = forgetting;
         }
     }
 
@@ -303,7 +319,7 @@
     signupForm.addEventListener('change', updatePreview);
     signupForm.addEventListener('submit', async (event) => {
         event.preventDefault();
-        if (submitting || !checkoutEnabled || !validateProfile(signupForm) || !byId('consent').checked) return;
+        if (submitting || forgetting || !byId('forgetConfirm').hidden || !checkoutEnabled || !validateProfile(signupForm) || !byId('consent').checked) return;
         if (ownerState && ['active', 'past_due'].includes(ownerState.status)) return;
         const profile = readForm(signupForm, true);
         submitting = true;
@@ -339,8 +355,9 @@
     });
     manageForm.addEventListener('submit', async (event) => {
         event.preventDefault();
-        if (!validateProfile(manageForm)) return;
+        if (forgetting || !byId('forgetConfirm').hidden || !validateProfile(manageForm)) return;
         byId('saveProfile').disabled = true;
+        byId('forgetDevice').disabled = true;
         message('manageFormMessage', 'Saving your changes…', true);
         try {
             const data = await request({ op: 'update', profile: readForm(manageForm) });
@@ -348,11 +365,13 @@
             message('manageFormMessage', 'Your business details have been saved.', true);
         } catch (error) {
             message('manageFormMessage', error.message);
-        } finally { byId('saveProfile').disabled = false; }
+        } finally { byId('saveProfile').disabled = false; byId('forgetDevice').disabled = false; }
     });
 
     byId('portalButton').addEventListener('click', async () => {
+        if (forgetting || !byId('forgetConfirm').hidden) return;
         byId('portalButton').disabled = true;
+        byId('forgetDevice').disabled = true;
         try {
             const data = await request({ op: 'portal' });
             const url = stripeUrl(data.url, 'portal');
@@ -361,6 +380,64 @@
         } catch (error) {
             byId('manageMessage').textContent = error.message;
             byId('portalButton').disabled = false;
+            byId('forgetDevice').disabled = false;
+        }
+    });
+    byId('forgetDevice').addEventListener('click', () => {
+        byId('forgetConfirm').hidden = false;
+        byId('forgetDevice').setAttribute('aria-expanded', 'true');
+        byId('portalButton').disabled = true;
+        byId('saveProfile').disabled = true;
+        refreshCheckout();
+        byId('cancelForget').focus();
+    });
+    byId('cancelForget').addEventListener('click', () => {
+        byId('forgetConfirm').hidden = true;
+        byId('forgetDevice').setAttribute('aria-expanded', 'false');
+        byId('portalButton').disabled = false;
+        byId('saveProfile').disabled = false;
+        message('forgetMessage', '');
+        refreshCheckout();
+        byId('forgetDevice').focus();
+    });
+    byId('confirmForget').addEventListener('click', async () => {
+        if (forgetting) return;
+        forgetting = true;
+        clearTimeout(pollTimer);
+        pollTimer = null;
+        ['confirmForget', 'cancelForget', 'forgetDevice', 'portalButton', 'refreshStatus', 'saveProfile'].forEach((id) => { byId(id).disabled = true; });
+        refreshCheckout();
+        message('forgetMessage', 'Forgetting this device…', true);
+        try {
+            // Status refreshes renew the owner cookie. Finish any pending refresh
+            // before logout so its response cannot restore access after sign-out.
+            if (statusRequest) await statusRequest.catch(() => {});
+            const data = await request({ op: 'logout' });
+            if (data.status !== 'none') throw new Error('We couldn’t forget this device. Please try again.');
+            checkoutReturn = null;
+            statusAttempts = 0;
+            signupForm.reset();
+            manageForm.reset();
+            updatePreview();
+            removeStored(DRAFT_KEY);
+            removeStored(REQUEST_KEY);
+            byId('editDetails').open = false;
+            byId('forgetConfirm').hidden = true;
+            byId('forgetDevice').setAttribute('aria-expanded', 'false');
+            byId('returnNotice').hidden = true;
+            byId('returnNotice').textContent = '';
+            message('signupMessage', '');
+            message('manageFormMessage', '');
+            message('forgetMessage', '');
+            renderOwner(data);
+            byId('manageMessage').textContent = 'This device has been forgotten. Your subscription and billing continue. Sign in to billing by email, or contact Chris for listing changes.';
+        } catch (error) {
+            message('forgetMessage', error.message);
+        } finally {
+            forgetting = false;
+            ['confirmForget', 'cancelForget', 'forgetDevice', 'portalButton', 'refreshStatus', 'saveProfile'].forEach((id) => { byId(id).disabled = false; });
+            refreshCheckout();
+            if (byId('forgetConfirm').hidden) byId('refreshStatus').focus();
         }
     });
     byId('refreshStatus').addEventListener('click', () => loadStatus({ updateFields: !byId('editDetails').open }));
@@ -380,6 +457,7 @@
         if (event.persisted) {
             submitting = false;
             byId('portalButton').disabled = false;
+            byId('forgetDevice').disabled = false;
             loadConfiguration();
             loadStatus();
         }

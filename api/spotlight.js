@@ -2,7 +2,7 @@
 
 const { isAuthenticated } = require('./_lib/admin-auth');
 const { bodyIsTooLarge, parseBody, sendJson } = require('./_lib/http');
-const { SpotlightError, config, createService, createStripe, sameOrigin } = require('./_lib/spotlight');
+const { COOKIE_NAME, SpotlightError, config, createService, createStripe, sameOrigin } = require('./_lib/spotlight');
 
 function createHandler({ makeStripe = createStripe, getConfig = config, authenticateAdmin = isAuthenticated } = {}) {
     return async function spotlight(request, response) {
@@ -23,6 +23,10 @@ function createHandler({ makeStripe = createStripe, getConfig = config, authenti
             try { body = parseBody(request); }
             catch { return sendJson(response, 400, { error: 'Invalid JSON.' }); }
             if (!body || typeof body !== 'object' || Array.isArray(body)) return sendJson(response, 400, { error: 'Invalid request.' });
+            if (body.op === 'logout') {
+                response.setHeader('Set-Cookie', `${COOKIE_NAME}=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=Lax`);
+                return sendJson(response, 200, { status: 'none', canManage: false, published: false });
+            }
             if (['admin-list', 'admin-update'].includes(body.op) && !authenticateAdmin(request)) return sendJson(response, 401, { error: 'Administrator login required.' });
             if (!settings.secret) return sendJson(response, 503, { error: 'Spotlight is not configured yet.', code: 'CHECKOUT_DISABLED' });
             const service = createService(makeStripe(settings), settings);

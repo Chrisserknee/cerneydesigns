@@ -125,6 +125,23 @@ test('strict same-origin JSON writes and body bounds reject CSRF and oversized i
     const formResponse = recorder(); await handler(stripe)(form, formResponse); assert.equal(formResponse.statusCode, 415);
 });
 
+test('forgetting a device clears owner access without changing Stripe billing, even while disabled', async () => {
+    const makeStripe = () => { throw new Error('Forgetting a device must not access Stripe'); };
+    const endpoint = createHandler({ makeStripe, getConfig: () => ({ ...settings, secret: '', enabled: false }) });
+    const response = recorder();
+    await endpoint(request({ op: 'logout' }, cookie()), response);
+    assert.equal(response.statusCode, 200);
+    assert.deepEqual(response.body, { status: 'none', canManage: false, published: false });
+    assert.equal(response.headers['set-cookie'], `${COOKIE_NAME}=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=Lax`);
+    assert.equal(ownerSessionId({ headers: { cookie: response.headers['set-cookie'].split(';')[0] } }, settings), '');
+    const crossSite = request({ op: 'logout' }, cookie());
+    crossSite.headers.origin = 'https://evil.example';
+    const denied = recorder();
+    await endpoint(crossSite, denied);
+    assert.equal(denied.statusCode, 403);
+    assert.equal(denied.headers['set-cookie'], undefined);
+});
+
 test('untrusted profiles reject script URLs, markup, credential URLs and overlong fields', () => {
     for (const website of ['javascript:alert(1)', 'http://example.com', 'https://user:pass@example.com', 'https://127.0.0.1', 'https://localhost']) assert.throws(() => validateProfile({ ...profile, website }, true));
     assert.throws(() => validateProfile({ ...profile, businessName: '<img onerror=alert(1)>' }, true));

@@ -70,8 +70,13 @@
             <div class="manage-heading"><h2 id="manageTitle">Manage your listing</h2><p>Edit from the browser you used to subscribe. Manage payments or cancel through Stripe.</p></div>
             <div class="manage-box">
                 <div class="manage-status-row"><h3>Your subscription</h3><span class="status-tag" id="manageStatus">Checking…</span></div>
-                <p id="manageMessage" class="manage-description">Looking for a subscription on this device.</p>
-                <div class="manage-actions"><button id="portalButton" type="button" class="button button-outline" hidden>Manage billing <span aria-hidden="true">↗</span></button><a id="portalLogin" class="button button-outline" hidden>Sign in to billing <span aria-hidden="true">↗</span></a><button id="refreshStatus" class="text-button" type="button">Refresh status</button></div>
+                <p id="manageMessage" class="manage-description" role="status" aria-live="polite">Looking for a subscription on this device.</p>
+                <div class="manage-actions"><button id="portalButton" type="button" class="button button-outline" hidden>Manage billing <span aria-hidden="true">↗</span></button><a id="portalLogin" class="button button-outline" hidden>Sign in to billing <span aria-hidden="true">↗</span></a><button id="refreshStatus" class="text-button" type="button">Refresh status</button><button id="forgetDevice" class="text-button" type="button" aria-expanded="false" aria-controls="forgetConfirm" hidden>Forget this device</button></div>
+                <div id="forgetConfirm" class="forget-confirm" hidden>
+                    <p><strong>Forget access on this device?</strong> Your subscription and billing will continue. You can still sign in to billing by email. For future listing edits, use another browser with saved access or contact Chris.</p>
+                    <div class="manage-actions"><button id="confirmForget" class="button button-outline" type="button">Forget this device</button><button id="cancelForget" class="text-button" type="button">Keep access</button></div>
+                    <p id="forgetMessage" class="form-message" role="status" aria-live="polite"></p>
+                </div>
                 <details id="editDetails" hidden><summary>Edit business details <span aria-hidden="true">+</span></summary><form id="manageForm"><div id="manageFields"></div><button class="button button-primary" type="submit" id="saveProfile">Save changes</button><p class="form-message" id="manageFormMessage" role="status" aria-live="polite"></p></form></details>
                 <p class="manage-support">Need help? <a href="mailto:cerneymedia@gmail.com?subject=Local%20Spotlight">cerneymedia@gmail.com</a></p>
             </div>
