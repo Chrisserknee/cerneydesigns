@@ -11,3 +11,28 @@
 
 .logo-upload{padding:18px;border:1px solid var(--border);border-radius:7px;background:#101b26}.logo-upload-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:.76rem;font-weight:500;margin-bottom:12px}.logo-upload-actions{display:flex;align-items:center;flex-wrap:wrap;gap:14px}.logo-file-button{position:relative;overflow:hidden;cursor:pointer;min-height:44px;font-size:.75rem}.logo-file-button input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}.logo-file-button:focus-within{outline:2px solid #b7d6f0;outline-offset:3px}.logo-upload .text-button{font-size:.73rem}.logo-upload .field-help{margin-top:12px}.logo-upload-status{font-size:.74rem;line-height:1.7;color:#bdcfe0;margin-top:11px;overflow-wrap:anywhere}.logo-upload-status:empty{display:none}.logo-upload-status.upload-error{color:#eeaaa6}.logo-upload-status.upload-success{color:#a7d5c2}.logo-link-field{margin-top:15px}
 @media(max-width:600px){.logo-upload{padding:16px}.logo-upload-actions{gap:12px}.logo-upload-status{font-size:.72rem}}
+
+.optional-fields, .listing-preview-details { border: 1px solid var(--border); border-radius: 8px; }
+.optional-fields { margin-bottom: 22px; }
+.optional-fields summary, .listing-preview-details summary, .review-terms summary { cursor: pointer; min-height: 44px; gap: 12px; }
+.optional-fields-content { padding: 0 18px; }
+.listing-preview-details[open] > #profilePreview, .listing-preview-details .preview-caption { margin: 0 18px 18px; }
+.review-terms summary { padding: 12px 0 0; font-size: .82rem; }
+.review-terms p { margin-top: 12px; }
+@media (max-width: 800px) {
+    .signup-page input, .signup-page select, .signup-page textarea { font-size: 16px; }
+    .signup-page .signup-main { padding-top: 26px; }
+    .signup-page .signup-heading { margin-bottom: 22px; }
+    .signup-page .signup-heading h1 { font-size: 2.8rem; line-height: 1.05; margin-top: 18px; }
+    .signup-page .review-policy { padding: 18px; margin-bottom: 24px; }
+    .signup-page .review-policy h2 { font-size: 1.35rem; margin-bottom: 8px; }
+    .signup-page .review-policy p { font-size: .85rem; line-height: 1.65; }
+    .signup-page .signup-layout { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+    .signup-page .preview-sticky { position: static; }
+    .signup-page .manage-section { margin-top: 38px; padding-top: 28px; }
+    .signup-page .manage-heading p { font-size: .85rem; }
+    .signup-page .field { margin-bottom: 18px; }
+    .signup-page .field-help { font-size: .76rem; line-height: 1.55; }
+    .signup-page .consent-label { font-size: .82rem; line-height: 1.65; }
+    .signup-page .checkout-button { white-space: normal; min-height: 48px; }
+}

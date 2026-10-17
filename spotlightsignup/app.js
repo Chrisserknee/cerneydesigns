@@ -9,6 +9,20 @@
     const byId = (id) => document.getElementById(id);
     const signupForm = byId('signupForm');
     const manageForm = byId('manageForm');
+    const previewDetails = byId('listingPreviewDetails');
+    if (previewDetails) {
+        const widePreview = window.matchMedia('(min-width: 801px)');
+        previewDetails.open = widePreview.matches;
+        widePreview.addEventListener?.('change', () => { previewDetails.open = widePreview.matches; });
+    }
+    // Optional inputs remain reachable when native validation finds an invalid value.
+    for (const form of [signupForm, manageForm]) {
+        form.addEventListener('invalid', (event) => {
+            const details = event.target.closest('details');
+            if (details) details.open = true;
+        }, true);
+    }
+
     let checkoutEnabled = false;
     let submitting = false;
     let ownerState = null;

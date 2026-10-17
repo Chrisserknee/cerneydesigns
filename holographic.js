@@ -1,6 +1,8 @@
 (() => {
     'use strict';
 
+    if (window.matchMedia('(max-width: 800px), (pointer: coarse), (prefers-reduced-motion: reduce)').matches) return;
+
     const sheen = document.createElement('div');
     sheen.className = 'holographic-sheen';
     sheen.setAttribute('aria-hidden', 'true');

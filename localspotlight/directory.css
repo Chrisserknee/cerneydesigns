@@ -56,3 +56,59 @@
 @media(max-width:1000px){.directory-page .directory-tools{grid-template-columns:minmax(0,1fr) 210px 190px}.directory-page .directory-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.directory-page .design-controls{gap:18px;grid-template-columns:minmax(0,1fr) 110px 185px}.directory-page .directory-heading h1{font-size:4.2rem}}
 @media(max-width:800px){.directory-page .directory-main{padding-top:37px}.directory-page .directory-heading{align-items:flex-start;gap:12px;flex-direction:column;padding-bottom:23px;margin-bottom:23px}.directory-page .directory-heading h1{font-size:3.6rem}.directory-page .directory-tools{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.directory-page .search-field{grid-column:1/-1}.directory-page .design-controls{grid-template-columns:110px minmax(0,1fr);gap:16px}.directory-page .design-explanation{grid-column:1/-1}.directory-page .design-control select{font-size:16px}.directory-page .directory-grid{gap:13px}.directory-page .directory-card{padding:20px}.directory-page .directory-card h3{font-size:1.7rem}}
 @media(max-width:600px){.directory-page .directory-main{padding-top:30px}.directory-page .directory-heading h1{font-size:3.45rem}.directory-page .directory-eyebrow{font-size:.58rem;margin-bottom:11px}.directory-page .directory-heading p:not(.directory-eyebrow){font-size:.79rem;line-height:1.7;margin-top:12px}.directory-page .directory-feature-link{font-size:.73rem}.directory-page .directory-tools{gap:10px}.directory-page .directory-tools input,.directory-page .directory-tools select{font-size:16px}.directory-page .directory-results-bar{gap:12px;margin:16px 0}.directory-page .directory-sort{display:none}.directory-page .directory-grid,.directory-page .directory-grid.is-text-view{grid-template-columns:minmax(0,1fr)}.directory-page .directory-card{padding:22px}.directory-page .directory-card h3{font-size:1.9rem}.directory-page .directory-card-top{margin-bottom:17px}.directory-page .directory-description{font-size:.76rem}.directory-page .directory-pagination{gap:14px}.directory-page .directory-pagination button{padding:8px 12px;font-size:.69rem}.directory-page .design-controls{padding:17px;gap:15px;grid-template-columns:95px minmax(0,1fr)}.directory-page .design-explanation p{font-size:.7rem}.directory-page .directory-empty{padding:39px 20px}.directory-page .directory-empty h2{font-size:1.8rem}}
+
+/* Compact phone cards keep the full paid description and contact links. */
+@media(max-width:600px){
+.directory-page .directory-main{padding-top:24px}
+.directory-page .directory-heading{margin-bottom:20px;padding-bottom:18px;gap:8px}
+.directory-page .directory-heading h1{font-size:2.9rem}
+.directory-page .directory-heading p:not(.directory-eyebrow){margin-top:9px}
+.directory-page .directory-card{padding:18px}
+.directory-page .directory-card-top{margin-bottom:10px;align-items:center}
+.directory-page .directory-mark{width:52px;height:44px;font-size:1.3rem}
+.directory-page .directory-card h3{font-size:1.65rem;line-height:1.15}
+.directory-page .directory-city{margin-top:6px}
+.directory-page .directory-description{margin-top:10px;font-size:.83rem;line-height:1.6}
+.directory-page .directory-card-bottom{padding-top:10px;gap:4px 16px}
+.directory-page .directory-site-link,.directory-page .directory-phone{min-height:44px;font-size:.76rem}
+.directory-page .directory-pagination button{min-height:44px}
+}
+
+.directory-page .preview-page-option{grid-column:1/-1;display:flex;align-items:center;gap:10px;min-height:44px;font-size:.78rem;color:#d5e7dc;cursor:pointer}
+.directory-page .preview-page-option input{width:20px;height:20px;flex-shrink:0;accent-color:#8dbb9c}
+
+/* Open logo space: each brand keeps its proportions, with no avatar frame. */
+.directory-page .directory-card{--card-paper:#edf2ee;--card-ink:#253e34;background:var(--card-paper);border:1px solid #ffffff18;border-radius:16px;padding:24px;color:var(--card-ink);box-shadow:0 3px 16px #0000000a}
+.directory-page .directory-card[data-tone="1"]{--card-paper:#f3eee4;--card-ink:#51432b;border-radius:16px 28px 16px 16px}
+.directory-page .directory-card[data-tone="2"]{--card-paper:#e9eff4;--card-ink:#2d4457;border-radius:28px 16px 16px 16px}
+.directory-page .directory-card[data-tone="3"]{--card-paper:#f1eae7;--card-ink:#533b35}
+.directory-page .directory-card:hover{background:var(--card-paper);border-color:#afc2c9;box-shadow:0 5px 20px #00000018}
+.directory-page .directory-card-top{justify-content:center;align-items:center;min-height:112px;margin:0 0 22px;padding:4px 0 18px;border-bottom:1px solid #263b421c}
+.directory-page .directory-mark,.directory-page .directory-mark.has-logo{width:100%;height:92px;max-width:240px;background:none;border:0;border-radius:0;padding:0;color:var(--card-ink);font-size:3.7rem;letter-spacing:-.035em}
+.directory-page .directory-mark img{width:auto;height:80px;max-width:100%;max-height:92px;border-radius:0;object-fit:contain}
+.directory-page .directory-mark.wide-logo img{width:100%;height:auto;max-height:80px}
+.directory-page .directory-mark.tall-logo img{height:92px;width:auto}
+.directory-page .directory-card-category{color:var(--card-ink);opacity:.8;font-size:.6rem;max-width:none;margin-bottom:10px;letter-spacing:.1em}
+.directory-page .directory-card h3{font-size:1.85rem;line-height:1.12}
+.directory-page .directory-card .directory-name{color:#172b35}
+.directory-page .directory-card .directory-city{color:#4a5b61;margin-top:8px}
+.directory-page .directory-card .directory-description{color:#405259;font-size:.8rem;line-height:1.65}
+.directory-page .directory-card-bottom{padding-top:16px}
+.directory-page .directory-site-link,.directory-page .directory-phone{color:#294653;min-height:44px;font-size:.74rem}
+.directory-page .directory-site-link{font-weight:600}
+.directory-page .directory-card.without-logo{padding-top:28px}
+.directory-page .directory-card.without-logo .directory-card-category{margin-bottom:14px}
+@media(max-width:600px){
+.directory-page .directory-card{padding:21px}
+.directory-page .directory-card-top{min-height:96px;margin-bottom:18px;padding-bottom:16px}
+.directory-page .directory-mark,.directory-page .directory-mark.has-logo{height:78px;max-width:220px}
+.directory-page .directory-mark img{height:68px;max-height:78px}
+.directory-page .directory-mark.tall-logo img{height:78px}
+.directory-page .directory-card h3{font-size:1.75rem}
+.directory-page .directory-card .directory-description{font-size:.84rem}
+}
+
+.directory-page .directory-card h3{font-family:var(--font);font-weight:650;font-size:1.1rem;line-height:1.4;letter-spacing:-.015em}
+.directory-page .directory-card-category{font-size:.66rem;letter-spacing:.045em;line-height:1.5}
+.directory-page .directory-card .directory-city{font-size:.76rem}
+.directory-page .directory-card .directory-description{font-size:.84rem}

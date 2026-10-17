@@ -4,7 +4,7 @@
     const API = '/api/spotlight';
     const PREVIEW_DATA = '/localspotlight/preview/businesses.json';
     const isPreview = /^\/localspotlight\/preview(?:\/|\/index\.html)?$/.test(window.location.pathname);
-    const PAGE_SIZE = 20;
+    let pageSize = 20;
     const COUNTS = [10, 20, 30, 60, 80, 100];
     const MODES = ['logos', 'cards', 'text', 'mixed'];
     const byId = (id) => document.getElementById(id);
@@ -81,6 +81,16 @@
             image.loading = 'lazy';
             image.decoding = 'async';
             image.referrerPolicy = 'no-referrer';
+            image.addEventListener('load', () => {
+                const ratio = image.naturalWidth / image.naturalHeight;
+                if (Math.max(image.naturalWidth, image.naturalHeight) < 64) {
+                    mark.classList.remove('has-logo');
+                    mark.replaceChildren(document.createTextNode(initials));
+                    return;
+                }
+                mark.classList.toggle('wide-logo', ratio > 2);
+                mark.classList.toggle('tall-logo', ratio < .8);
+            }, { once: true });
             image.addEventListener('error', () => { mark.classList.remove('has-logo'); mark.replaceChildren(document.createTextNode(initials)); }, { once: true });
             image.src = src;
             mark.classList.add('has-logo');
@@ -101,10 +111,14 @@
         }
         const showMark = mode !== 'cards';
         const card = node('article', `directory-card${showMark ? '' : ' without-logo'}`);
-        const top = node('div', 'directory-card-top');
-        top.append(node('p', 'directory-card-category', profile.category || 'Local business'));
-        if (showMark) top.append(businessMark(profile, mode !== 'mixed' || index % 3 !== 1));
-        card.append(top, businessName(profile), node('p', 'directory-city', profile.city));
+        const tone = Array.from(profile.businessName).reduce((total, char) => total + char.codePointAt(0), 0) % 4;
+        card.dataset.tone = String(tone);
+        if (showMark) {
+            const top = node('div', 'directory-card-top');
+            top.append(businessMark(profile, mode !== 'mixed' || index % 3 !== 1));
+            card.append(top);
+        }
+        card.append(node('p', 'directory-card-category', profile.category || 'Local business'), businessName(profile), node('p', 'directory-city', profile.city));
         if (profile.description) card.append(node('p', 'directory-description', profile.description));
         const bottom = node('div', 'directory-card-bottom');
         const href = websiteUrl(profile.website);
@@ -151,16 +165,16 @@
             return (!category || listing.category === category) && (!city || listing.city === city) && (!search || searchable.includes(search));
         });
         filteredCount = filtered.length;
-        const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+        const pages = Math.max(1, Math.ceil(filtered.length / pageSize));
         page = Math.min(page, pages);
-        const offset = (page - 1) * PAGE_SIZE;
-        const visible = filtered.slice(offset, offset + PAGE_SIZE);
+        const offset = (page - 1) * pageSize;
+        const visible = filtered.slice(offset, offset + pageSize);
         byId('businessGrid').classList.toggle('is-text-view', mode === 'text');
         byId('businessGrid').replaceChildren(...visible.map((listing, index) => businessCard(listing, offset + index)));
         byId('directoryEmpty').hidden = Boolean(filtered.length);
         const noun = filtered.length === 1 ? 'business' : 'businesses';
         const suffix = isPreview ? ' · design examples' : '';
-        byId('resultsCount').textContent = `${filtered.length} ${noun}${search || category || city ? ` of ${listings.length}` : ''}${suffix}${filtered.length > PAGE_SIZE ? ` · showing ${offset + 1}–${offset + visible.length}` : ''}`;
+        byId('resultsCount').textContent = `${filtered.length} ${noun}${search || category || city ? ` of ${listings.length}` : ''}${suffix}${filtered.length > pageSize ? ` · showing ${offset + 1}–${offset + visible.length}` : ''}`;
         byId('directoryPagination').hidden = pages <= 1;
         byId('pageCount').textContent = `Page ${page} of ${pages}`;
         byId('previousPage').disabled = page === 1;
@@ -182,13 +196,14 @@
 
     function applyPreview() {
         const count = Number(byId('previewCount').value);
+        pageSize = byId('previewShowAll').checked ? 100 : 20;
         mode = MODES.includes(byId('previewMode').value) ? byId('previewMode').value : 'logos';
         // The vetted source order is intentionally varied; sorting applies only after selecting the count.
         listings = allListings.slice(0, COUNTS.includes(count) ? count : 20).sort((a, b) => a.businessName.localeCompare(b.businessName));
         page = 1;
         populateCities();
         renderDirectory();
-        const params = new URLSearchParams({ count: String(count), view: mode });
+        const params = new URLSearchParams({ count: String(count), view: mode, layout: pageSize === 100 ? 'all' : 'pages' });
         history.replaceState(null, '', `${window.location.pathname}?${params}`);
     }
 
@@ -220,7 +235,7 @@
     byId('retryDirectory').addEventListener('click', loadDirectory);
     for (const [id, direction] of [['previousPage', -1], ['nextPage', 1]]) {
         byId(id).addEventListener('click', () => {
-            page = Math.max(1, Math.min(page + direction, Math.ceil(filteredCount / PAGE_SIZE)));
+            page = Math.max(1, Math.min(page + direction, Math.ceil(filteredCount / pageSize)));
             renderDirectory();
             byId('businessGrid').scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start' });
         });
@@ -238,6 +253,8 @@
         const params = new URLSearchParams(window.location.search);
         if (COUNTS.includes(Number(params.get('count')))) byId('previewCount').value = params.get('count');
         if (MODES.includes(params.get('view'))) byId('previewMode').value = params.get('view');
+        byId('previewShowAll').checked = params.get('layout') !== 'pages';
+        byId('previewShowAll').addEventListener('change', applyPreview);
         byId('previewCount').addEventListener('change', applyPreview);
         byId('previewMode').addEventListener('change', applyPreview);
     }
