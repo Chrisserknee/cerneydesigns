@@ -1,4 +1,5 @@
 'use strict';
+// Worker/client release: 2026-10-17-persistent-reports-2.
 self.addEventListener('install',event=>event.waitUntil(self.skipWaiting()));
 function inboxURL(value) {
     try {

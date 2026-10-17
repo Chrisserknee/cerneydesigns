@@ -4,15 +4,20 @@ const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platfor
 const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
 let renderedTips, state, registration, retryTimer, inboxTimer, inboxRequest, loadRequest, sessionVersion = 0, openAttempts = 0;
 const thumbnails = new TipThumbnails(api);
-let tipId = new URLSearchParams(location.search).get('tip');
+function rememberedTip() {
+    try { const id=localStorage.getItem('cerney-open-tip');return /^[a-f0-9]{64}$/.test(id || '') ? id : null; } catch { return null; }
+}
+let tipId = new URLSearchParams(location.search).get('tip') || rememberedTip();
 const show = (id, visible) => { $(id).hidden = !visible; };
 function message(text='', error=false) { $('message').textContent=text; $('message').classList.toggle('error',error); }
 function clearSession() {
+    try { localStorage.removeItem('cerney-open-tip'); } catch {}
     thumbnails.reset();
     state = null; renderedTips=null; sessionVersion++; message(); resetPull();
     $('inboxStatus').textContent = '';
     clearTimeout(retryTimer); clearTimeout(inboxTimer);
-    for (const id of ['tips','devices','selected']) $(id).replaceChildren();
+    for (const id of ['tips','reports','devices','selected']) $(id).replaceChildren();
+    show('reportsSection',false);$('reportsStatus').textContent='';
     show('selected',false); show('connected',false); show('login',true); show('intro',true);
 }
 async function api(op, data={}, options={}) {
@@ -147,12 +152,14 @@ async function fetchTips(quiet) {
     state = {...state,expiresAt:data.expiresAt};
     show('sessionHelp',data.expiresAt===null);
     show('login',false); show('intro',false); show('connected',true);
-    message(); show('empty',!data.tips.length);
-    const signature=JSON.stringify(data.tips);
+    const reports=Array.isArray(data.reports) ? data.reports : data.tips.filter(t=>t.type==='incident');
+    const tips=data.tips.filter(t=>t.type!=='incident');
+    message(); show('empty',!tips.length);show('reportsSection',reports.length>0);
+    const signature=JSON.stringify({tips,reports});
     if(signature!==renderedTips) {
     thumbnails.reset();
-    $('tips').replaceChildren();
-    for(const tip of data.tips) {
+    $('tips').replaceChildren();$('reports').replaceChildren();
+    for(const [container,records] of [[$('reports'),reports],[$('tips'),tips]]) for(const tip of records) {
         const row=document.createElement('article');row.className='tip tip-card';
         const body=document.createElement('div');body.className='tip-body';
         const info=document.createElement('div'); const title=document.createElement('h3');title.textContent=(tip.title || (tip.type==='story'?'Story submission':'Tipline upload'))+(tip.incomplete?' · Incomplete':'');
@@ -165,11 +172,13 @@ async function fetchTips(quiet) {
         info.append(provenance);body.append(info);
         if(folderURL(tip.driveUrl)) body.append(folderLink(tip)); else {const status=document.createElement('span');status.className='state';status.textContent=tip.status==='review'?'Needs review':'Files processing';body.append(status);}
         row.append(body);CerneyReportCopy.appendReportCopy(tip,row);thumbnails.add(tip,row);
-        $('tips').append(row);
+        container.append(row);
     }
     renderedTips=signature;
     }
-    $('inboxStatus').textContent=`${data.tips.length} recent ${data.tips.length===1?'tip':'tips'} · Updated ${new Intl.DateTimeFormat('en-US',{hour:'numeric',minute:'2-digit'}).format(new Date())}`;
+    const updated=new Intl.DateTimeFormat('en-US',{hour:'numeric',minute:'2-digit'}).format(new Date());
+    $('reportsStatus').textContent=`${reports.length} video ${reports.length===1?'report':'reports'} · Updated ${updated}`;
+    $('inboxStatus').textContent=`${tips.length} recent ${tips.length===1?'tip':'tips'} · Updated ${updated}`;
     // Keep a newly arrived photo current without requiring manual refresh.
     if (!document.hidden) {
         const processing=data.tips.some(t=>!folderURL(t.driveUrl) && t.status==='processing' && Date.parse(t.receivedAt)>Date.now()-3600000);
@@ -184,6 +193,9 @@ async function openTip() {
     state=state || {};
     show('login',false); show('intro',false); show('connected',true);
     if(folderURL(tip.driveUrl)) {
+        // Retain only the opaque selection, never private copy or media. A
+        // Home Screen relaunch still authenticates and reads the report fresh.
+        try { localStorage.setItem('cerney-open-tip',requestedId); } catch {}
         show('selected',true);
         const title=document.createElement('h2');title.textContent='Your tip is ready to open';
         const text=document.createElement('p');text.textContent=isIOS ? 'Tap below to open this folder in the Google Drive app.' : 'Open this tip’s Google Drive folder.';

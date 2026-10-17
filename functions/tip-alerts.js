@@ -10,7 +10,7 @@ const { logger } = require('firebase-functions');
 const {defineSecret}=require('firebase-functions/params');
 const {gatewayAuthenticated}=require('./request-auth');
 const proxySecret=defineSecret('TIP_ALERTS_PROXY_SECRET');
-const { SITE, hash, activeDevice, validSubscription, tipRecord, retryTime, notification } = require('./tip-alerts-helpers');
+const { SITE, hash, activeDevice, validSubscription, tipRecord, retryTime, notification, pushNotification } = require('./tip-alerts-helpers');
 const {sourceContext,displayContext}=require('./tip-inbox-context');
 const {thumbnailDescriptor,requestedThumbnail,sameThumbnail,verifiedThumbnailBytes,MAX_BYTES}=require('./tip-thumbnail');
 const ROOT = '_tipalerts/v1/';
@@ -267,7 +267,7 @@ async function handleApi(req, res) {
             return res.json({authenticated:false});
         }
         if (body.op === 'list' || body.op === 'tip') {
-            let tips;
+            let tips, incidentReports;
             if (body.op === 'tip') {
                 if (!/^[a-f0-9]{64}$/.test(body.id || '')) return res.status(400).json({error:'Invalid tip.'});
                 const stored = await read(`tips/${body.id}.json`);
@@ -281,19 +281,23 @@ async function handleApi(req, res) {
                 tips = [await syncTip(latest)];
             } else {
                 const incidents=(await inboxDocuments('incidents/')).map(incidentRecord).filter(Boolean);
+                // Keep prepared agency reports accessible even when more than
+                // 50 newer tip submissions fill the general inbox window.
+                incidentReports=incidents.filter(t=>Date.parse(t.receivedAt)>Date.now()-30*86400000)
+                    .sort((a,b)=>Date.parse(b.contextUpdatedAt)-Date.parse(a.contextUpdatedAt)).slice(0,50);
                 tips = [...await inboxDocuments(),...incidents].filter(t => Date.parse(t.receivedAt) > Date.now()-30*86400000)
                     .sort((a,b)=>Date.parse(b.receivedAt)-Date.parse(a.receivedAt)).slice(0,50);
             }
             const reports=await inboxDocuments('enrichment/');
             const byId=new Map(reports.map(r=>[r.id,r]));
             const deliveries=new Map((await inboxDocuments('deliveries/')).map(d=>[d.id,d]));
-            return res.json({authenticated:true,expiresAt:device.expiresAt,tips:tips.map(t=>t.type==='incident'?t:displayContext(t,byId.get(t.id),deliveries.get(t.id))).map(({path,sourceGeneration,sourceTitle,sourceSummary,sourceLocation,contextReceivedAt,...t})=>t)});
+            return res.json({authenticated:true,expiresAt:device.expiresAt,...(incidentReports ? {reports:incidentReports} : {}),tips:tips.map(t=>t.type==='incident'?t:displayContext(t,byId.get(t.id),deliveries.get(t.id))).map(({path,sourceGeneration,sourceTitle,sourceSummary,sourceLocation,contextReceivedAt,...t})=>t)});
         }
         if (body.op === 'test') {
             if (!device.subscription) return res.status(409).json({error:'Enable notifications on this device first.'});
             if (Date.now() - Date.parse(device.lastTestAt || 0) < 30000) return res.status(429).json({error:'Wait 30 seconds before another test.'});
             await updateDevice(device.id,{lastTestAt:new Date().toISOString()});
-            const payload = {web_push:8030, notification:{title:'Tip alerts are connected',body:'Tap to open your private tip inbox.',navigate:SITE+'/tip-alerts/?test=1',tag:'tip-alert-test',icon:SITE+'/tip-alerts/icon-192.png',data:{url:SITE+'/tip-alerts/?test=1'}}};
+            const payload = pushNotification({title:'Tip alerts are connected',body:'Tap to open your private tip inbox.',navigate:SITE+'/tip-alerts/?test=1',tag:'tip-alert-test',icon:SITE+'/tip-alerts/icon-192.png',data:{url:SITE+'/tip-alerts/?test=1'}});
             await send(device.subscription, payload, await config());
             return res.json({accepted:true});
         }

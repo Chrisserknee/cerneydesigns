@@ -43,18 +43,20 @@ function retryTime(error, attempt, now = Date.now()) {
     const delay = [60000, 300000, 900000, 1800000, 3600000][Math.min(Math.max(attempt - 1, 0), 4)];
     return now + Math.max(delay, serverDelay);
 }
+function pushNotification(notification) {
+    // Current Safari reads the outer flag; older Safari reads the inner one.
+    // Both retain the declarative fallback if worker processing is unavailable.
+    return {web_push:8030,mutable:true,notification:{...notification,mutable:true}};
+}
 function notification(tip, now = Date.now()) {
     const delayed = now - Date.parse(tip.receivedAt) > 10 * 60000;
     const received = new Intl.DateTimeFormat('en-US', {timeZone:'America/Los_Angeles', month:'short', day:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'}).format(new Date(tip.receivedAt));
-    return {
-        web_push: 8030,
-        notification: {
+    return pushNotification({
             title: delayed ? 'Tip received earlier' : 'New tip received',
             body: `Received ${received}.${tip.incomplete ? ' Incomplete upload saved.' : ''} Tap to review.`,
             navigate: `${SITE}/tip-alerts/?tip=${tip.id}`,
             tag: `tip-${tip.id}`, icon: `${SITE}/tip-alerts/icon-192.png`,
             data: { url: `${SITE}/tip-alerts/?tip=${tip.id}` },
-        },
-    };
+    });
 }
-module.exports = { SITE, hash, activeDevice, validSubscription, driveUrl, tipRecord, retryTime, notification };
+module.exports = { SITE, hash, activeDevice, validSubscription, driveUrl, tipRecord, retryTime, notification, pushNotification };

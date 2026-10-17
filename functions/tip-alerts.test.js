@@ -40,6 +40,7 @@ test('notification has source timestamp, private inbox link, and no submitter de
  const n=h.notification({...tip,senderName:'PRIVATE PERSON',description:'PRIVATE STORY',driveUrl:'https://drive.google.com/drive/folders/secret'},now+3600000);
  assert.equal(n.notification.title,'Tip received earlier');assert.match(n.notification.body,/Received/);assert.match(n.notification.navigate,/tip=[a-f0-9]{64}$/);
  assert.doesNotMatch(JSON.stringify(n),/PRIVATE|secret/);
+ assert.equal(n.mutable,true);assert.equal(n.notification.mutable,true);
 });
 test('capture uses server receipt time and strips client metadata',()=>{
  const o={name:'tips/2026-10-02_22-30-00_abcdefghijkl/_submission.json',timeCreated:new Date().toISOString(),metadata:{senderName:'private',notificationStatus:'sent',driveCopyStatus:'complete',driveFolderUrl:'https://drive.google.com/drive/folders/id'}};
@@ -163,4 +164,24 @@ test('Drive folder opens while files copy and survives an older metadata event',
  c.files.set(path,{generation:2,data:{}});
  const replaced=await c.syncTip({...event,generation:2,metadata:{}});
  assert.equal(replaced.driveUrl,null);
+});
+
+test('prepared reports remain in the home inbox when 50 newer submissions fill the tip list',async()=>{
+ const token='x'.repeat(43),source='incident:'+'a'.repeat(20)+':e1',id=h.hash(source);
+ const card={version:1,id,source,jobId:h.hash(JSON.stringify(source)).slice(0,20),incidentId:'a'.repeat(20),edition:1,revision:1,state:'ready',draftDelivered:true,receivedAt:new Date(now-86400000).toISOString(),updatedAt:new Date(now-1000).toISOString(),title:'Soledad report',driveUrl:'https://drive.google.com/drive/folders/report',instagramDescription:'Complete caption',voiceover:'Complete VO',privateContact:'SECRET'};
+ const initial={['_tipalerts/v1/devices/'+h.hash(token)+'.json']:device,['_tipalerts/v1/incidents/'+id+'.json']:card};
+ for(let i=0;i<55;i++){const record={id:h.hash('tip-'+i),receivedAt:new Date(now-i*1000).toISOString(),type:'upload',status:'processing'};initial['_tipalerts/v1/tips/'+record.id+'.json']=record;}
+ const c=harness({initial}),res={set(){},status(n){this.code=n;return this;},json(body){this.body=body;}};
+ await c.handleApi({method:'POST',is:()=>true,body:{op:'list',token}},res);
+ assert.equal(res.body.tips.length,50);assert(!res.body.tips.some(t=>t.id===id));
+ assert.equal(res.body.reports.length,1);assert.equal(res.body.reports[0].id,id);assert.equal(res.body.reports[0].voiceover,'Complete VO');
+ assert.doesNotMatch(JSON.stringify(res.body.reports),/SECRET|privateContact|jobId/);
+ // A fresh server/session reads the same durable report, independent of an alert.
+ const fresh=harness({initial});await fresh.handleApi({method:'POST',is:()=>true,body:{op:'list',token}},res);assert.equal(res.body.reports[0].id,id);
+});
+
+test('report listings still require a live paired device',async()=>{
+ const c=harness(),res={set(){},status(n){this.code=n;return this;},json(body){this.body=body;}};
+ await c.handleApi({method:'POST',is:()=>true,body:{op:'list',token:'x'.repeat(43)}},res);
+ assert.equal(res.code,401);assert.equal(res.body.reports,undefined);
 });

@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 
-function client({ tip = false, serviceWorker, respond, ios = false, homeScreen = true } = {}) {
+function client({ tip = false, serviceWorker, respond, ios = false, homeScreen = true, saved = new Map() } = {}) {
     const elements = new Map(), calls = [], destinations = [], events = {}, timers = [];
     const element = () => ({ hidden: false, children: [], handlers: {}, classList: { toggle() {} },
         replaceChildren(...children) { this.children = children; }, append(...children) { this.children.push(...children); },
@@ -17,6 +17,7 @@ function client({ tip = false, serviceWorker, respond, ios = false, homeScreen =
         setTimeout: (fn, ms) => { timers.push({fn,ms}); const timer=setTimeout(fn,ms); timer.unref(); return timer; }, clearTimeout,
         location: { origin:'https://www.chriscerney.org', search: tip ? '?tip=' + 'a'.repeat(64) : '', replace: url => destinations.push(url) },
         history: {replaceState:(_,__,url)=>destinations.push(url)},
+        localStorage:{getItem:key=>saved.get(key) || null,setItem:(key,value)=>saved.set(key,value),removeItem:key=>saved.delete(key)},
         fetch: async (_, options) => {
             const { op } = JSON.parse(options.body); calls.push(op);
             const answer = await respond?.(op) || { status: 200, body: op === 'status' ? { subscribed: true, expiresAt: null } : { tips: [] } };
@@ -206,4 +207,35 @@ test('an earlier selected-report request cannot overwrite a newer notification',
  notify('a'.repeat(64));notify('b'.repeat(64));for(let i=0;i<20;i++)await Promise.resolve();
  release({status:200,body:{tips:[{title:'Old report',driveUrl:'https://drive.google.com/drive/folders/old'}]}});for(let i=0;i<20;i++)await Promise.resolve();
  assert.equal(c.elements.get('selected').children[0].textContent,'Latest report');
+});
+
+test('Home Screen launches keep agency reports visible without a notification link',async()=>{
+ const report={id:'a'.repeat(64),type:'incident',title:'Soledad report',receivedAt:new Date().toISOString(),driveUrl:'https://drive.google.com/drive/folders/report',instagramDescription:'Complete Instagram caption',voiceover:'Complete recording script',reportState:'needs_review',contextSource:'claude'};
+ const newTip={type:'upload',title:'New tip',receivedAt:new Date().toISOString()};
+ const respond=()=>({status:200,body:{expiresAt:null,tips:[newTip],reports:[report]}});
+ for(let i=0;i<2;i++){
+  const c=client({ios:true,respond});await c.ready;
+  assert.equal(c.elements.get('reportsSection').hidden,false);assert.equal(c.elements.get('reports').children.length,1);
+  const row=c.elements.get('reports').children[0];assert.equal(row.children[0].children[0].children[0].textContent,'Soledad report');
+  assert.match(row.children[0].children[0].children.at(-1).textContent,/Draft needs attention/);
+  assert.equal(row.children.filter(e=>e.className==='report-copy').length,2);
+  assert.equal(c.elements.get('tips').children[0].children[0].children[0].children[0].textContent,'New tip');
+  await c.run('loadTips({quiet:true})');assert.equal(c.elements.get('reports').children[0],row);
+  c.run('clearSession()');assert.equal(c.elements.get('reports').children.length,0);assert.equal(c.elements.get('reportsSection').hidden,true);
+ }
+});
+
+test('a client using the previous API still keeps incident cards in Video reports',async()=>{
+ const c=client({respond:()=>({status:200,body:{tips:[{type:'incident',title:'Soledad report',receivedAt:new Date().toISOString(),driveUrl:'https://drive.google.com/drive/folders/report'}]}})});await c.ready;
+ assert.equal(c.elements.get('reports').children.length,1);assert.equal(c.elements.get('tips').children.length,0);assert.equal(c.elements.get('empty').hidden,false);
+});
+
+test('closing and reopening the Home Screen app reloads the last selected report from the server',async()=>{
+ const saved=new Map(),record={id:'a'.repeat(64),type:'incident',title:'Soledad report',receivedAt:new Date().toISOString(),driveUrl:'https://drive.google.com/drive/folders/report',instagramDescription:'Private caption',voiceover:'Private VO'};
+ const respond=op=>({status:200,body:{tips:op==='tip'?[record]:[],reports:[record]}});
+ const first=client({tip:true,saved,respond});await first.ready;
+ assert.equal(saved.get('cerney-open-tip'),record.id);assert.equal(saved.size,1);assert.doesNotMatch(JSON.stringify([...saved]),/Private caption|Private VO|drive.google/);
+ const reopened=client({saved,respond,ios:true});await reopened.ready;
+ assert.deepEqual(reopened.calls,['list','tip']);assert.equal(reopened.elements.get('selected').children[0].textContent,'Soledad report');
+ reopened.run('clearSession()');assert.equal(saved.size,0);assert.equal(reopened.elements.get('selected').children.length,0);
 });

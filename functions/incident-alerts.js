@@ -1,7 +1,7 @@
 'use strict';
 const {randomUUID}=require('node:crypto');
 const {incidentRecord}=require('./incident-record');
-const {SITE,activeDevice,retryTime}=require('./tip-alerts-helpers');
+const {SITE,activeDevice,retryTime,pushNotification}=require('./tip-alerts-helpers');
 // First report-alert acceptance run; never reset this on a later deployment.
 const ENABLED_AT='2026-10-17T10:10:00.000Z';
 const BUCKET='tip-line-8c2d7.firebasestorage.app';
@@ -13,7 +13,7 @@ function alertRecord(data,now=Date.now()){
 }
 function payload(report){
  const url=`${SITE}/tip-alerts/?tip=${report.id}`;
- return {web_push:8030,notification:{title:report.alertState==='review'?'Report needs your review':'Video report ready',body:'Open Cerney Tips for the video, full Instagram description and VO.',navigate:url,tag:`report-${report.id}-r${report.reportRevision}-${report.alertState}`,icon:SITE+'/tip-alerts/icon-192.png',data:{url}}};
+ return pushNotification({title:report.alertState==='review'?'Report needs your review':'Video report ready',body:'Open Cerney Tips for the video, full Instagram description and VO.',navigate:url,tag:`report-${report.id}-r${report.reportRevision}-${report.alertState}`,icon:SITE+'/tip-alerts/icon-192.png',data:{url}});
 }
 function createAlerts({read,write,documents,send,config,logger={info(){},warn(){}}}){
  async function deliver(report,device,keys){
