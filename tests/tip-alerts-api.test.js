@@ -1,11 +1,18 @@
 const test=require('node:test');const assert=require('node:assert/strict');const vm=require('node:vm');const fs=require('node:fs');
 function proxy(authenticated=false, reply={}, status=200) {
- const calls=[];const c=vm.createContext({module:{exports:{}},Buffer,AbortSignal,fetch:async(url,opts)=>{calls.push({url,body:JSON.parse(opts.body)});return {ok:status<400,status,json:async()=>reply};},require(name){if(name==='./_lib/tip-backend')return {callTipBackend:async body=>{calls.push({body});return {ok:status<400,status,json:async()=>reply};}};if(name==='./_lib/admin-auth')return {isAuthenticated:()=>authenticated};return require('../api/_lib/http');}});
+ const calls=[],logs=[];const c=vm.createContext({console:{info:text=>logs.push(JSON.parse(text))},module:{exports:{}},Buffer,AbortSignal,fetch:async(url,opts)=>{calls.push({url,body:JSON.parse(opts.body)});return {ok:status<400,status,json:async()=>reply};},require(name){if(name==='./_lib/tip-backend')return {callTipBackend:async body=>{calls.push({body});return {ok:status<400,status,json:async()=>reply};}};if(name==='./_lib/admin-auth')return {isAuthenticated:()=>authenticated};return require('../api/_lib/http');}});
  vm.runInContext(fs.readFileSync(__dirname+'/../api/tip-alerts.js','utf8'),c);
  const res={headers:{},setHeader(k,v){this.headers[k]=v;},status(n){this.code=n;return this;},json(data){this.body=data;return this;}};
- return {run:c.module.exports,calls,res};
+ return {run:c.module.exports,calls,res,logs};
 }
 const req=(body,headers={})=>({method:'POST',headers:{origin:'https://www.chriscerney.org','content-type':'application/json',...headers},body});
+test('inbox diagnostics contain counts but no private fields',async()=>{
+ const p=proxy(false,{tips:[{type:'upload',title:'PRIVATE'}, {type:'incident',id:'SECRET'}],reports:[{voiceover:'PRIVATE'}]});
+ await p.run(req({op:'list'},{cookie:'cc_tip_device='+'x'.repeat(43),'user-agent':'iPhone'}),p.res);
+ assert.deepEqual(p.logs,[{event:'tip-inbox-list',client:'ios',status:200,tips:2,incidentTips:1,reports:1}]);
+ assert.doesNotMatch(JSON.stringify(p.logs),/PRIVATE|SECRET|xxxx/);
+ const denied=proxy();await denied.run(req({op:'list'}),denied.res);assert.equal(denied.logs.length,0);
+});
 test('tip proxy rejects cross-origin requests and unpaired readers',async()=>{
  const p=proxy();await p.run(req({op:'list'},{origin:'https://evil.test'}),p.res);assert.equal(p.res.code,403);
  await p.run(req({op:'list'}),p.res);assert.equal(p.res.code,401);assert.equal(p.calls.length,0);

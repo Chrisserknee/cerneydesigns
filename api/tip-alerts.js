@@ -30,6 +30,13 @@ module.exports = async (request, response) => {
     try {
         const remote = await callTipBackend(payload);
         const result = await remote.json();
+        // Count-only diagnostics distinguish a missing backend report list from
+        // an older/resumed client. Never log cookies, tip IDs, text or media.
+        if (body.op === 'list') console.info(JSON.stringify({event:'tip-inbox-list',
+            client:/iPhone|iPad|iPod/.test(String(request.headers['user-agent'] || ''))?'ios':'other',
+            status:remote.status,tips:Array.isArray(result.tips)?result.tips.length:null,
+            incidentTips:Array.isArray(result.tips)?result.tips.filter(t=>t.type==='incident').length:null,
+            reports:Array.isArray(result.reports)?result.reports.length:null}));
         if (remote.ok && body.op === 'pair') {
             if (!/^[A-Za-z0-9_-]{43}$/.test(result.token)) throw new Error('Invalid pairing response');
             response.setHeader('Set-Cookie',deviceCookie(result.token));
