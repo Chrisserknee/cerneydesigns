@@ -424,3 +424,6 @@ function isApprovedDriveBridgeUrl(value) {
 
 // Private iPhone Web Push is the tipline notification channel.
 Object.assign(exports, require('./tip-alerts'));
+
+// Completed incident/press-release cards use the existing private Tips devices.
+Object.assign(exports, require('./incident-alert-functions'));
