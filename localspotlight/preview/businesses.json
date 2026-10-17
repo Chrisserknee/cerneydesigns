@@ -1,0 +1,784 @@
+{
+  "designExamplesOnly": true,
+  "listings": [
+    {
+      "businessName": "San Pedro Fish Market",
+      "category": "Food & drink",
+      "city": "Monterey",
+      "description": "Seafood restaurant.",
+      "website": "https://www.sanpedrofish.com/",
+      "logoUrl": "/localspotlight/preview/assets/business-000.png"
+    },
+    {
+      "businessName": "Ami Carmel",
+      "category": "Shopping",
+      "city": "Carmel",
+      "description": "Furniture and home accents.",
+      "website": "https://www.amicarmel.com",
+      "logoUrl": "/localspotlight/preview/assets/business-001.png"
+    },
+    {
+      "businessName": "4LEAF",
+      "category": "Home & auto",
+      "city": "Monterey",
+      "description": "Construction and building services.",
+      "website": "https://www.4leafinc.com"
+    },
+    {
+      "businessName": "Monterey MD Spa",
+      "category": "Health & wellness",
+      "city": "Monterey",
+      "description": "Health & wellness.",
+      "website": "https://montereymdspa.com/",
+      "logoUrl": "/localspotlight/preview/assets/business-003.png"
+    },
+    {
+      "businessName": "2 Player Arcade Shop",
+      "category": "Arts & experiences",
+      "city": "Monterey",
+      "description": "Entertainment.",
+      "website": "https://2playerarcade.com",
+      "logoUrl": "/localspotlight/preview/assets/business-005.png"
+    },
+    {
+      "businessName": "Andril Fireplace Cottages",
+      "category": "Other",
+      "city": "Pacific Grove",
+      "description": "Hotels and Motels.",
+      "website": "https://www.andrilcottages.com/",
+      "logoUrl": "/localspotlight/preview/assets/business-006.png"
+    },
+    {
+      "businessName": "Benitez Security Services, Inc.",
+      "category": "Professional services",
+      "city": "King City",
+      "description": "Security Services.",
+      "website": "https://www.benitezsecurityservices.com",
+      "logoUrl": "/localspotlight/preview/assets/business-011.png"
+    },
+    {
+      "businessName": "A Tool Shed",
+      "category": "Home & auto",
+      "city": "Salinas",
+      "description": "Equipment rental.",
+      "website": "https://www.atoolshed.com",
+      "logoUrl": "/localspotlight/preview/assets/business-012.png"
+    },
+    {
+      "businessName": "Bernardus Lodge & Spa",
+      "category": "Other",
+      "city": "Carmel Valley",
+      "description": "Hotels/Resorts-Full Service.",
+      "website": "https://www.bernarduslodge.com",
+      "logoUrl": "/localspotlight/preview/assets/business-013.ico"
+    },
+    {
+      "businessName": "Alvarado Street Brewery & Grill",
+      "category": "Food & drink",
+      "city": "Monterey",
+      "description": "Restaurant and bar.",
+      "website": "https://www.alvaradostreetbrewery.com",
+      "logoUrl": "/localspotlight/preview/assets/business-014.png"
+    },
+    {
+      "businessName": "Bereman Carpets",
+      "category": "Home & auto",
+      "city": "Monterey",
+      "description": "Carpets, flooring and window coverings.",
+      "website": "https://www.beremancarpets.com/",
+      "logoUrl": "/localspotlight/preview/assets/business-015.png"
+    },
+    {
+      "businessName": "Aragon Electrical Services",
+      "category": "Home & auto",
+      "city": "Marina",
+      "description": "Electrical Contractors.",
+      "website": "https://aragonelectrical.com/",
+      "logoUrl": "/localspotlight/preview/assets/business-016.png"
+    },
+    {
+      "businessName": "ARCpoint Labs of Monterey Bay",
+      "category": "Health & wellness",
+      "city": "Monterey",
+      "description": "Health Care Services.",
+      "website": "https://www.arcpointlabs.com/monterey-bay/",
+      "logoUrl": "/localspotlight/preview/assets/business-017.webp"
+    },
+    {
+      "businessName": "Bolour/Carl Immigration Group",
+      "category": "Professional services",
+      "city": "Monterey",
+      "description": "Legal Services.",
+      "website": "https://americanvisas.net/",
+      "logoUrl": "/localspotlight/preview/assets/business-018.png"
+    },
+    {
+      "businessName": "Accent Event & Design",
+      "category": "Arts & experiences",
+      "city": "Carmel",
+      "description": "Arts & experiences.",
+      "website": "https://www.accenteventanddesign.com",
+      "logoUrl": "/localspotlight/preview/assets/business-019.png"
+    },
+    {
+      "businessName": "Built-In Distributors",
+      "category": "Home & auto",
+      "city": "Seaside",
+      "description": "Building Supply.",
+      "website": "https://www.bidappliance.com",
+      "logoUrl": "/localspotlight/preview/assets/business-021.png"
+    },
+    {
+      "businessName": "Ausonio Incorporated",
+      "category": "Home & auto",
+      "city": "Castroville",
+      "description": "Construction and building services.",
+      "website": "https://www.ausonio.com",
+      "logoUrl": "/localspotlight/preview/assets/business-022.png"
+    },
+    {
+      "businessName": "Adventures by the Sea",
+      "category": "Arts & experiences",
+      "city": "Monterey",
+      "description": "Recreation and Rentals.",
+      "website": "https://adventuresbythesea.com/",
+      "logoUrl": "/localspotlight/preview/assets/business-025.png"
+    },
+    {
+      "businessName": "Butterfly Grove Inn",
+      "category": "Other",
+      "city": "Pacific Grove",
+      "description": "Hotels and Motels.",
+      "website": "https://www.butterflygroveinn.com",
+      "logoUrl": "/localspotlight/preview/assets/business-026.ico"
+    },
+    {
+      "businessName": "Baker's Bacon",
+      "category": "Food & drink",
+      "city": "Marina",
+      "description": "Gourmet Food.",
+      "website": "https://bakersbacon.com/",
+      "logoUrl": "/localspotlight/preview/assets/business-027.png"
+    },
+    {
+      "businessName": "Cannery Row Antique Mall",
+      "category": "Shopping",
+      "city": "Monterey",
+      "description": "Shopping.",
+      "website": "https://www.canneryrowantiquemall.com/"
+    },
+    {
+      "businessName": "Avila Construction",
+      "category": "Home & auto",
+      "city": "Monterey",
+      "description": "Construction and general contracting.",
+      "website": "https://www.avilaconst.com/",
+      "logoUrl": "/localspotlight/preview/assets/business-029.png"
+    },
+    {
+      "businessName": "Chicago Title Company",
+      "category": "Professional services",
+      "city": "Monterey",
+      "description": "Title Companies.",
+      "website": "https://premier.ctic.com/",
+      "logoUrl": "/localspotlight/preview/assets/business-031.png"
+    },
+    {
+      "businessName": "Candle Light Inn",
+      "category": "Other",
+      "city": "Carmel",
+      "description": "Hotels and Motels.",
+      "website": "https://www.candlelightinncarmel.com",
+      "logoUrl": "/localspotlight/preview/assets/business-033.ico"
+    },
+    {
+      "businessName": "Bernardus Winery",
+      "category": "Food & drink",
+      "city": "Carmel Valley",
+      "description": "Winery and tasting room.",
+      "website": "https://www.bernardus.com/"
+    },
+    {
+      "businessName": "Bakker Construction",
+      "category": "Home & auto",
+      "city": "Monterey",
+      "description": "Design-Build and General Contractor.",
+      "website": "https://www.bakkerconstruction.com",
+      "logoUrl": "/localspotlight/preview/assets/business-036.png"
+    },
+    {
+      "businessName": "Big Sur Bovine",
+      "category": "Health & wellness",
+      "city": "Salinas",
+      "description": "Nutrition.",
+      "website": "https://www.bigsurbovine.com/"
+    },
+    {
+      "businessName": "College Advising Services, LLC",
+      "category": "Professional services",
+      "city": "Carmel",
+      "description": "Professional services.",
+      "website": "https://collegeadvisingservicesllc.com/"
+    },
+    {
+      "businessName": "Challenge Dairy",
+      "category": "Food & drink",
+      "city": "Marina",
+      "description": "Wholesale Distributors.",
+      "website": "https://challengedairy.com/",
+      "logoUrl": "/localspotlight/preview/assets/business-042.png"
+    },
+    {
+      "businessName": "College Living Experience",
+      "category": "Professional services",
+      "city": "Monterey",
+      "description": "Educational Consultant/Therapy.",
+      "website": "https://experiencecle.com/",
+      "logoUrl": "/localspotlight/preview/assets/business-044.png"
+    },
+    {
+      "businessName": "Axiom Home Tech",
+      "category": "Home & auto",
+      "city": "Monterey",
+      "description": "Audio-Visual Equipment & Services.",
+      "website": "https://www.axiomhometech.com/",
+      "logoUrl": "/localspotlight/preview/assets/business-045.jpg"
+    },
+    {
+      "businessName": "Carmel Mission Inn",
+      "category": "Other",
+      "city": "Carmel",
+      "description": "Hotels/Resorts-Full Service.",
+      "website": "https://www.carmelmissioninn.com",
+      "logoUrl": "/localspotlight/preview/assets/business-046.png"
+    },
+    {
+      "businessName": "Collins Electrical Company",
+      "category": "Home & auto",
+      "city": "Marina",
+      "description": "Electrical Contractors.",
+      "website": "https://www.collinselectric.com",
+      "logoUrl": "/localspotlight/preview/assets/business-049.png"
+    },
+    {
+      "businessName": "Cresap Investigations, LLC",
+      "category": "Professional services",
+      "city": "Monterey",
+      "description": "Professional services.",
+      "website": "https://cresapinvestigations.com",
+      "logoUrl": "/localspotlight/preview/assets/business-051.png"
+    },
+    {
+      "businessName": "Bayonet and Blackhorse Golf Course",
+      "category": "Arts & experiences",
+      "city": "Seaside",
+      "description": "Golf Courses & Driving Ranges.",
+      "website": "https://www.bayonetblackhorse.com/",
+      "logoUrl": "/localspotlight/preview/assets/business-052.png"
+    },
+    {
+      "businessName": "Carriage House Inn",
+      "category": "Other",
+      "city": "Carmel",
+      "description": "Hotels and Motels.",
+      "website": "https://www.carriagehouseinncarmel.com",
+      "logoUrl": "/localspotlight/preview/assets/business-053.ico"
+    },
+    {
+      "businessName": "Carmel Valley Manor",
+      "category": "Health & wellness",
+      "city": "Carmel",
+      "description": "Retirement Community.",
+      "website": "https://cvmanor.com/",
+      "logoUrl": "/localspotlight/preview/assets/business-056.jpg"
+    },
+    {
+      "businessName": "Denise Duffy & Associates",
+      "category": "Professional services",
+      "city": "Monterey",
+      "description": "Land Development.",
+      "website": "https://www.ddaplanning.com",
+      "logoUrl": "/localspotlight/preview/assets/business-057.png"
+    },
+    {
+      "businessName": "Casa Munras Garden Hotel & Spa",
+      "category": "Other",
+      "city": "Monterey",
+      "description": "Hotels/Resorts-Full Service.",
+      "website": "https://www.hotelcasamunras.com",
+      "logoUrl": "/localspotlight/preview/assets/business-059.png"
+    },
+    {
+      "businessName": "Carmel Valley Coffee Roasting Company",
+      "category": "Food & drink",
+      "city": "Carmel",
+      "description": "Coffee Roasters.",
+      "website": "https://carmelcoffeeroasters.com/",
+      "logoUrl": "/localspotlight/preview/assets/business-060.png"
+    },
+    {
+      "businessName": "DMC Commercial, Inc.",
+      "category": "Home & auto",
+      "city": "Monterey",
+      "description": "Construction and building services.",
+      "website": "https://dmcmp.com/",
+      "logoUrl": "/localspotlight/preview/assets/business-062.png"
+    },
+    {
+      "businessName": "DKomplex",
+      "category": "Professional services",
+      "city": "Monterey",
+      "description": "Microsoft Dynamics 365 and HubSpot Partner.",
+      "website": "https://www.dkomplex.com"
+    },
+    {
+      "businessName": "Chef Lee's Mandarin House",
+      "category": "Food & drink",
+      "city": "Monterey",
+      "description": "Restaurant-Asian.",
+      "website": "https://chefleesmandarinhouse.com",
+      "logoUrl": "/localspotlight/preview/assets/business-067.ico"
+    },
+    {
+      "businessName": "Del Monte Shopping Center",
+      "category": "Shopping",
+      "city": "Monterey",
+      "description": "Shopping Centers.",
+      "website": "https://www.delmontecenter.com/",
+      "logoUrl": "/localspotlight/preview/assets/business-068.webp"
+    },
+    {
+      "businessName": "Graniterock",
+      "category": "Home & auto",
+      "city": "Seaside",
+      "description": "Construction and building services.",
+      "website": "https://www.graniterock.com",
+      "logoUrl": "/localspotlight/preview/assets/business-069.png"
+    },
+    {
+      "businessName": "Dunnion Law",
+      "category": "Professional services",
+      "city": "Monterey",
+      "description": "Accident and Injury Lawyers.",
+      "website": "https://www.dunnion.com",
+      "logoUrl": "/localspotlight/preview/assets/business-071.webp"
+    },
+    {
+      "businessName": "Coastal Roots Hospitality",
+      "category": "Food & drink",
+      "city": "Monterey",
+      "description": "Caterers, Restaurant-California Cuisine, Restaurant and Night Life, Restaurant-Steakhouse, Restaurant and bar.",
+      "website": "https://www.coastalrootshospitality.com",
+      "logoUrl": "/localspotlight/preview/assets/business-074.png"
+    },
+    {
+      "businessName": "Fenton & Keller",
+      "category": "Professional services",
+      "city": "Monterey",
+      "description": "Attorneys.",
+      "website": "https://fentonkeller.com/",
+      "logoUrl": "/localspotlight/preview/assets/business-078.png"
+    },
+    {
+      "businessName": "Coniglio Brothers Italian Deli",
+      "category": "Food & drink",
+      "city": "Monterey",
+      "description": "Restaurant-Cafe/Deli.",
+      "website": "https://conigliodeli.com/"
+    },
+    {
+      "businessName": "Fisk Paints",
+      "category": "Home & auto",
+      "city": "Sand City",
+      "description": "Paint Suppliers.",
+      "website": "https://www.fiskpaints.com"
+    },
+    {
+      "businessName": "Dametra Cafe",
+      "category": "Food & drink",
+      "city": "Carmel",
+      "description": "Restaurant-Mediterranean Cuisine.",
+      "website": "https://www.dametracafe.com"
+    },
+    {
+      "businessName": "Floor Store USA's Flooring America",
+      "category": "Home & auto",
+      "city": "Sand City",
+      "description": "Flooring.",
+      "website": "https://www.flooringamericamonterey.com/",
+      "logoUrl": "/localspotlight/preview/assets/business-089.ico"
+    },
+    {
+      "businessName": "ME & F Rios Painting",
+      "category": "Home & auto",
+      "city": "Seaside",
+      "description": "Contractors- Painting.",
+      "website": "https://www.mef-riospainting.com"
+    },
+    {
+      "businessName": "Doctors on Duty",
+      "category": "Health & wellness",
+      "city": "Monterey",
+      "description": "Physicians & Surgeons.",
+      "website": "https://doctorsonduty.com/",
+      "logoUrl": "/localspotlight/preview/assets/business-091.png"
+    },
+    {
+      "businessName": "Jim Pinckney Photography",
+      "category": "Professional services",
+      "city": "Monterey",
+      "description": "Photographers or Photography Supplies.",
+      "website": "https://www.jimpinckney.com"
+    },
+    {
+      "businessName": "Dametra Fresh Mediterranean",
+      "category": "Food & drink",
+      "city": "Monterey",
+      "description": "Restaurant-Mediterranean Cuisine.",
+      "website": "https://dametra.com/",
+      "logoUrl": "/localspotlight/preview/assets/business-095.png"
+    },
+    {
+      "businessName": "Grace Skin - Aesthetics and Skin Health",
+      "category": "Health & wellness",
+      "city": "Monterey",
+      "description": "Health & Wellness.",
+      "website": "https://www.graceskinaesthetics.com",
+      "logoUrl": "/localspotlight/preview/assets/business-098.png"
+    },
+    {
+      "businessName": "Choura",
+      "category": "Professional services",
+      "city": "Monterey",
+      "description": "Event Planners.",
+      "website": "https://www.choura.co",
+      "logoUrl": "/localspotlight/preview/assets/business-099.png"
+    },
+    {
+      "businessName": "Del Monte Grill & Cafe",
+      "category": "Food & drink",
+      "city": "Monterey",
+      "description": "Food & drink.",
+      "website": "https://www.delmontegrillandcafe.com/",
+      "logoUrl": "/localspotlight/preview/assets/business-101.png"
+    },
+    {
+      "businessName": "Galaxy Party Supply",
+      "category": "Shopping",
+      "city": "Salinas",
+      "description": "Party Supplies.",
+      "website": "https://www.galaxypartysupply.com",
+      "logoUrl": "/localspotlight/preview/assets/business-102.png"
+    },
+    {
+      "businessName": "NXP Engineering",
+      "category": "Home & auto",
+      "city": "Seaside",
+      "description": "Construction and building services.",
+      "website": "https://nxpengineering.com",
+      "logoUrl": "/localspotlight/preview/assets/business-103.png"
+    },
+    {
+      "businessName": "Injected Artistry",
+      "category": "Health & wellness",
+      "city": "Monterey",
+      "description": "Health & Wellness.",
+      "website": "https://injectedartistry.com"
+    },
+    {
+      "businessName": "JRG Attorneys at Law",
+      "category": "Professional services",
+      "city": "Salinas",
+      "description": "Legal Services.",
+      "website": "https://jrgattorneys.com/",
+      "logoUrl": "/localspotlight/preview/assets/business-105.jpg"
+    },
+    {
+      "businessName": "Domenico's on the Wharf",
+      "category": "Food & drink",
+      "city": "Monterey",
+      "description": "Seafood restaurant.",
+      "website": "https://domenicosmonterey.com/",
+      "logoUrl": "/localspotlight/preview/assets/business-108.png"
+    },
+    {
+      "businessName": "Illusions Inc.",
+      "category": "Shopping",
+      "city": "Sand City",
+      "description": "Home Improvements.",
+      "website": "https://www.illusionsinc.net/",
+      "logoUrl": "/localspotlight/preview/assets/business-109.png"
+    },
+    {
+      "businessName": "Otto Construction",
+      "category": "Home & auto",
+      "city": "Monterey",
+      "description": "Construction and building services.",
+      "website": "https://www.ottoconstruction.com",
+      "logoUrl": "/localspotlight/preview/assets/business-110.png"
+    },
+    {
+      "businessName": "Madonna Gardens Assisted Living & Memory Care",
+      "category": "Health & wellness",
+      "city": "Salinas",
+      "description": "Health Care/Convalescent Hospitals.",
+      "website": "https://carefieldliving.com/communities/madonna-gardens/",
+      "logoUrl": "/localspotlight/preview/assets/business-111.webp"
+    },
+    {
+      "businessName": "Kennedy, Archer & Giffen",
+      "category": "Professional services",
+      "city": "Monterey",
+      "description": "Attorneys.",
+      "website": "https://kaglaw.net/"
+    },
+    {
+      "businessName": "Kurz Instruments",
+      "category": "Professional services",
+      "city": "Monterey",
+      "description": "Manufacturers.",
+      "website": "https://www.kurzinstruments.com",
+      "logoUrl": "/localspotlight/preview/assets/business-116.ico"
+    },
+    {
+      "businessName": "Peninsula Construction",
+      "category": "Home & auto",
+      "city": "Seaside",
+      "description": "Contractors.",
+      "website": "https://peninsulaconstructioninc.com/",
+      "logoUrl": "/localspotlight/preview/assets/business-117.png"
+    },
+    {
+      "businessName": "Majestic MD",
+      "category": "Health & wellness",
+      "city": "Monterey",
+      "description": "Health & Wellness.",
+      "website": "https://majesticmdspa.com/"
+    },
+    {
+      "businessName": "Erik's DeliCafe",
+      "category": "Food & drink",
+      "city": "Seaside",
+      "description": "Restaurant-Cafe/Deli.",
+      "website": "https://www.eriksdelicafe.com/location/seaside-california-deli-cafe",
+      "logoUrl": "/localspotlight/preview/assets/business-122.png"
+    },
+    {
+      "businessName": "Scudder Roofing",
+      "category": "Home & auto",
+      "city": "Marina",
+      "description": "Home & auto.",
+      "website": "https://www.scudderroofing.com",
+      "logoUrl": "/localspotlight/preview/assets/business-123.png"
+    },
+    {
+      "businessName": "Craft Collective",
+      "category": "Food & drink",
+      "city": "Seaside",
+      "description": "Caterers.",
+      "website": "https://www.craftcollectiveevents.com",
+      "logoUrl": "/localspotlight/preview/assets/business-126.jpg"
+    },
+    {
+      "businessName": "Hotel Abrego",
+      "category": "Other",
+      "city": "Monterey",
+      "description": "Hotels and Motels.",
+      "website": "https://www.hotelabrego.com",
+      "logoUrl": "/localspotlight/preview/assets/business-127.png"
+    },
+    {
+      "businessName": "Fandango Restaurant",
+      "category": "Food & drink",
+      "city": "Pacific Grove",
+      "description": "European & Mediterranean Cuisine in Pacific Grove.",
+      "website": "https://fandangorestaurant.com/",
+      "logoUrl": "/localspotlight/preview/assets/business-128.jpg"
+    },
+    {
+      "businessName": "Mattress Nation",
+      "category": "Shopping",
+      "city": "Monterey",
+      "description": "Mattresses-Retail.",
+      "website": "https://themattressnation.com"
+    },
+    {
+      "businessName": "Scudder Solar Electrical Energy Systems",
+      "category": "Home & auto",
+      "city": "Marina",
+      "description": "Home & auto.",
+      "website": "https://www.scuddersolar.com",
+      "logoUrl": "/localspotlight/preview/assets/business-130.png"
+    },
+    {
+      "businessName": "Mighty Miracles Therapy",
+      "category": "Health & wellness",
+      "city": "Monterey",
+      "description": "Health Care Services.",
+      "website": "https://mightymiraclestherapy.com/"
+    },
+    {
+      "businessName": "Manuel Ortega Photography",
+      "category": "Professional services",
+      "city": "Monterey",
+      "description": "Photographers or Photography Supplies.",
+      "website": "https://manuelortegaphoto.com/",
+      "logoUrl": "/localspotlight/preview/assets/business-132.jpg"
+    },
+    {
+      "businessName": "Deja Blue",
+      "category": "Food & drink",
+      "city": "Seaside",
+      "description": "Entertainment.",
+      "website": "https://Dejabluelive.com"
+    },
+    {
+      "businessName": "Hotel Pacific",
+      "category": "Other",
+      "city": "Monterey",
+      "description": "Hotels and Motels.",
+      "website": "https://www.hotelpacific.com",
+      "logoUrl": "/localspotlight/preview/assets/business-134.png"
+    },
+    {
+      "businessName": "MM Jumpers & Party Rentals LLC",
+      "category": "Arts & experiences",
+      "city": "Salinas",
+      "description": "Party Supplies.",
+      "website": "https://www.mmjumperz.com",
+      "logoUrl": "/localspotlight/preview/assets/business-136.png"
+    },
+    {
+      "businessName": "Smith & Associates Environmental Health & Safety",
+      "category": "Home & auto",
+      "city": "Monterey",
+      "description": "Environmental health and safety consulting.",
+      "website": "https://smith4safety.com/"
+    },
+    {
+      "businessName": "MBS Business Systems",
+      "category": "Professional services",
+      "city": "Salinas",
+      "description": "Office Supplies, Equipment and Services, Copiers, Technology.",
+      "website": "https://mbsworks.com/",
+      "logoUrl": "/localspotlight/preview/assets/business-139.png"
+    },
+    {
+      "businessName": "Events by Classic",
+      "category": "Professional services",
+      "city": "Monterey",
+      "description": "Venues and Catering for Special Events.",
+      "website": "https://eventsbyclassic.com/"
+    },
+    {
+      "businessName": "Inn by the Bay Monterey",
+      "category": "Other",
+      "city": "Monterey",
+      "description": "Hotels and Motels.",
+      "website": "https://www.innbythebaymonterey.com/",
+      "logoUrl": "/localspotlight/preview/assets/business-141.ico"
+    },
+    {
+      "businessName": "SSB Construction",
+      "category": "Home & auto",
+      "city": "Salinas",
+      "description": "Construction and building services.",
+      "website": "https://ssbconstruction.com",
+      "logoUrl": "/localspotlight/preview/assets/business-142.png"
+    },
+    {
+      "businessName": "Mitchell & Danoff Law Firm",
+      "category": "Professional services",
+      "city": "Monterey",
+      "description": "Attorneys.",
+      "website": "https://www.mitchelldanoff.com",
+      "logoUrl": "/localspotlight/preview/assets/business-144.png"
+    },
+    {
+      "businessName": "Fairview Laguna Seca",
+      "category": "Arts & experiences",
+      "city": "Monterey",
+      "description": "Arts & experiences.",
+      "website": "https://www.fairviewevents.com/laguna-seca-home",
+      "logoUrl": "/localspotlight/preview/assets/business-145.png"
+    },
+    {
+      "businessName": "Inns of Monterey",
+      "category": "Other",
+      "city": "Monterey",
+      "description": "Bed and Breakfasts/Country Inns.",
+      "website": "https://www.innsofmonterey.com/",
+      "logoUrl": "/localspotlight/preview/assets/business-146.png"
+    },
+    {
+      "businessName": "Kona Steak and Seafood",
+      "category": "Food & drink",
+      "city": "Monterey",
+      "description": "Food & drink.",
+      "website": "https://www.konamonterey.com/",
+      "logoUrl": "/localspotlight/preview/assets/business-147.png"
+    },
+    {
+      "businessName": "Northridge Mall",
+      "category": "Shopping",
+      "city": "Salinas",
+      "description": "Shopping Centers.",
+      "website": "https://www.shop-northridge-mall.com",
+      "logoUrl": "/localspotlight/preview/assets/business-148.jpg"
+    },
+    {
+      "businessName": "Montellese Chiropractic",
+      "category": "Health & wellness",
+      "city": "Monterey",
+      "description": "Chiropractors.",
+      "website": "https://montellesechiropractic.com/"
+    },
+    {
+      "businessName": "Mitchell Technologies",
+      "category": "Professional services",
+      "city": "Monterey",
+      "description": "Technology.",
+      "website": "https://mitchelltechnologies.com/",
+      "logoUrl": "/localspotlight/preview/assets/business-151.png"
+    },
+    {
+      "businessName": "Val's Plumbing & Heating, Inc.",
+      "category": "Home & auto",
+      "city": "Salinas",
+      "description": "Contractors.",
+      "website": "https://valsplumbing.com/",
+      "logoUrl": "/localspotlight/preview/assets/business-156.jpg"
+    },
+    {
+      "businessName": "Monterey Cellular Therapy",
+      "category": "Health & wellness",
+      "city": "Monterey",
+      "description": "Health & Wellness.",
+      "website": "https://www.montereycellulartherapy.com/",
+      "logoUrl": "/localspotlight/preview/assets/business-157.png"
+    },
+    {
+      "businessName": "Glastonbury Audio Visual Event Specialists",
+      "category": "Professional services",
+      "city": "Sand City",
+      "description": "Audio-Visual Equipment & Services.",
+      "website": "https://www.glastonburyinc.com",
+      "logoUrl": "/localspotlight/preview/assets/business-159.png"
+    },
+    {
+      "businessName": "Lighthouse Lodge and Cottages",
+      "category": "Other",
+      "city": "Pacific Grove",
+      "description": "Hotels and Motels.",
+      "website": "https://www.lighthouselodgecottages.com",
+      "logoUrl": "/localspotlight/preview/assets/business-160.png"
+    },
+    {
+      "businessName": "La Sala’s BiRite Market",
+      "category": "Food & drink",
+      "city": "Monterey",
+      "description": "Restaurant-Cafe/Deli.",
+      "website": "https://www.lasalasbiritemarketca.com/"
+    }
+  ]
+}

@@ -17,6 +17,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/localspotlight/style.css">
+    <link rel="stylesheet" href="/spotlightsignup/review.css">
     <script src="/spotlightsignup/app.js" defer></script>
 </head>
 <body class="signup-page">
@@ -39,9 +40,10 @@
         <header class="page-heading signup-heading">
             <a class="back-link" href="/localspotlight">← Local Spotlight</a>
             <h1>Feature your business.</h1>
-            <p><strong>$100 per month.</strong> Your business profile, website link, and optional phone in Local Spotlight.</p>
-            <p class="offer-detail">Billed monthly. Cancel any time. Paid listing only; news coverage is not included.</p>
+            <p><strong>$100 per month.</strong> Your business profile, optional logo, website link, and phone in Local Spotlight.</p>
+            <p class="offer-detail">Paid listing only; news coverage is not included. Cancel future renewals any time.</p>
         </header>
+        <aside class="review-policy" aria-labelledby="reviewPolicyTitle"><h2 id="reviewPolicyTitle">Payment first. A personal review before you appear.</h2><p>You pay <strong>$100 today</strong>. We review your business within <strong>2 days</strong>. Your listing appears only if approved, and we email you the decision.</p><p>If approved, your subscription renews at $100 per month until canceled. If declined, we cancel your subscription, refund the full $100 payment, and email you the reason. Your bank may take additional time to show the refund. No further monthly payment is collected while your application awaits review.</p></aside>
         <section class="signup-layout" aria-label="Create your business listing">
             <div class="signup-column">
                 <div class="notice" id="checkoutNotice" role="status" aria-live="polite">Checking availability…</div>
@@ -55,25 +57,26 @@
                                 </div>
                                 <div class="field"><label for="description">About your business <span class="field-detail" id="descriptionCount">0 / 400</span></label><textarea id="description" name="description" required maxlength="400" rows="4" aria-describedby="descriptionHelp" placeholder="What do you offer, and what makes your business worth a visit?"></textarea><p class="field-help" id="descriptionHelp">Up to 400 characters. This description appears on your public listing.</p></div>
                                 <div class="field"><label for="website">Website or business social page</label><input id="website" name="website" type="url" required maxlength="300" inputmode="url" autocomplete="url" placeholder="https://yourbusiness.com" pattern="https://.+" aria-describedby="websiteHelp"><p class="field-help" id="websiteHelp">Use a full link beginning with https://.</p></div>
+                                <div class="field"><label for="logoUrl">Logo image link <span class="optional">Optional</span></label><input id="logoUrl" name="logoUrl" type="url" maxlength="500" inputmode="url" placeholder="https://yourbusiness.com/logo.png" pattern="https://.+" aria-describedby="logoHelp"><p class="field-help" id="logoHelp">A direct HTTPS link to a logo you are authorized to use. No logo? We’ll use your business initials.</p></div>
                                 <div class="field"><label for="phone">Business phone <span class="optional">Optional</span></label><input id="phone" name="phone" type="tel" maxlength="40" autocomplete="tel" placeholder="(831) 555-0123"><p class="field-help">If provided, this number appears on your public listing.</p></div>
                             </div>
-                            <div class="private-fields"><div class="field"><label for="email">Billing email <span class="private-label">Private</span></label><input id="email" name="email" type="email" required maxlength="254" autocomplete="email" placeholder="you@yourbusiness.com"><p class="field-help">For receipts and billing. Never shown in the directory.</p></div></div>
-                            <label class="consent-label" for="consent"><input id="consent" name="consent" type="checkbox" required><span>I agree to <strong>$100 per month, renewing automatically</strong> until I cancel. Cancellation stops the next renewal; my listing remains through the paid billing period. I am authorized to publish this business’s information.</span></label>
-                            <button class="button button-primary checkout-button" id="checkoutButton" type="submit" disabled>Subscribe for $100/month <span aria-hidden="true">↗</span></button>
+                            <div class="private-fields"><div class="field"><label for="email">Billing email <span class="private-label">Private</span></label><input id="email" name="email" type="email" required maxlength="254" autocomplete="email" placeholder="you@yourbusiness.com"><p class="field-help">For your review decision, receipts, and billing. Never shown in the directory.</p></div></div>
+                            <label class="consent-label" for="consent"><input id="consent" name="consent" type="checkbox" required><span>I agree to <strong>pay $100 now</strong> and wait up to <strong>2 days for approval</strong> before my listing appears. If approved, it renews at <strong>$100 per month</strong> until canceled. If declined, my subscription is canceled and the full initial payment is refunded, with the reason emailed to me. I am authorized to publish this business’s information and logo.</span></label>
+                            <button class="button button-primary checkout-button" id="checkoutButton" type="submit" disabled>Pay $100 &amp; submit for review <span aria-hidden="true">↗</span></button>
                             <p class="form-message" id="signupMessage" role="status" aria-live="polite"></p>
-                            <p class="checkout-note">Your listing appears after payment is confirmed.</p>
+                            <p class="checkout-note">Payment does not guarantee approval. Only approved businesses appear in the directory.</p>
                         </form>
             </div>
-            <aside class="preview-column" aria-labelledby="previewTitle"><div class="preview-sticky"><h2 id="previewTitle" class="preview-heading">Listing preview</h2><div id="profilePreview"></div><p class="preview-caption">Updates as you type. Published after payment is confirmed.</p></div></aside>
+            <aside class="preview-column" aria-labelledby="previewTitle"><div class="preview-sticky"><h2 id="previewTitle" class="preview-heading">Listing preview</h2><div id="profilePreview"></div><p class="preview-caption">Updates as you type. Your listing stays private until approved.</p></div></aside>
         </section>
         <section class="manage-section" id="manage" aria-labelledby="manageTitle">
-            <div class="manage-heading"><h2 id="manageTitle">Manage your listing</h2><p>Edit from the browser you used to subscribe. Manage payments or cancel through Stripe.</p></div>
+            <div class="manage-heading"><h2 id="manageTitle">Manage your listing</h2><p>Check your review status here. Manage payments or cancel through Stripe. Contact Chris to request listing changes.</p></div>
             <div class="manage-box">
                 <div class="manage-status-row"><h3>Your subscription</h3><span class="status-tag" id="manageStatus">Checking…</span></div>
                 <p id="manageMessage" class="manage-description" role="status" aria-live="polite">Looking for a subscription on this device.</p>
                 <div class="manage-actions"><button id="portalButton" type="button" class="button button-outline" hidden>Manage billing <span aria-hidden="true">↗</span></button><a id="portalLogin" class="button button-outline" hidden>Sign in to billing <span aria-hidden="true">↗</span></a><button id="refreshStatus" class="text-button" type="button">Refresh status</button><button id="forgetDevice" class="text-button" type="button" aria-expanded="false" aria-controls="forgetConfirm" hidden>Forget this device</button></div>
                 <div id="forgetConfirm" class="forget-confirm" hidden>
-                    <p><strong>Forget access on this device?</strong> Your subscription and billing will continue. You can still sign in to billing by email. For future listing edits, use another browser with saved access or contact Chris.</p>
+                    <p><strong>Forget access on this device?</strong> Your subscription and billing will continue. You can still sign in to billing by email. Contact Chris to request listing changes.</p>
                     <div class="manage-actions"><button id="confirmForget" class="button button-outline" type="button">Forget this device</button><button id="cancelForget" class="text-button" type="button">Keep access</button></div>
                     <p id="forgetMessage" class="form-message" role="status" aria-live="polite"></p>
                 </div>

@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noarchive"><meta name="referrer" content="no-referrer">
+<title>Review a business — Local Spotlight</title>
+<link rel="icon" href="/images/favicon-cc.svg?v=3"><link rel="stylesheet" href="/spotlightreview/style.css">
+<script src="/spotlightreview/app.js" defer></script>
+</head>
+<body><main class="review-shell">
+<header><a class="wordmark" href="/localspotlight">Chris <strong>Cerney</strong></a><p class="eyebrow">LOCAL SPOTLIGHT · PRIVATE REVIEW</p><h1>One more local story.</h1><p>Review this paid application before it joins the directory.</p></header>
+<p id="notice" role="status" aria-live="polite">Opening your secure review link…</p>
+<section id="application" hidden aria-labelledby="businessName">
+<div class="status-row"><span id="reviewStatus" class="badge"></span><span id="reviewDue"></span></div>
+<div class="business-heading"><div id="businessMark" aria-hidden="true"></div><div><p id="businessCategory" class="eyebrow"></p><h2 id="businessName"></h2><p id="businessCity"></p></div></div>
+<p id="businessDescription" class="description"></p>
+<dl><div><dt>Website</dt><dd><a id="businessWebsite" target="_blank" rel="noopener noreferrer"></a></dd></div><div id="phoneRow"><dt>Business phone</dt><dd id="businessPhone"></dd></div><div><dt>Applicant email · private</dt><dd id="customerEmail"></dd></div><div><dt>Initial payment</dt><dd id="paidAmount"></dd></div></dl>
+<p id="decisionSummary" class="decision-summary" hidden></p>
+<form id="decisionForm" hidden>
+<fieldset><legend>Your decision</legend><label class="choice"><input type="radio" name="decision" value="approve" required><span><strong>Approve &amp; publish</strong><small>Add this profile to Local Spotlight and allow its $100 monthly subscription to continue. The applicant receives an approval email.</small></span></label><label class="choice"><input type="radio" name="decision" value="decline" required><span><strong>Decline &amp; refund</strong><small>Keep the listing private, cancel future billing, and refund the initial $100 payment. The applicant receives your explanation.</small></span></label></fieldset>
+<div id="reasonField" hidden><label for="reason">Reason for declining</label><textarea id="reason" name="reason" maxlength="500" rows="4" placeholder="Explain your decision kindly and clearly. This message is sent to the applicant." aria-describedby="reasonHelp"></textarea><p id="reasonHelp">Up to 500 characters. Use plain text; this is included in their email.</p></div>
+<label class="confirmation"><input id="confirmed" type="checkbox" required><span id="confirmationText">I have reviewed this business and confirm my decision.</span></label>
+<button id="submitDecision" type="submit">Confirm decision</button>
+<p class="fine-print">Opening this page does not approve, decline, or issue a refund. Only your confirmed decision does.</p>
+</form>
+</section>
+<button id="refresh" class="secondary" type="button" hidden>Refresh review status</button>
+<footer>Need help? <a href="mailto:cerneymedia@gmail.com?subject=Local%20Spotlight%20review">cerneymedia@gmail.com</a><p>Keep this link private. It grants permission to review this application.</p></footer>
+<noscript>Enable JavaScript to securely review this application.</noscript>
+</main></body></html>

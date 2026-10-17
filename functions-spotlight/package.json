@@ -1,0 +1,14 @@
+{
+  "name": "chris-cerney-spotlight-moderation",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Private sandbox approval workflow for Local Spotlight",
+  "main": "index.js",
+  "engines": { "node": "22" },
+  "scripts": { "test": "node --test *.test.js" },
+  "dependencies": {
+    "firebase-admin": "14.3.0",
+    "firebase-functions": "7.3.2",
+    "stripe": "22.6.0"
+  }
+}

@@ -2,20 +2,39 @@
 
 (() => {
     const API = '/api/spotlight';
-    const PUBLIC_FIELDS = ['businessName', 'category', 'city', 'description', 'website', 'phone'];
+    const PREVIEW_DATA = '/localspotlight/preview/businesses.json';
+    const isPreview = /^\/localspotlight\/preview(?:\/|\/index\.html)?$/.test(window.location.pathname);
+    const PAGE_SIZE = 20;
+    const COUNTS = [10, 20, 30, 60, 80, 100];
+    const MODES = ['logos', 'cards', 'text', 'mixed'];
     const byId = (id) => document.getElementById(id);
+    let allListings = [];
     let listings = [];
     let directoryLoaded = false;
+    let page = 1;
+    let mode = 'logos';
+    let filteredCount = 0;
 
     function string(value, max = 400) {
         return typeof value === 'string' ? value.trim().slice(0, max) : '';
     }
 
-    function websiteUrl(value) {
+    function websiteUrl(value, max = 300) {
         try {
-            const url = new URL(string(value, 300));
+            const url = new URL(string(value, max));
             if (url.protocol !== 'https:' || !url.hostname.includes('.') || url.username || url.password || url.port || url.hostname === 'localhost' || url.hostname.endsWith('.local') || /^[\d.]+$/.test(url.hostname)) return '';
             return url.href;
+        } catch { return ''; }
+    }
+
+    function logoUrl(value) {
+        const raw = string(value, 500);
+        if (!raw) return '';
+        try {
+            const url = new URL(raw, window.location.origin);
+            if (url.origin === window.location.origin && /^\/localspotlight\/preview\/assets\/[a-z0-9-]+\.(png|jpg|jpeg|webp|ico|svg)$/.test(url.pathname) && !url.search && !url.hash) return url.href;
+            // Remote logos still obey the site's image CSP. A blocked or failed asset becomes initials.
+            return websiteUrl(raw, 500);
         } catch { return ''; }
     }
 
@@ -28,70 +47,89 @@
 
     function publicProfile(profile) {
         const source = profile && typeof profile === 'object' ? profile : {};
-        return Object.fromEntries(PUBLIC_FIELDS.map((field) => [field, string(source[field], field === 'description' ? 400 : field === 'website' ? 300 : field === 'phone' ? 40 : field === 'city' ? 80 : 100)]));
+        return {
+            businessName: string(source.businessName, 100), category: string(source.category, 100),
+            city: string(source.city, 80), description: string(source.description, 400),
+            website: string(source.website, 300), phone: string(source.phone, 40), logoUrl: string(source.logoUrl, 500),
+        };
     }
 
-    function businessCard(profile, preview = false) {
-        const safe = publicProfile(profile);
-        const name = safe.businessName || (preview ? 'Your business name' : 'Local business');
-        const initials = name.split(/\s+/).slice(0, 2).map((word) => Array.from(word)[0] || '').join('').toUpperCase();
-        const card = node('article', 'business-card');
-        const top = node('div', 'card-top');
-        const mark = node('span', 'business-mark', safe.businessName ? initials : 'CC');
+    function link(label, href, className, businessName) {
+        const element = node('a', className, label);
+        element.href = href;
+        element.target = '_blank';
+        element.rel = `${isPreview ? '' : 'sponsored '}noopener noreferrer`;
+        element.setAttribute('aria-label', `${businessName || label} website (opens in a new tab)`);
+        return element;
+    }
+
+    function businessName(profile) {
+        const heading = node('h3');
+        const href = websiteUrl(profile.website);
+        heading.append(href ? link(profile.businessName, href, 'directory-name') : node('span', 'directory-name', profile.businessName));
+        return heading;
+    }
+
+    function businessMark(profile, useLogo) {
+        const initials = profile.businessName.split(/\s+/).slice(0, 2).map((word) => Array.from(word)[0] || '').join('').toUpperCase();
+        const mark = node('span', 'directory-mark', initials);
         mark.setAttribute('aria-hidden', 'true');
-        top.append(mark, node('span', 'advertising-tag', 'Paid listing'));
-        card.append(top);
-        card.append(node('p', 'business-category', safe.category || 'Your category'));
-        card.append(node('h3', '', name));
-        card.append(node('p', 'business-location', safe.city || 'Your community'));
-        card.append(node('p', 'business-description', safe.description || 'A little about your business, what you offer, and what makes you part of this community.'));
-        const links = node('div', 'card-links');
-        const href = websiteUrl(safe.website);
-        if (href && !preview) {
-            const website = node('a', '', 'Visit website ↗');
-            website.href = href;
-            website.target = '_blank';
-            website.rel = 'sponsored noopener noreferrer';
-            website.setAttribute('aria-label', `Visit ${name} website (opens in a new tab)`);
-            links.append(website);
-        } else if (preview) {
-            links.append(node('span', 'card-link-preview', 'Visit website ↗'));
+        const src = useLogo ? logoUrl(profile.logoUrl) : '';
+        if (src) {
+            const image = node('img');
+            image.alt = '';
+            image.loading = 'lazy';
+            image.decoding = 'async';
+            image.referrerPolicy = 'no-referrer';
+            image.addEventListener('error', () => { mark.classList.remove('has-logo'); mark.replaceChildren(document.createTextNode(initials)); }, { once: true });
+            image.src = src;
+            mark.classList.add('has-logo');
+            mark.replaceChildren(image);
         }
-        if (safe.phone) {
-            const telephone = safe.phone.replace(/[^+\d]/g, '');
-            if (/^[+\d().\-\s]+$/.test(safe.phone) && /^\+?\d{7,15}$/.test(telephone) && !preview) {
-                const phone = node('a', 'card-phone', safe.phone);
-                phone.href = `tel:${telephone}`;
-                links.append(phone);
-            } else {
-                links.append(node('span', 'card-phone', safe.phone));
-            }
+        return mark;
+    }
+
+    function businessCard(profile, index) {
+        if (mode === 'text') {
+            const row = node('article', 'directory-text-row');
+            const content = node('div');
+            content.append(businessName(profile), node('p', 'directory-text-meta', [profile.city, profile.category].filter(Boolean).join(' · ')));
+            const arrow = node('span', 'directory-text-arrow', '↗');
+            arrow.setAttribute('aria-hidden', 'true');
+            row.append(content, arrow);
+            return row;
         }
-        card.append(links);
+        const showMark = mode !== 'cards';
+        const card = node('article', `directory-card${showMark ? '' : ' without-logo'}`);
+        const top = node('div', 'directory-card-top');
+        top.append(node('p', 'directory-card-category', profile.category || 'Local business'));
+        if (showMark) top.append(businessMark(profile, mode !== 'mixed' || index % 3 !== 1));
+        card.append(top, businessName(profile), node('p', 'directory-city', profile.city));
+        if (profile.description) card.append(node('p', 'directory-description', profile.description));
+        const bottom = node('div', 'directory-card-bottom');
+        const href = websiteUrl(profile.website);
+        if (href) bottom.append(link('Visit website ↗', href, 'directory-site-link', profile.businessName));
+        if (profile.phone) {
+            const telephone = profile.phone.replace(/[^+\d]/g, '');
+            const phone = node('span', 'directory-phone', profile.phone);
+            if (/^[+\d().\-\s]+$/.test(profile.phone) && /^\+?\d{7,15}$/.test(telephone)) {
+                const phoneLink = node('a', 'directory-phone', profile.phone);
+                phoneLink.href = `tel:${telephone}`;
+                bottom.append(phoneLink);
+            } else bottom.append(phone);
+        }
+        if (bottom.childElementCount) card.append(bottom);
         return card;
     }
 
-    async function request(body) {
+    async function request() {
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), 25000);
         try {
-            const response = await fetch(API, {
-                method: body ? 'POST' : 'GET',
-                credentials: 'same-origin',
-                cache: 'no-store',
-                headers: body ? { 'Content-Type': 'application/json', Accept: 'application/json' } : { Accept: 'application/json' },
-                ...(body ? { body: JSON.stringify(body) } : {}),
-                signal: controller.signal,
-            });
+            const response = await fetch(isPreview ? PREVIEW_DATA : API, { credentials: 'same-origin', cache: 'no-store', headers: { Accept: 'application/json' }, signal: controller.signal });
             const data = await response.json().catch(() => null);
-            if (!response.ok || !data || typeof data !== 'object') {
-                throw new Error(string(data?.error, 240) || 'Local Spotlight is temporarily unavailable. Please try again.');
-            }
+            if (!response.ok || !data || typeof data !== 'object') throw new Error('Listings unavailable');
             return data;
-        } catch (error) {
-            if (error.name === 'AbortError') throw new Error('This is taking longer than expected. Please try again.');
-            if (error instanceof TypeError) throw new Error('Unable to connect. Check your connection and try again.');
-            throw error;
         } finally { clearTimeout(timer); }
     }
 
@@ -107,20 +145,51 @@
         if (!directoryLoaded) return;
         const search = byId('businessSearch').value.trim().toLocaleLowerCase();
         const category = byId('categoryFilter').value;
+        const city = byId('cityFilter').value;
         const filtered = listings.filter((listing) => {
-            const searchable = `${listing.businessName} ${listing.city} ${listing.description}`.toLocaleLowerCase();
-            return (!category || listing.category === category) && (!search || searchable.includes(search));
+            const searchable = `${listing.businessName} ${listing.city} ${listing.category} ${listing.description}`.toLocaleLowerCase();
+            return (!category || listing.category === category) && (!city || listing.city === city) && (!search || searchable.includes(search));
         });
-        byId('businessGrid').replaceChildren(...filtered.map((listing) => businessCard(listing)));
+        filteredCount = filtered.length;
+        const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+        page = Math.min(page, pages);
+        const offset = (page - 1) * PAGE_SIZE;
+        const visible = filtered.slice(offset, offset + PAGE_SIZE);
+        byId('businessGrid').classList.toggle('is-text-view', mode === 'text');
+        byId('businessGrid').replaceChildren(...visible.map((listing, index) => businessCard(listing, offset + index)));
         byId('directoryEmpty').hidden = Boolean(filtered.length);
-        byId('resultsCount').textContent = `${filtered.length} ${filtered.length === 1 ? 'business' : 'businesses'}${search || category ? ` of ${listings.length}` : ' in the spotlight'}`;
+        const noun = filtered.length === 1 ? 'business' : 'businesses';
+        const suffix = isPreview ? ' · design examples' : '';
+        byId('resultsCount').textContent = `${filtered.length} ${noun}${search || category || city ? ` of ${listings.length}` : ''}${suffix}${filtered.length > PAGE_SIZE ? ` · showing ${offset + 1}–${offset + visible.length}` : ''}`;
+        byId('directoryPagination').hidden = pages <= 1;
+        byId('pageCount').textContent = `Page ${page} of ${pages}`;
+        byId('previousPage').disabled = page === 1;
+        byId('nextPage').disabled = page === pages;
         if (!filtered.length) {
-            if (search || category) {
-                setEmpty('No matches just yet.', 'Try another business name, city, or category.', { clear: true });
-            } else {
-                setEmpty('No businesses featured yet.', 'Check back soon for local businesses in the spotlight.');
-            }
+            if (search || category || city) setEmpty('No matches just yet.', 'Try another business name, community, or category.', { clear: true });
+            else setEmpty('No businesses featured yet.', 'Check back soon to discover local businesses in the spotlight.');
         }
+    }
+
+    function populateCities() {
+        const selected = byId('cityFilter').value;
+        const cities = [...new Set(listings.map((listing) => listing.city).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+        const options = [node('option', '', 'All cities'), ...cities.map((city) => node('option', '', city))];
+        options[0].value = '';
+        byId('cityFilter').replaceChildren(...options);
+        if (cities.includes(selected)) byId('cityFilter').value = selected;
+    }
+
+    function applyPreview() {
+        const count = Number(byId('previewCount').value);
+        mode = MODES.includes(byId('previewMode').value) ? byId('previewMode').value : 'logos';
+        // The vetted source order is intentionally varied; sorting applies only after selecting the count.
+        listings = allListings.slice(0, COUNTS.includes(count) ? count : 20).sort((a, b) => a.businessName.localeCompare(b.businessName));
+        page = 1;
+        populateCities();
+        renderDirectory();
+        const params = new URLSearchParams({ count: String(count), view: mode });
+        history.replaceState(null, '', `${window.location.pathname}?${params}`);
     }
 
     async function loadDirectory() {
@@ -128,39 +197,49 @@
         try {
             const data = await request();
             if (!Array.isArray(data.listings)) throw new Error('Listings unavailable');
-            listings = data.listings.filter((item) => item && typeof item.businessName === 'string').map(publicProfile);
+            allListings = data.listings.filter((item) => item && typeof item.businessName === 'string' && item.businessName.trim()).map(publicProfile);
             directoryLoaded = true;
-            renderDirectory();
+            if (isPreview) applyPreview();
+            else { listings = allListings.sort((a, b) => a.businessName.localeCompare(b.businessName)); populateCities(); renderDirectory(); }
         } catch {
             if (!directoryLoaded) {
                 byId('resultsCount').textContent = 'Listings could not be loaded.';
                 setEmpty('We couldn’t load the listings.', 'Please try again in a moment.', { retry: true });
             }
-        } finally {
-            byId('retryDirectory').disabled = false;
-        }
+        } finally { byId('retryDirectory').disabled = false; }
     }
 
-    byId('businessSearch').addEventListener('input', renderDirectory);
-    byId('categoryFilter').addEventListener('change', renderDirectory);
+    function resetPage() { page = 1; renderDirectory(); }
+    byId('businessSearch').addEventListener('input', resetPage);
+    byId('categoryFilter').addEventListener('change', resetPage);
+    byId('cityFilter').addEventListener('change', resetPage);
     byId('clearFilters').addEventListener('click', () => {
-        byId('businessSearch').value = '';
-        byId('categoryFilter').value = '';
-        renderDirectory();
-        byId('businessSearch').focus();
+        byId('businessSearch').value = ''; byId('categoryFilter').value = ''; byId('cityFilter').value = '';
+        resetPage(); byId('businessSearch').focus();
     });
     byId('retryDirectory').addEventListener('click', loadDirectory);
+    for (const [id, direction] of [['previousPage', -1], ['nextPage', 1]]) {
+        byId(id).addEventListener('click', () => {
+            page = Math.max(1, Math.min(page + direction, Math.ceil(filteredCount / PAGE_SIZE)));
+            renderDirectory();
+            byId('businessGrid').scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start' });
+        });
+    }
     byId('menuToggle').addEventListener('click', () => {
         const open = byId('menuToggle').getAttribute('aria-expanded') !== 'true';
-        byId('menuToggle').setAttribute('aria-expanded', String(open));
-        byId('primaryLinks').classList.toggle('is-open', open);
+        byId('menuToggle').setAttribute('aria-expanded', String(open)); byId('primaryLinks').classList.toggle('is-open', open);
     });
     document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape' && byId('primaryLinks').classList.contains('is-open')) {
-            byId('menuToggle').setAttribute('aria-expanded', 'false');
-            byId('primaryLinks').classList.remove('is-open');
-            byId('menuToggle').focus();
+            byId('menuToggle').setAttribute('aria-expanded', 'false'); byId('primaryLinks').classList.remove('is-open'); byId('menuToggle').focus();
         }
     });
+    if (isPreview) {
+        const params = new URLSearchParams(window.location.search);
+        if (COUNTS.includes(Number(params.get('count')))) byId('previewCount').value = params.get('count');
+        if (MODES.includes(params.get('view'))) byId('previewMode').value = params.get('view');
+        byId('previewCount').addEventListener('change', applyPreview);
+        byId('previewMode').addEventListener('change', applyPreview);
+    }
     loadDirectory();
 })();

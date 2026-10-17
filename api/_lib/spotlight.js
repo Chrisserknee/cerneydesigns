@@ -2,6 +2,7 @@
 
 const crypto = require('node:crypto');
 const Stripe = require('stripe');
+const { moderationConfig, callModeration } = require('./spotlight-moderation');
 
 const MARKER = 'local_spotlight_v1';
 const API_VERSION = '2026-08-26.dahlia';
@@ -9,9 +10,9 @@ const COOKIE_NAME = '__Host-cc_spotlight';
 const COOKIE_SECONDS = 180 * 24 * 60 * 60;
 const PRICE = Object.freeze({ amount: 10000, currency: 'usd', interval: 'month' });
 const CATEGORIES = Object.freeze(['Food & drink', 'Shopping', 'Home & auto', 'Health & wellness', 'Professional services', 'Arts & experiences', 'Other']);
-const PUBLIC_FIELDS = ['businessName', 'category', 'city', 'description', 'website', 'phone'];
-const META_FIELDS = { businessName: 'business_name', category: 'category', city: 'city', description: 'description', website: 'website', phone: 'phone' };
-const WEBHOOK_EVENTS = new Set(['checkout.session.completed', 'checkout.session.async_payment_succeeded', 'invoice.paid', 'invoice.payment_failed', 'customer.subscription.updated', 'customer.subscription.deleted']);
+const PUBLIC_FIELDS = ['businessName', 'category', 'city', 'description', 'website', 'phone', 'logoUrl'];
+const META_FIELDS = { businessName: 'business_name', category: 'category', city: 'city', description: 'description', website: 'website', phone: 'phone', logoUrl: 'logo_url' };
+const WEBHOOK_EVENTS = new Set(['checkout.session.completed', 'checkout.session.async_payment_succeeded', 'invoice.paid', 'invoice.payment_failed', 'customer.subscription.updated', 'customer.subscription.deleted', 'refund.created', 'refund.updated', 'refund.failed']);
 
 class SpotlightError extends Error {
     constructor(message, status = 400, code = 'INVALID_REQUEST') { super(message); this.status = status; this.code = code; }
@@ -33,8 +34,9 @@ function config() {
         if (url.protocol === 'https:' && !url.username && !url.password) siteUrl = url.origin;
     } catch { /* Invalid configuration fails closed. */ }
     const portalLoginUrl = safeStripeUrl(process.env.SPOTLIGHT_PORTAL_LOGIN_URL, 'billing.stripe.com');
-    const enabled = process.env.SPOTLIGHT_ENABLED === 'true' && Boolean(secret && signingSecret.length >= 32 && /^price_[A-Za-z0-9]+$/.test(priceId) && webhookSecret && /^bpc_[A-Za-z0-9]+$/.test(portalConfigurationId) && siteUrl);
-    return { secret, signingSecret, priceId, webhookSecret, portalConfigurationId, siteUrl, portalLoginUrl, enabled, live: /^(?:sk|rk)_live_/.test(secret) };
+    const moderationReady = moderationConfig().ready;
+    const enabled = moderationReady && process.env.SPOTLIGHT_ENABLED === 'true' && Boolean(secret && signingSecret.length >= 32 && /^price_[A-Za-z0-9]+$/.test(priceId) && webhookSecret && /^bpc_[A-Za-z0-9]+$/.test(portalConfigurationId) && siteUrl);
+    return { secret, signingSecret, priceId, webhookSecret, portalConfigurationId, siteUrl, portalLoginUrl, enabled, moderationReady, live: /^(?:sk|rk)_live_/.test(secret) };
 }
 
 function safeStripeUrl(value, hostname) {
@@ -51,11 +53,11 @@ function createStripe(settings = config()) {
 function validateProfile(input, requireEmail = false) {
     if (!input || typeof input !== 'object' || Array.isArray(input)) throw new SpotlightError('Enter your business details.');
     const profile = {};
-    for (const [name, max] of Object.entries({ businessName: 100, category: 50, city: 80, description: 400, website: 300, phone: 40 })) {
-        const raw = input[name] === undefined && name === 'phone' ? '' : input[name];
+    for (const [name, max] of Object.entries({ businessName: 100, category: 50, city: 80, description: 400, website: 300, phone: 40, logoUrl: 500 })) {
+        const raw = input[name] === undefined && ['phone', 'logoUrl'].includes(name) ? '' : input[name];
         if (typeof raw !== 'string') throw new SpotlightError(`Enter a valid ${name}.`);
         const value = (name === 'description' ? raw.replace(/\r\n|\r|\n/g, ' ') : raw).trim();
-        if ((!value && name !== 'phone') || value.length > max || /[\u0000-\u001f\u007f<>]/.test(value)) throw new SpotlightError(`Enter a valid ${name} (up to ${max} characters).`);
+        if ((!value && !['phone', 'logoUrl'].includes(name)) || value.length > max || /[\u0000-\u001f\u007f<>]/.test(value)) throw new SpotlightError(`Enter a valid ${name} (up to ${max} characters).`);
         profile[name] = value;
     }
     if (!CATEGORIES.includes(profile.category)) throw new SpotlightError('Choose a business category.');
@@ -66,6 +68,14 @@ function validateProfile(input, requireEmail = false) {
         if (profile.website.length > 300) throw new Error('URL too long');
     } catch { throw new SpotlightError('Enter a complete HTTPS business website address.'); }
     if (profile.phone && (!/^[+\d().\- xext]+$/i.test(profile.phone) || !/\d/.test(profile.phone))) throw new SpotlightError('Enter a valid business phone number.');
+    if (profile.logoUrl) {
+        try {
+            const url = new URL(profile.logoUrl);
+            if (url.protocol !== 'https:' || !url.hostname.includes('.') || url.username || url.password || url.port || url.hostname.endsWith('.local') || /^[\d.]+$/.test(url.hostname)) throw new Error('Invalid logo URL');
+            profile.logoUrl = url.href;
+            if (profile.logoUrl.length > 500) throw new Error('Logo URL too long');
+        } catch { throw new SpotlightError('Use a complete HTTPS link for your logo, or leave it blank.'); }
+    }
     if (requireEmail) {
         const email = typeof input.email === 'string' ? input.email.trim().toLowerCase() : '';
         if (email.length > 254 || !/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(email)) throw new SpotlightError('Enter a valid billing email.');
@@ -134,15 +144,20 @@ function validPaidSubscription(subscription, settings, now = Math.floor(Date.now
     return true;
 }
 
+function publicProfileHash(profile) {
+    return crypto.createHash('sha256').update(JSON.stringify(PUBLIC_FIELDS.map(key => [key, profile?.[key] || '']))).digest('hex');
+}
+
 function published(subscription, settings) {
-    return validPaidSubscription(subscription, settings) && subscription.metadata.spotlight_paid_invoice === id(subscription.latest_invoice) && subscription.metadata.spotlight_hidden !== 'true' && Boolean(readProfile(subscription.metadata));
+    const profile = readProfile(subscription?.metadata);
+    return subscription?.metadata?.spotlight_review_status === 'approved' && subscription.metadata.spotlight_approved_profile === publicProfileHash(profile) && validPaidSubscription(subscription, settings) && subscription.metadata.spotlight_paid_invoice === id(subscription.latest_invoice) && subscription.metadata.spotlight_hidden !== 'true' && Boolean(readProfile(subscription.metadata));
 }
 
 function publicListing(subscription) {
     return { id: crypto.createHash('sha256').update(`spotlight:${subscription.id}`).digest('hex').slice(0, 20), ...readProfile(subscription.metadata) };
 }
 
-function createService(stripe, settings = config()) {
+function createService(stripe, settings = config(), moderation = callModeration) {
     async function subscriptionById(subscriptionId) {
         return stripe.subscriptions.retrieve(subscriptionId, { expand: ['latest_invoice'] });
     }
@@ -166,7 +181,7 @@ function createService(stripe, settings = config()) {
         const status = ['canceled', 'incomplete_expired'].includes(subscription.status) ? 'canceled'
             : ['past_due', 'unpaid', 'paused'].includes(subscription.status) ? 'past_due'
                 : subscription.status === 'active' ? 'active' : 'pending';
-        return { status, hidden: subscription.metadata.spotlight_hidden === 'true', profile: readProfile(subscription.metadata), canManage: Boolean(id(subscription.customer) && settings.portalConfigurationId), published: published(subscription, settings), cancelAtPeriodEnd: Boolean(subscription.cancel_at_period_end), currentPeriodEnd: subscription.items?.data?.[0]?.current_period_end || null };
+        return { status, paymentConfirmed: session.payment_status === 'paid', reviewStatus: subscription.metadata.spotlight_review_status || 'pending', declineReason: subscription.metadata.spotlight_decline_reason || '', refundStatus: subscription.metadata.spotlight_refund_status || 'not_requested', canEdit: false, hidden: subscription.metadata.spotlight_hidden === 'true', profile: readProfile(subscription.metadata), canManage: Boolean(id(subscription.customer) && settings.portalConfigurationId), published: published(subscription, settings), cancelAtPeriodEnd: Boolean(subscription.cancel_at_period_end), currentPeriodEnd: subscription.items?.data?.[0]?.current_period_end || null };
     }
 
     async function listSubscriptions(status = 'active') {
@@ -210,7 +225,7 @@ function createService(stripe, settings = config()) {
         // while a completed/expired Checkout can never be resurrected for 24 hours.
         const previousSession = existing?.session.id || 'initial';
         const ownerKey = hmac(`checkout:${body.requestId.toLowerCase()}:${previousSession}`, settings);
-        const metadata = { spotlight: MARKER, owner_key: ownerKey, profile_hash: profileHash, ...profileMetadata(profile) };
+        const metadata = { spotlight: MARKER, spotlight_review_status: 'pending', owner_key: ownerKey, profile_hash: profileHash, ...profileMetadata(profile) };
         const session = await stripe.checkout.sessions.create({
             mode: 'subscription', integration_identifier: 'spotlight_qcnrhwka',
             line_items: [{ price: settings.priceId, quantity: 1 }],
@@ -220,7 +235,7 @@ function createService(stripe, settings = config()) {
             success_url: `${settings.siteUrl}/spotlightsignup/?checkout=success`,
             cancel_url: `${settings.siteUrl}/spotlightsignup/?checkout=canceled`,
             billing_address_collection: 'auto',
-            custom_text: { submit: { message: 'Local Spotlight is a paid business listing for $100 USD per month, renewing automatically. Cancel future renewals from Manage billing.' } },
+            custom_text: { submit: { message: 'You pay $100 now. Your listing is reviewed within 2 days and appears only if approved. If declined, we cancel the subscription, refund your payment, and email you the reason. Approved listings renew at $100/month until canceled.' } },
         }, { idempotencyKey: `spotlight-checkout-${ownerKey}` });
         const url = safeStripeUrl(session.url, 'checkout.stripe.com');
         if (!url || !/^cs_(?:live|test)_[A-Za-z0-9]+$/.test(session.id)) throw new Error('Stripe did not return a Checkout URL');
@@ -247,14 +262,11 @@ function createService(stripe, settings = config()) {
     async function update(request, body) {
         const record = await owner(request);
         if (!record?.subscription) throw new SpotlightError('Your listing session is required to edit this spot.', 401, 'OWNER_REQUIRED');
-        const profile = validateProfile(body.profile);
-        const subscription = await stripe.subscriptions.update(record.subscription.id, { metadata: profileMetadata(profile) });
-        // Re-read invoice state, rather than relying on an unexpanded update response.
-        return ownerStatus({ session: record.session, subscription: await subscriptionById(subscription.id) });
+        throw new SpotlightError('Listing details are locked for review. Contact cerneymedia@gmail.com to request a change.', 409, 'REVIEW_REQUIRED');
     }
 
     async function adminList() {
-        return { listings: (await listSubscriptions('all')).map((subscription) => ({ subscriptionId: subscription.id, profile: readProfile(subscription.metadata), status: subscription.status, hidden: subscription.metadata.spotlight_hidden === 'true', published: published(subscription, settings) })) };
+        return { listings: (await listSubscriptions('all')).map((subscription) => ({ subscriptionId: subscription.id, profile: readProfile(subscription.metadata), status: subscription.status, reviewStatus: subscription.metadata.spotlight_review_status || 'pending', hidden: subscription.metadata.spotlight_hidden === 'true', published: published(subscription, settings) })) };
     }
 
     async function adminUpdate(body) {
@@ -279,6 +291,13 @@ function createService(stripe, settings = config()) {
         if (validPaidSubscription(latest, settings) && latest.metadata.spotlight_paid_invoice !== id(latest.latest_invoice)) throw new Error('Concurrent subscription change; retry reconciliation');
     }
 
+    async function reconcileAndReview(subscriptionId) {
+        const current = await subscriptionById(subscriptionId);
+        if (!isSpotlight(current) || current.livemode !== settings.live) return;
+        await reconcile(subscriptionId);
+        if (settings.moderationReady) await moderation('ingest', { subscriptionId });
+    }
+
     async function webhook(event) {
         if (!WEBHOOK_EVENTS.has(event.type) || event.livemode !== settings.live) return;
         const object = event.data?.object;
@@ -286,16 +305,19 @@ function createService(stripe, settings = config()) {
             // Fetch the current session. The signed event can be delayed or superseded.
             const session = await stripe.checkout.sessions.retrieve(object.id);
             if (session.mode !== 'subscription' || session.payment_status !== 'paid' || session.metadata?.spotlight !== MARKER || !id(session.subscription)) return;
-            await reconcile(id(session.subscription));
+            await reconcileAndReview(id(session.subscription));
         } else if (event.type.startsWith('invoice.')) {
             const subscriptionId = id(object.parent?.subscription_details?.subscription);
-            if (subscriptionId) await reconcile(subscriptionId);
+            if (subscriptionId) await reconcileAndReview(subscriptionId);
+        } else if (event.type.startsWith('refund.') && object?.metadata?.spotlight === MARKER) {
+            const refund = await stripe.refunds.retrieve(object.id);
+            if (refund.metadata?.spotlight === MARKER && /^sub_[A-Za-z0-9]+$/.test(refund.metadata.spotlight_subscription_id || '')) await reconcileAndReview(refund.metadata.spotlight_subscription_id);
         } else if (/^sub_[A-Za-z0-9]+$/.test(object?.id || '')) {
-            await reconcile(object.id);
+            await reconcileAndReview(object.id);
         }
     }
 
     return { directory, checkout, status, portal, update, adminList, adminUpdate, webhook };
 }
 
-module.exports = { API_VERSION, CATEGORIES, COOKIE_NAME, MARKER, PRICE, SpotlightError, WEBHOOK_EVENTS, config, createService, createStripe, ownerSessionId, profileMetadata, published, readProfile, safeStripeUrl, sameOrigin, setOwnerCookie, validPaidSubscription, validateProfile };
+module.exports = { API_VERSION, CATEGORIES, COOKIE_NAME, MARKER, PRICE, SpotlightError, WEBHOOK_EVENTS, config, createService, createStripe, ownerSessionId, profileMetadata, publicProfileHash, published, readProfile, safeStripeUrl, sameOrigin, setOwnerCookie, validPaidSubscription, validateProfile };

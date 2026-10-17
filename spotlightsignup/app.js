@@ -4,7 +4,7 @@
     const API = '/api/spotlight';
     const DRAFT_KEY = 'cc_spotlight_draft_v1';
     const REQUEST_KEY = 'cc_spotlight_request_v1';
-    const PUBLIC_FIELDS = ['businessName', 'category', 'city', 'description', 'website', 'phone'];
+    const PUBLIC_FIELDS = ['businessName', 'category', 'city', 'description', 'website', 'phone', 'logoUrl'];
     const categories = ['Food & drink', 'Shopping', 'Home & auto', 'Health & wellness', 'Professional services', 'Arts & experiences', 'Other'];
     const byId = (id) => document.getElementById(id);
     const signupForm = byId('signupForm');
@@ -37,7 +37,7 @@
 
     function websiteUrl(value) {
         try {
-            const url = new URL(string(value, 300));
+            const url = new URL(string(value, 500));
             if (url.protocol !== 'https:' || !url.hostname.includes('.') || url.username || url.password || url.port || url.hostname === 'localhost' || url.hostname.endsWith('.local') || /^[\d.]+$/.test(url.hostname)) return '';
             return url.href;
         } catch { return ''; }
@@ -60,7 +60,7 @@
 
     function publicProfile(profile) {
         const source = profile && typeof profile === 'object' ? profile : {};
-        return Object.fromEntries(PUBLIC_FIELDS.map((field) => [field, string(source[field], field === 'description' ? 400 : field === 'website' ? 300 : field === 'phone' ? 40 : field === 'city' ? 80 : 100)]));
+        return Object.fromEntries(PUBLIC_FIELDS.map((field) => [field, string(source[field], field === 'description' ? 400 : field === 'logoUrl' ? 500 : field === 'website' ? 300 : field === 'phone' ? 40 : field === 'city' ? 80 : 100)]));
     }
 
     function businessCard(profile, preview = false) {
@@ -71,6 +71,13 @@
         const top = node('div', 'card-top');
         const mark = node('span', 'business-mark', safe.businessName ? initials : 'CC');
         mark.setAttribute('aria-hidden', 'true');
+        const logo = websiteUrl(safe.logoUrl);
+        if (logo) {
+            const img = node('img', 'business-logo');
+            img.alt = ''; img.referrerPolicy = 'no-referrer'; img.src = logo;
+            img.addEventListener('error', () => mark.replaceChildren(document.createTextNode(initials || 'CC')), { once: true });
+            mark.replaceChildren(img);
+        }
         top.append(mark, node('span', 'advertising-tag', 'Paid listing'));
         card.append(top);
         card.append(node('p', 'business-category', safe.category || 'Your category'));
@@ -105,7 +112,7 @@
 
     function readForm(form, includeEmail = false) {
         const data = new FormData(form);
-        const profile = Object.fromEntries(PUBLIC_FIELDS.map((field) => [field, string(data.get(field), field === 'description' ? 400 : 300)]));
+        const profile = Object.fromEntries(PUBLIC_FIELDS.map((field) => [field, string(data.get(field), field === 'description' ? 400 : field === 'logoUrl' ? 500 : 300)]));
         if (includeEmail) profile.email = string(data.get('email'), 254);
         return profile;
     }
@@ -158,7 +165,7 @@
         const hasSubscription = ownerState && ['active', 'past_due'].includes(ownerState.status);
         byId('checkoutButton').disabled = !checkoutEnabled || submitting || forgetting || !byId('forgetConfirm').hidden || Boolean(hasSubscription);
         if (hasSubscription) {
-            byId('checkoutNotice').textContent = 'You already have a subscription on this device. Use Manage your listing below to update your details or billing.';
+            byId('checkoutNotice').textContent = 'You already have a subscription on this device. Check your review status and manage billing below.';
             byId('checkoutNotice').classList.add('ready-notice');
         } else if (checkoutEnabled) {
             byId('checkoutNotice').textContent = '';
@@ -197,17 +204,28 @@
         const published = data.published === true;
         const hidden = data.hidden === true;
         const until = periodDate(data.currentPeriodEnd);
+        const reviewPending = ['pending', 'approving'].includes(data.reviewStatus);
+        const reviewDeclining = ['declining', 'declined'].includes(data.reviewStatus);
         let label = 'No subscription';
         let description = 'No subscription is linked to this browser. On another device? Sign in to billing with your subscription email. Contact Chris for listing changes.';
-        if (data.status === 'pending') {
+        if (data.status === 'pending' || (active && reviewPending && data.paymentConfirmed === false)) {
             label = 'Awaiting payment';
             description = 'Your listing is saved, and payment has not been confirmed yet. If you finished checkout, refresh your status in a moment.';
+        } else if (reviewDeclining) {
+            label = data.refundStatus === 'succeeded' ? 'Declined · refunded' : 'Declined · refund processing';
+            description = `Your application was declined. ${data.declineReason || 'Your review decision will arrive by email.'} ${data.refundStatus === 'succeeded' ? 'Your full $100 refund has been issued. Your bank may take additional time to show it.' : 'Your listing stays hidden while we complete cancellation and your full $100 refund. We will email you when it has been issued.'}`;
+        } else if (data.reviewStatus === 'needs_attention') {
+            label = 'Review needs attention';
+            description = 'Your listing is not published. Chris is checking your application and payment. Contact us if you need an update.';
+        } else if (active && reviewPending) {
+            label = data.reviewStatus === 'approving' ? 'Approval processing' : 'Awaiting approval';
+            description = 'Payment received. Your listing stays private while we review it, within 2 days. We will email the decision. No further monthly payment is collected while review is pending.';
         } else if (active && data.cancelAtPeriodEnd) {
             label = 'Cancellation scheduled';
             description = `Your subscription will not renew. ${published ? 'Your listing remains visible' : 'Your paid period continues'}${until ? ` through ${until}` : ' through the end of your paid billing period'}.`;
         } else if (active) {
             label = published ? 'Active' : hidden ? 'Hidden' : 'Not published';
-            description = published ? 'Your business is in the spotlight. Edit your details below, or manage your monthly subscription through Stripe.' : hidden ? 'Your listing is currently hidden from the directory. Contact Chris for help. Your billing account is still available below.' : 'Your listing is not published yet. Refresh your status in a moment, or contact Chris if you need help.';
+            description = published ? 'Your business is in the spotlight. Manage your monthly subscription through Stripe. Contact Chris to request listing changes.' : hidden ? 'Your listing is currently hidden from the directory. Contact Chris for help. Your billing account is still available below.' : 'Your listing is not published yet. Refresh your status in a moment, or contact Chris if you need help.';
         } else if (data.status === 'past_due') {
             label = 'Payment needed';
             description = 'Your latest payment needs attention. Open Manage billing to update your payment method. Your listing may be hidden until payment is confirmed.';
@@ -220,7 +238,7 @@
         byId('manageMessage').textContent = description;
         byId('portalButton').hidden = data.canManage !== true;
         byId('forgetDevice').hidden = !data.status || data.status === 'none';
-        byId('editDetails').hidden = data.canManage !== true || !data.profile;
+        byId('editDetails').hidden = data.canEdit !== true || !data.profile;
         if (data.profile && updateFields) {
             fillForm(manageForm, data.profile);
             updateManageCount();
@@ -236,6 +254,14 @@
                 removeStored(DRAFT_KEY);
                 removeStored(REQUEST_KEY);
                 clearTimeout(pollTimer);
+            } else if (reviewDeclining || data.reviewStatus === 'needs_attention') {
+                notice.textContent = description;
+                clearTimeout(pollTimer);
+            } else if (active && reviewPending && data.paymentConfirmed !== false) {
+                notice.textContent = 'Payment received. Your application is awaiting review. Allow up to 2 days; we’ll email you when it is approved or declined. Your business is not public yet.';
+                notice.classList.add('ready-notice');
+                removeStored(DRAFT_KEY); removeStored(REQUEST_KEY);
+                clearTimeout(pollTimer);
             } else if (hidden) {
                 notice.textContent = 'Your listing is currently hidden from the directory. Contact Chris for help with your listing.';
             } else if (active) {
@@ -249,7 +275,7 @@
             } else if (data.status === 'none') {
                 notice.textContent = 'No subscription is linked to this browser. Use billing email sign-in below to check an existing purchase, or contact Chris for help.';
             } else {
-                notice.textContent = 'Thanks for returning. We’re waiting for payment confirmation before publishing your listing. This may take a little time.';
+                notice.textContent = 'Thanks for returning. We’re waiting for payment confirmation before reviewing your application. This may take a little time.';
             }
         }
     }
@@ -263,13 +289,13 @@
             const data = await statusRequest;
             if (forgetting) return;
             renderOwner(data, updateFields);
-            const stillWaiting = !data.hidden && (data.status === 'pending' || (data.status === 'active' && !data.published));
+            const stillWaiting = !data.hidden && (data.status === 'pending' || (data.status === 'active' && data.paymentConfirmed === false && data.reviewStatus === 'pending'));
             if (!stillWaiting) clearTimeout(pollTimer);
             if (poll && stillWaiting && statusAttempts < 12) {
                 statusAttempts += 1;
                 pollTimer = setTimeout(() => loadStatus({ poll: true, updateFields: !byId('editDetails').open }), 5000);
             } else if (poll && stillWaiting && statusAttempts >= 12) {
-                byId('returnNotice').textContent = 'Payment confirmation is still pending. Your listing will appear after payment is confirmed. You can refresh your status below or return later.';
+                byId('returnNotice').textContent = 'Payment confirmation is still pending. After payment is confirmed, we review your application within 2 days. Only approved listings appear. You can refresh your status below or return later.';
             }
         } catch {
             if (forgetting) return;
@@ -307,13 +333,15 @@
     function validateProfile(form) {
         const website = form.elements.namedItem('website');
         website.setCustomValidity(websiteUrl(website.value) ? '' : 'Enter a valid website beginning with https://.');
+        const logo = form.elements.namedItem('logoUrl');
+        logo.setCustomValidity(!logo.value.trim() || websiteUrl(logo.value) ? '' : 'Enter a direct HTTPS image link.');
         const category = form.elements.namedItem('category');
         category.setCustomValidity(categories.includes(category.value) ? '' : 'Choose a category.');
         return form.reportValidity();
     }
 
     signupForm.addEventListener('input', (event) => {
-        if (event.target.name === 'website') event.target.setCustomValidity('');
+        if (['website', 'logoUrl'].includes(event.target.name)) event.target.setCustomValidity('');
         updatePreview();
     });
     signupForm.addEventListener('change', updatePreview);
@@ -350,7 +378,7 @@
         byId('manage-descriptionCount').textContent = `${manageForm.elements.namedItem('description').value.trim().length} / 400`;
     }
     manageForm.addEventListener('input', (event) => {
-        if (event.target.name === 'website') event.target.setCustomValidity('');
+        if (['website', 'logoUrl'].includes(event.target.name)) event.target.setCustomValidity('');
         updateManageCount();
     });
     manageForm.addEventListener('submit', async (event) => {
@@ -470,7 +498,7 @@
         byId('returnNotice').textContent = 'You returned from checkout. Your draft is saved on this device, and you can continue when you’re ready. If you completed a payment, check your subscription status below.';
     } else if (checkoutReturn === 'success') {
         byId('returnNotice').hidden = false;
-        byId('returnNotice').textContent = 'Checking your payment. Your listing will appear after payment is confirmed.';
+        byId('returnNotice').textContent = 'Checking your payment. After payment is confirmed, we review your application within 2 days. Only approved listings appear.';
     }
     if (checkoutReturn) {
         byId('returnNotice').focus({ preventScroll: true });

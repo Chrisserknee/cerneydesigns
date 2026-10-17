@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0b1118">
+    <title>Private design preview — Local Spotlight</title>
+    <meta name="robots" content="noindex,nofollow,noarchive">
+    <meta name="description" content="Private Local Spotlight design examples. These Monterey County businesses are not sponsors or paid listings.">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Private Local Spotlight design preview">
+    <meta property="og:description" content="Private Local Spotlight design examples. These Monterey County businesses are not sponsors or paid listings.">
+    <link rel="icon" type="image/svg+xml" href="/images/favicon-cc.svg?v=3">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/localspotlight/style.css">
+    <link rel="stylesheet" href="/localspotlight/directory.css">
+    <script src="/localspotlight/app.js" defer></script>
+</head>
+<body class="directory-page design-preview-page">
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header">
+        <nav class="shell nav-inner" aria-label="Primary navigation">
+            <a class="wordmark" href="/" aria-label="Chris Cerney home">Chris <strong>Cerney</strong></a>
+            <button class="menu-toggle" id="menuToggle" type="button" aria-expanded="false" aria-controls="primaryLinks">Menu <span aria-hidden="true">☰</span></button>
+            <div class="nav-links" id="primaryLinks">
+                <a href="/portfolio">Portfolio</a>
+                <a href="/merchandise">Merchandise</a>
+                <a href="/localspotlight" aria-current="page">Local Spotlight</a>
+                <a href="/#contact">Contact</a>
+                <a class="nav-tipline" href="/upload">Send a tip <span aria-hidden="true">↗</span></a>
+            </div>
+        </nav>
+    </header>
+
+    <main id="main" class="directory-main shell">
+        <header class="page-heading directory-heading">
+            <div><p class="directory-eyebrow">Around Monterey County</p><h1>Local Spotlight<span aria-hidden="true">.</span></h1><p>Good businesses. Right here in our community.</p></div>
+            <a class="directory-feature-link" href="/localspotlight">View paid directory <span aria-hidden="true">↗</span></a>
+        </header>
+        <section class="design-controls" aria-label="Private design preview controls">
+            <div class="design-explanation"><strong>Private design preview</strong><p>Real Monterey County businesses shown as examples only. They are not sponsors or paid listings.</p></div>
+            <div class="design-control"><label for="previewCount">Businesses</label><select id="previewCount"><option>10</option><option selected>20</option><option>30</option><option>60</option><option>80</option><option>100</option></select></div>
+            <div class="design-control"><label for="previewMode">Display style</label><select id="previewMode"><option value="logos">Cards with logos</option><option value="cards">Cards without logos</option><option value="text">Name links</option><option value="mixed">Mixed logos &amp; initials</option></select></div>
+        </section>
+        <section aria-label="Featured local businesses" class="directory-browse">
+            <div class="directory-tools">
+                <div class="search-field"><label for="businessSearch" class="sr-only">Search by business name, description, or city</label><span aria-hidden="true">⌕</span><input id="businessSearch" type="search" placeholder="Find a local business" maxlength="100" autocomplete="off"></div>
+                <div class="category-field"><label for="categoryFilter" class="sr-only">Filter by category</label><select id="categoryFilter"><option value="">All categories</option><option>Food &amp; drink</option><option>Shopping</option><option>Home &amp; auto</option><option>Health &amp; wellness</option><option>Professional services</option><option>Arts &amp; experiences</option><option>Other</option></select></div>
+                <div class="city-field"><label for="cityFilter" class="sr-only">Filter by city</label><select id="cityFilter"><option value="">All cities</option></select></div>
+            </div>
+            <div class="directory-results-bar"><p class="results-count" id="resultsCount" role="status" aria-live="polite">Loading Local Spotlight…</p><p class="directory-sort">A–Z by business name</p></div>
+            <div class="business-grid directory-grid" id="businessGrid"></div>
+            <div class="directory-empty" id="directoryEmpty" hidden>
+                <span class="directory-empty-mark" aria-hidden="true">↗</span>
+                <h2 id="emptyTitle">The spotlight is open.</h2>
+                <p id="emptyDescription">Check back soon to discover local businesses.</p>
+                <button type="button" class="text-button" id="clearFilters" hidden>Clear search and filters</button>
+                <button type="button" class="text-button" id="retryDirectory" hidden>Try loading again</button>
+            </div>
+            <nav class="directory-pagination" id="directoryPagination" aria-label="Business directory pages" hidden><button type="button" id="previousPage">← Previous</button><p id="pageCount" role="status" aria-live="polite"></p><button type="button" id="nextPage">Next →</button></nav>
+        </section>
+        <p class="advertising-note">Design examples only · No sponsorship or endorsement is implied. Logos belong to their respective businesses; initials appear where a verified logo is unavailable.</p>
+        <noscript><p class="notice">Enable JavaScript to view the business directory.</p></noscript>
+    </main>
+    <footer class="site-footer"><div class="shell footer-inner"><a class="wordmark" href="/">Chris <strong>Cerney</strong></a><span>© 2026 Chris Cerney</span></div></footer>
+</body>
+</html>

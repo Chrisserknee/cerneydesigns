@@ -7,21 +7,21 @@ const test = require('node:test');
 const Stripe = require('stripe');
 const { createHandler } = require('../api/spotlight');
 const { createHandler: createWebhookHandler } = require('../api/spotlight-webhook');
-const { MARKER, COOKIE_NAME, PRICE, createService, config, profileMetadata, setOwnerCookie, ownerSessionId, validPaidSubscription, validateProfile } = require('../api/_lib/spotlight');
+const { MARKER, COOKIE_NAME, PRICE, createService, config, profileMetadata, publicProfileHash, published, setOwnerCookie, ownerSessionId, validPaidSubscription, validateProfile } = require('../api/_lib/spotlight');
 
 const settings = {
     secret: 'sk_test_spotlight', signingSecret: 'testing-only-secret-value-with-more-than-32-characters',
     priceId: 'price_spotlight', webhookSecret: 'whsec_local_spotlight_test', portalConfigurationId: 'bpc_spotlight',
     siteUrl: 'https://www.chriscerney.org', portalLoginUrl: 'https://billing.stripe.com/p/login/test', enabled: true, live: false,
 };
-const profile = { businessName: 'Coast Coffee', category: 'Food & drink', city: 'Monterey', description: 'Coffee and pastries by the coast.', website: 'https://example.com/', phone: '+1 (831) 555-0100', email: 'owner@example.com' };
+const profile = { businessName: 'Coast Coffee', category: 'Food & drink', city: 'Monterey', description: 'Coffee and pastries by the coast.', website: 'https://example.com/', logoUrl: '', phone: '+1 (831) 555-0100', email: 'owner@example.com' };
 function price() { return { id: settings.priceId, active: true, currency: 'usd', unit_amount: 10000, type: 'recurring', billing_scheme: 'per_unit', recurring: { interval: 'month', interval_count: 1, usage_type: 'licensed' }, livemode: false }; }
 function subscription(invoiceId = 'in_current') {
     const start = Math.floor(Date.now() / 1000) - 3600;
     const end = start + 30 * 86400;
     return {
         id: 'sub_business', livemode: false, status: 'active', customer: 'cus_owner', cancel_at_period_end: false,
-        metadata: { spotlight: MARKER, owner_key: 'owner_key', ...profileMetadata(profile) },
+        metadata: { spotlight: MARKER, owner_key: 'owner_key', ...profileMetadata(profile), spotlight_review_status: 'approved', spotlight_approved_profile: publicProfileHash(profile) },
         items: { has_more: false, data: [{ id: 'si_business', quantity: 1, price: price(), current_period_start: start, current_period_end: end }] },
         latest_invoice: { id: invoiceId, status: 'paid', livemode: false, currency: 'usd', amount_due: 10000, amount_paid: 10000, amount_remaining: 0, total: 10000, customer: 'cus_owner',
             parent: { subscription_details: { subscription: 'sub_business' } },
@@ -81,6 +81,9 @@ test('checkout fixes price, amount, customer ownership and recurring terms on th
     assert.equal(params.payment_method_types, undefined);
     assert.match(params.integration_identifier, /^spotlight_[a-z]{8}$/);
     assert.equal(params.subscription_data.metadata.spotlight, MARKER);
+    assert.equal(params.subscription_data.metadata.spotlight_review_status, 'pending');
+    assert.match(params.custom_text.submit.message, /review.*2 days/i);
+    assert.match(params.custom_text.submit.message, /refund/i);
     assert.deepEqual(params.subscription_data.billing_mode, { type: 'flexible' });
     assert.equal(params.subscription_data.metadata.email, undefined);
     assert.equal(params.subscription_data.metadata.spotlight_paid_invoice, undefined);
@@ -259,17 +262,18 @@ test('owner operations require signed cookie; arbitrary checkout/customer/subscr
     assert.deepEqual(state.portals[0], { customer: 'cus_owner', configuration: settings.portalConfigurationId, return_url: `${settings.siteUrl}/spotlightsignup/#manage` });
 });
 
-test('editing a profile cannot change billing marker, visibility, ownership or private billing details', async () => {
+test('paid profile edits are locked so owners cannot bypass approval', async () => {
     const { stripe, state } = mockStripe();
     state.subscription.metadata.spotlight_paid_invoice = 'in_current'; state.subscription.metadata.spotlight_hidden = 'true';
     const response = await post(stripe, { op: 'update', profile: { ...profile, businessName: 'New Coast Coffee', spotlight_paid_invoice: 'in_forged', spotlight_hidden: 'false', owner_key: 'attacker' } }, cookie());
-    assert.equal(response.statusCode, 200);
-    assert.equal(state.subscription.metadata.business_name, 'New Coast Coffee');
+    assert.equal(response.statusCode, 409);
+    assert.equal(response.body.code, 'REVIEW_REQUIRED');
+    assert.equal(state.updates.length, 0);
+    assert.equal(state.subscription.metadata.business_name, 'Coast Coffee');
     assert.equal(state.subscription.metadata.owner_key, 'owner_key');
     assert.equal(state.subscription.metadata.spotlight_paid_invoice, 'in_current');
     assert.equal(state.subscription.metadata.spotlight_hidden, 'true');
-    assert.equal(response.body.profile.email, undefined);
-    assert.equal(response.body.hidden, true);
+    assert.equal(response.body.profile, undefined);
 });
 
 test('admin listing actions require existing administrator authentication', async () => {
@@ -369,4 +373,75 @@ test('expired and canceled owner sessions start a new idempotent attempt even if
         assert.notEqual(state.checkouts[0].options.idempotencyKey, originalKey);
         assert.equal(state.checkouts[1].options.idempotencyKey, state.checkouts[0].options.idempotencyKey);
     }
+});
+
+
+test('paid invoice alone never publishes: approval must match every reviewed public field', async () => {
+    const { stripe, state } = mockStripe();
+    state.subscription.metadata.spotlight_paid_invoice = 'in_current';
+    const service = createService(stripe, settings);
+    state.subscription.metadata.spotlight_review_status = 'pending';
+    assert.equal((await service.directory()).listings.length, 0);
+    await service.webhook(event());
+    assert.equal((await service.directory()).listings.length, 0);
+    state.subscription.metadata.spotlight_review_status = 'approved';
+    assert.equal((await service.directory()).listings.length, 1);
+    for (const key of ['business_name', 'category', 'city', 'description', 'website', 'phone', 'logo_url']) {
+        const original = state.subscription.metadata[key];
+        state.subscription.metadata[key] = key === 'website' ? 'https://changed.example/' : key === 'logo_url' ? 'https://changed.example/logo.png' : key === 'category' ? 'Other' : key === 'phone' ? '8315550999' : 'Changed';
+        assert.equal((await service.directory()).listings.length, 0, key);
+        state.subscription.metadata[key] = original;
+    }
+    for (const value of ['declining', 'declined', 'needs_attention', 'approving', '']) {
+        state.subscription.metadata.spotlight_review_status = value;
+        assert.equal((await service.directory()).listings.length, 0, value);
+    }
+});
+
+test('verified payment events hand off only the configured Spotlight subscription for durable review', async () => {
+    const { stripe, state } = mockStripe(); const calls = [];
+    const service = createService(stripe, { ...settings, moderationReady: true }, async (op, body) => calls.push({ op, body }));
+    await service.webhook(event());
+    assert.deepEqual(calls, [{ op: 'ingest', body: { subscriptionId: 'sub_business' } }]);
+    state.subscription.metadata.spotlight = 'other_product';
+    await service.webhook(event()); assert.equal(calls.length, 1);
+    state.subscription.metadata.spotlight = MARKER; state.subscription.livemode = true;
+    await service.webhook(event()); assert.equal(calls.length, 1);
+});
+
+test('review handoff failure fails webhook delivery so Stripe can retry', async () => {
+    const { stripe } = mockStripe();
+    const service = createService(stripe, { ...settings, moderationReady: true }, async () => { throw new Error('Temporary unavailable'); });
+    await assert.rejects(service.webhook(event()), /Temporary unavailable/);
+});
+
+test('logo validation accepts optional HTTPS image URLs and rejects unsafe locations', () => {
+    assert.equal(validateProfile({ ...profile, logoUrl: undefined }).logoUrl, '');
+    assert.equal(validateProfile({ ...profile, logoUrl: 'https://example.com/logo.png' }).logoUrl, 'https://example.com/logo.png');
+    for (const logoUrl of ['http://example.com/logo.png', 'javascript:alert(1)', 'https://127.0.0.1/x', 'https://user:pass@example.com/x', 'https://internal.local/x']) assert.throws(() => validateProfile({ ...profile, logoUrl }));
+});
+
+test('refund events reconcile only canonically verified Spotlight refunds', async () => {
+    const { stripe } = mockStripe(); const calls=[]; let retrieved=0;
+    stripe.refunds={retrieve:async(refundId)=>{retrieved++;return{id:refundId,metadata:{spotlight:MARKER,spotlight_subscription_id:'sub_business'}};}};
+    const service=createService(stripe,{...settings,moderationReady:true},async(op,body)=>calls.push({op,body}));
+    await service.webhook({type:'refund.updated',livemode:false,data:{object:{id:'re_test',metadata:{spotlight:'another_product'}}}});
+    assert.equal(retrieved,0);assert.equal(calls.length,0);
+    await service.webhook({type:'refund.updated',livemode:false,data:{object:{id:'re_test',metadata:{spotlight:MARKER,spotlight_subscription_id:'sub_forged'}}}});
+    assert.deepEqual(calls,[{op:'ingest',body:{subscriptionId:'sub_business'}}]);
+    stripe.refunds.retrieve=async()=>({metadata:{spotlight:'another_product',spotlight_subscription_id:'sub_business'}});
+    await service.webhook({type:'refund.failed',livemode:false,data:{object:{id:'re_test',metadata:{spotlight:MARKER}}}});
+    assert.equal(calls.length,1);
+});
+
+test('admin unhide cannot approve a pending listing', async()=>{
+    const {stripe,state}=mockStripe();state.subscription.metadata.spotlight_review_status='pending';state.subscription.metadata.spotlight_paid_invoice='in_current';state.subscription.metadata.spotlight_hidden='true';
+    await createService(stripe,settings).adminUpdate({subscriptionId:'sub_business',hidden:false});
+    assert.equal(state.subscription.metadata.spotlight_hidden,'false');assert.equal(state.subscription.metadata.spotlight_review_status,'pending');assert.equal((await createService(stripe,settings).directory()).listings.length,0);
+});
+
+test('owner payment confirmation comes from canonical Checkout status, not subscription activity',async()=>{
+ const {stripe,state}=mockStripe();state.session.payment_status='unpaid';state.subscription.metadata.spotlight_review_status='pending';
+ const r=await post(stripe,{op:'status'},cookie());assert.equal(r.statusCode,200);assert.equal(r.body.paymentConfirmed,false);assert.equal(r.body.published,false);
+ state.session.payment_status='paid';const confirmed=await post(stripe,{op:'status'},cookie());assert.equal(confirmed.body.paymentConfirmed,true);assert.equal(confirmed.body.published,false);
 });
