@@ -1,8 +1,10 @@
 # Repo files that are not part of the website (kept in git, not deployed)
 /CLAUDE.md
 /functions
+/functions-spotlight
 /tests
 /firebase.json
+/firebase.spotlight.json
 /.firebaserc
 /storage.rules
 /upload/drive-bridge-apps-script.gs
@@ -10,3 +12,7 @@
 *.test.cjs
 
 /inbox-sync
+
+# Keep local credentials and deployment metadata out of uploaded source.
+/.env*
+/.vercel

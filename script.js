@@ -6,12 +6,14 @@
 (() => {
     'use strict';
 
+    const simpleMotion = window.matchMedia('(max-width: 800px), (pointer: coarse), (prefers-reduced-motion: reduce)');
+
     // ==================== CURSOR GLOW ====================
     const cursorGlow = document.getElementById('cursorGlow');
     let mouseX = 0, mouseY = 0;
     let glowX = 0, glowY = 0;
 
-    document.addEventListener('mousemove', (e) => {
+    if (cursorGlow && !simpleMotion.matches) document.addEventListener('mousemove', (e) => {
         mouseX = e.clientX;
         mouseY = e.clientY;
     });
@@ -28,7 +30,7 @@
     }
 
     // Only enable cursor glow on non-touch devices
-    if (cursorGlow && window.matchMedia('(pointer: fine)').matches && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    if (cursorGlow && !simpleMotion.matches && window.matchMedia('(pointer: fine)').matches && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
         animateCursorGlow();
     }
 
@@ -176,7 +178,7 @@
     }
 
     // ==================== MAGNETIC BUTTONS ====================
-    if (cursorGlow && window.matchMedia('(pointer: fine)').matches && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    if (cursorGlow && !simpleMotion.matches && window.matchMedia('(pointer: fine)').matches && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
         document.querySelectorAll('.magnetic').forEach(btn => {
             btn.addEventListener('mousemove', (e) => {
                 const rect = btn.getBoundingClientRect();
@@ -197,6 +199,11 @@
 
     function handleParallax() {
         if (!heroSection || !heroContent) return;
+        if (simpleMotion.matches) {
+            heroContent.style.transform = '';
+            heroContent.style.opacity = '';
+            return;
+        }
         const rect = heroSection.getBoundingClientRect();
         if (rect.bottom < 0) return; // Off screen
 
@@ -217,7 +224,7 @@
 
                 window.scrollTo({
                     top: targetPosition,
-                    behavior: 'smooth'
+                    behavior: simpleMotion.matches ? 'auto' : 'smooth'
                 });
             }
         });

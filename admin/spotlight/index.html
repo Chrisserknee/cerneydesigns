@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow, noarchive"><title>Local Spotlight Admin — Chris Cerney</title>
+  <link rel="icon" href="/images/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/admin/style.css"><link rel="stylesheet" href="/admin/spotlight/style.css">
+  <script src="/admin/spotlight/app.js" defer></script>
+</head>
+<body>
+  <header class="admin-header"><a class="brand" href="/"><strong>CHRIS</strong> <span>CERNEY</span></a><div class="header-actions"><a href="/admin/">Store admin</a><a href="/localspotlight">View Local Spotlight</a></div></header>
+  <main>
+    <div class="dashboard-heading"><div><p class="eyebrow">Private dashboard</p><h1>Local Spotlight</h1><p>Manage the visibility of paid business listings.</p></div><button type="button" class="primary-button" id="refresh">Refresh</button></div>
+    <p class="form-message" id="message" role="status" aria-live="polite">Checking your sign-in…</p>
+    <p id="login" hidden><a href="/admin/">Sign in with your existing admin account</a>, then return to this page.</p>
+    <p class="admin-note">Hiding a listing removes it from the directory. It does not cancel billing or refund a payment. Manage billing changes in Stripe.</p>
+    <div class="spotlight-list" id="list"></div>
+  </main>
+</body>
+</html>
