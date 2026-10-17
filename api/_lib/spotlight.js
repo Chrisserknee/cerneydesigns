@@ -217,8 +217,8 @@ function createService(stripe, settings = config()) {
             customer_email: profile.email,
             metadata,
             subscription_data: { metadata, billing_mode: { type: 'flexible' } },
-            success_url: `${settings.siteUrl}/spotlight/?checkout=success`,
-            cancel_url: `${settings.siteUrl}/spotlight/?checkout=canceled`,
+            success_url: `${settings.siteUrl}/spotlightsignup/?checkout=success`,
+            cancel_url: `${settings.siteUrl}/spotlightsignup/?checkout=canceled`,
             billing_address_collection: 'auto',
             custom_text: { submit: { message: 'Local Spotlight is a paid business listing for $100 USD per month, renewing automatically. Cancel future renewals from Manage billing.' } },
         }, { idempotencyKey: `spotlight-checkout-${ownerKey}` });
@@ -238,7 +238,7 @@ function createService(stripe, settings = config()) {
         const record = await owner(request);
         if (!record?.subscription || !id(record.subscription.customer)) throw new SpotlightError('Open this page in the browser used to purchase your spot, or use the billing email sign-in link.', 401, 'OWNER_REQUIRED');
         if (!settings.portalConfigurationId) throw new SpotlightError('Billing management is temporarily unavailable.', 503);
-        const session = await stripe.billingPortal.sessions.create({ customer: id(record.subscription.customer), configuration: settings.portalConfigurationId, return_url: `${settings.siteUrl}/spotlight/#manage` });
+        const session = await stripe.billingPortal.sessions.create({ customer: id(record.subscription.customer), configuration: settings.portalConfigurationId, return_url: `${settings.siteUrl}/spotlightsignup/#manage` });
         const url = safeStripeUrl(session.url, 'billing.stripe.com');
         if (!url) throw new Error('Stripe did not return a billing portal URL');
         return { url };

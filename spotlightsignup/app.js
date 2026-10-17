@@ -9,12 +9,10 @@
     const byId = (id) => document.getElementById(id);
     const signupForm = byId('signupForm');
     const manageForm = byId('manageForm');
-    let listings = [];
     let checkoutEnabled = false;
     let submitting = false;
     let ownerState = null;
     let checkingStatus = false;
-    let directoryLoaded = false;
     let statusAttempts = 0;
     let pollTimer = null;
     const checkoutReturn = new URLSearchParams(window.location.search).get('checkout');
@@ -154,35 +152,6 @@
         } finally { clearTimeout(timer); }
     }
 
-    function setEmpty(title, description, { join = false, clear = false, retry = false } = {}) {
-        byId('directoryEmpty').hidden = false;
-        byId('emptyTitle').textContent = title;
-        byId('emptyDescription').textContent = description;
-        byId('emptyJoin').hidden = !join;
-        byId('clearFilters').hidden = !clear;
-        byId('retryDirectory').hidden = !retry;
-    }
-
-    function renderDirectory() {
-        if (!directoryLoaded) return;
-        const search = byId('businessSearch').value.trim().toLocaleLowerCase();
-        const category = byId('categoryFilter').value;
-        const filtered = listings.filter((listing) => {
-            const searchable = `${listing.businessName} ${listing.city} ${listing.description}`.toLocaleLowerCase();
-            return (!category || listing.category === category) && (!search || searchable.includes(search));
-        });
-        byId('businessGrid').replaceChildren(...filtered.map((listing) => businessCard(listing)));
-        byId('directoryEmpty').hidden = Boolean(filtered.length);
-        byId('resultsCount').textContent = `${filtered.length} ${filtered.length === 1 ? 'business' : 'businesses'}${search || category ? ` of ${listings.length}` : ' in the spotlight'}`;
-        if (!filtered.length) {
-            if (search || category) {
-                setEmpty('No matches just yet.', 'Try another business name, city, or category.', { clear: true });
-            } else {
-                setEmpty('The spotlight is open.', 'There are no business listings yet. Make yours one of the first.', { join: true });
-            }
-        }
-    }
-
     function refreshCheckout() {
         const hasSubscription = ownerState && ['active', 'past_due'].includes(ownerState.status);
         byId('checkoutButton').disabled = !checkoutEnabled || submitting || Boolean(hasSubscription);
@@ -190,35 +159,26 @@
             byId('checkoutNotice').textContent = 'You already have a subscription on this device. Use Manage your listing below to update your details or billing.';
             byId('checkoutNotice').classList.add('ready-notice');
         } else if (checkoutEnabled) {
-            byId('checkoutNotice').textContent = 'Monthly listings are open. Build your profile to get started.';
+            byId('checkoutNotice').textContent = '';
             byId('checkoutNotice').classList.add('ready-notice');
         } else {
-            byId('checkoutNotice').textContent = 'Online signup is being set up. You can preview your listing below. For help, email cerneymedia@gmail.com.';
+            byId('checkoutNotice').textContent = 'Online signup is being set up. You can preview your listing below. Need help? Email cerneymedia@gmail.com.';
             byId('checkoutNotice').classList.remove('ready-notice');
         }
     }
 
-    async function loadDirectory() {
-        byId('retryDirectory').disabled = true;
+    async function loadConfiguration() {
         try {
             const data = await request();
             const priceMatches = data.price?.amount === 10000 && data.price?.currency === 'usd' && data.price?.interval === 'month';
             checkoutEnabled = data.checkoutEnabled === true && priceMatches;
-            listings = Array.isArray(data.listings) ? data.listings.filter((item) => item && typeof item.businessName === 'string').map(publicProfile) : [];
-            directoryLoaded = true;
             const portalLogin = stripeUrl(data.portalLoginUrl, 'portal');
             byId('portalLogin').hidden = !portalLogin;
             if (portalLogin) byId('portalLogin').href = portalLogin;
-            renderDirectory();
         } catch {
             checkoutEnabled = false;
-            if (!directoryLoaded) {
-                byId('resultsCount').textContent = 'Listings could not be loaded.';
-                setEmpty('We couldn’t load the spotlight.', 'Please try again in a moment. Your connection or the listing service may be temporarily unavailable.', { retry: true });
-            }
         } finally {
             refreshCheckout();
-            byId('retryDirectory').disabled = false;
         }
     }
 
@@ -236,7 +196,7 @@
         const hidden = data.hidden === true;
         const until = periodDate(data.currentPeriodEnd);
         let label = 'No subscription';
-        let description = 'No subscription is linked to this browser. If you subscribed on another device, sign in to your billing account using your subscription email. For changes to your listing, contact Chris.';
+        let description = 'No subscription is linked to this browser. On another device? Sign in to billing with your subscription email. Contact Chris for listing changes.';
         if (data.status === 'pending') {
             label = 'Awaiting payment';
             description = 'Your listing is saved, and payment has not been confirmed yet. If you finished checkout, refresh your status in a moment.';
@@ -290,9 +250,7 @@
         byId('refreshStatus').disabled = true;
         try {
             const data = await request({ op: 'status' });
-            const wasPublished = ownerState?.published;
             renderOwner(data, updateFields);
-            if (data.published === true && !wasPublished) await loadDirectory();
             if (poll && !data.hidden && !(data.status === 'active' && data.published) && !['past_due', 'canceled', 'expired'].includes(data.status) && statusAttempts < 12) {
                 statusAttempts += 1;
                 pollTimer = setTimeout(() => loadStatus({ poll: true, updateFields: !byId('editDetails').open }), 5000);
@@ -388,7 +346,6 @@
             const data = await request({ op: 'update', profile: readForm(manageForm) });
             renderOwner(data);
             message('manageFormMessage', 'Your business details have been saved.', true);
-            await loadDirectory();
         } catch (error) {
             message('manageFormMessage', error.message);
         } finally { byId('saveProfile').disabled = false; }
@@ -407,15 +364,6 @@
         }
     });
     byId('refreshStatus').addEventListener('click', () => loadStatus({ updateFields: !byId('editDetails').open }));
-    byId('businessSearch').addEventListener('input', renderDirectory);
-    byId('categoryFilter').addEventListener('change', renderDirectory);
-    byId('clearFilters').addEventListener('click', () => {
-        byId('businessSearch').value = '';
-        byId('categoryFilter').value = '';
-        renderDirectory();
-        byId('businessSearch').focus();
-    });
-    byId('retryDirectory').addEventListener('click', loadDirectory);
     byId('menuToggle').addEventListener('click', () => {
         const open = byId('menuToggle').getAttribute('aria-expanded') !== 'true';
         byId('menuToggle').setAttribute('aria-expanded', String(open));
@@ -432,7 +380,7 @@
         if (event.persisted) {
             submitting = false;
             byId('portalButton').disabled = false;
-            loadDirectory();
+            loadConfiguration();
             loadStatus();
         }
     });
@@ -453,6 +401,6 @@
         cleanUrl.searchParams.delete('checkout');
         history.replaceState(null, '', `${cleanUrl.pathname}${cleanUrl.search}${cleanUrl.hash}`);
     }
-    loadDirectory();
+    loadConfiguration();
     loadStatus({ poll: checkoutReturn === 'success' });
 })();

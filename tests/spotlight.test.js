@@ -84,7 +84,8 @@ test('checkout fixes price, amount, customer ownership and recurring terms on th
     assert.deepEqual(params.subscription_data.billing_mode, { type: 'flexible' });
     assert.equal(params.subscription_data.metadata.email, undefined);
     assert.equal(params.subscription_data.metadata.spotlight_paid_invoice, undefined);
-    assert.equal(params.success_url, `${settings.siteUrl}/spotlight/?checkout=success`);
+    assert.equal(params.success_url, `${settings.siteUrl}/spotlightsignup/?checkout=success`);
+    assert.equal(params.cancel_url, `${settings.siteUrl}/spotlightsignup/?checkout=canceled`);
     assert.doesNotMatch(params.success_url, /session_id/);
     assert.match(options.idempotencyKey, /^spotlight-checkout-/);
     assert.equal(ownerSessionId({ headers: { cookie: result.headers['set-cookie'] } }, settings), 'cs_test_newowner');
@@ -238,7 +239,7 @@ test('owner operations require signed cookie; arbitrary checkout/customer/subscr
     assert.equal(state.portals.length, 0); assert.equal(state.updates.length, 0);
     const portal = await post(stripe, { op: 'portal', customer: 'cus_attacker' }, cookie());
     assert.equal(portal.statusCode, 200);
-    assert.deepEqual(state.portals[0], { customer: 'cus_owner', configuration: settings.portalConfigurationId, return_url: `${settings.siteUrl}/spotlight/#manage` });
+    assert.deepEqual(state.portals[0], { customer: 'cus_owner', configuration: settings.portalConfigurationId, return_url: `${settings.siteUrl}/spotlightsignup/#manage` });
 });
 
 test('editing a profile cannot change billing marker, visibility, ownership or private billing details', async () => {

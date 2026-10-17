@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0b1118">
+    <title>Feature your business — Local Spotlight</title>
+    <meta name="description" content="Add your business to Local Spotlight for $100 a month. Create your profile and subscribe securely through Stripe.">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <link rel="canonical" href="https://www.chriscerney.org/spotlightsignup">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Feature your business — Local Spotlight">
+    <meta property="og:description" content="Add your business to Local Spotlight for $100 a month. Create your profile and subscribe securely through Stripe.">
+    <meta property="og:url" content="https://www.chriscerney.org/spotlightsignup">
+    <link rel="icon" type="image/svg+xml" href="/images/favicon-cc.svg?v=3">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/localspotlight/style.css">
+    <script src="/spotlightsignup/app.js" defer></script>
+</head>
+<body class="signup-page">
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header">
+        <nav class="shell nav-inner" aria-label="Primary navigation">
+            <a class="wordmark" href="/" aria-label="Chris Cerney home">Chris <strong>Cerney</strong></a>
+            <button class="menu-toggle" id="menuToggle" type="button" aria-expanded="false" aria-controls="primaryLinks">Menu <span aria-hidden="true">☰</span></button>
+            <div class="nav-links" id="primaryLinks">
+                <a href="/portfolio">Portfolio</a>
+                <a href="/merchandise">Merchandise</a>
+                <a href="/localspotlight" aria-current="page">Local Spotlight</a>
+                <a href="/#contact">Contact</a>
+                <a class="nav-tipline" href="/upload">Send a tip <span aria-hidden="true">↗</span></a>
+            </div>
+        </nav>
+    </header>
+
+    <main id="main" class="signup-main shell">
+        <header class="page-heading signup-heading">
+            <a class="back-link" href="/localspotlight">← Local Spotlight</a>
+            <h1>Feature your business.</h1>
+            <p><strong>$100 per month.</strong> Your business profile, website link, and optional phone in Local Spotlight.</p>
+            <p class="offer-detail">Billed monthly. Cancel any time. Paid listing only; news coverage is not included.</p>
+        </header>
+        <section class="signup-layout" aria-label="Create your business listing">
+            <div class="signup-column">
+                <div class="notice" id="checkoutNotice" role="status" aria-live="polite">Checking availability…</div>
+                <div class="notice" id="returnNotice" role="status" aria-live="polite" tabindex="-1" hidden></div>
+                        <form id="signupForm">
+                            <div id="profileFields" class="profile-fields">
+                                <div class="field"><label for="businessName">Business name</label><input id="businessName" name="businessName" type="text" required maxlength="100" autocomplete="organization" placeholder="Your business name"></div>
+                                <div class="field-row">
+                                    <div class="field"><label for="category">Category</label><select id="category" name="category" required><option value="">Choose a category</option><option>Food &amp; drink</option><option>Shopping</option><option>Home &amp; auto</option><option>Health &amp; wellness</option><option>Professional services</option><option>Arts &amp; experiences</option><option>Other</option></select></div>
+                                    <div class="field"><label for="city">City or community</label><input id="city" name="city" type="text" required maxlength="80" autocomplete="address-level2" placeholder="e.g. Monterey"></div>
+                                </div>
+                                <div class="field"><label for="description">About your business <span class="field-detail" id="descriptionCount">0 / 400</span></label><textarea id="description" name="description" required maxlength="400" rows="4" aria-describedby="descriptionHelp" placeholder="What do you offer, and what makes your business worth a visit?"></textarea><p class="field-help" id="descriptionHelp">Up to 400 characters. This description appears on your public listing.</p></div>
+                                <div class="field"><label for="website">Website or business social page</label><input id="website" name="website" type="url" required maxlength="300" inputmode="url" autocomplete="url" placeholder="https://yourbusiness.com" pattern="https://.+" aria-describedby="websiteHelp"><p class="field-help" id="websiteHelp">Use a full link beginning with https://.</p></div>
+                                <div class="field"><label for="phone">Business phone <span class="optional">Optional</span></label><input id="phone" name="phone" type="tel" maxlength="40" autocomplete="tel" placeholder="(831) 555-0123"><p class="field-help">If provided, this number appears on your public listing.</p></div>
+                            </div>
+                            <div class="private-fields"><div class="field"><label for="email">Billing email <span class="private-label">Private</span></label><input id="email" name="email" type="email" required maxlength="254" autocomplete="email" placeholder="you@yourbusiness.com"><p class="field-help">For receipts and billing. Never shown in the directory.</p></div></div>
+                            <label class="consent-label" for="consent"><input id="consent" name="consent" type="checkbox" required><span>I agree to <strong>$100 per month, renewing automatically</strong> until I cancel. Cancellation stops the next renewal; my listing remains through the paid billing period. I am authorized to publish this business’s information.</span></label>
+                            <button class="button button-primary checkout-button" id="checkoutButton" type="submit" disabled>Subscribe for $100/month <span aria-hidden="true">↗</span></button>
+                            <p class="form-message" id="signupMessage" role="status" aria-live="polite"></p>
+                            <p class="checkout-note">Your listing appears after payment is confirmed.</p>
+                        </form>
+            </div>
+            <aside class="preview-column" aria-labelledby="previewTitle"><div class="preview-sticky"><h2 id="previewTitle" class="preview-heading">Listing preview</h2><div id="profilePreview"></div><p class="preview-caption">Updates as you type. Published after payment is confirmed.</p></div></aside>
+        </section>
+        <section class="manage-section" id="manage" aria-labelledby="manageTitle">
+            <div class="manage-heading"><h2 id="manageTitle">Manage your listing</h2><p>Edit from the browser you used to subscribe. Manage payments or cancel through Stripe.</p></div>
+            <div class="manage-box">
+                <div class="manage-status-row"><h3>Your subscription</h3><span class="status-tag" id="manageStatus">Checking…</span></div>
+                <p id="manageMessage" class="manage-description">Looking for a subscription on this device.</p>
+                <div class="manage-actions"><button id="portalButton" type="button" class="button button-outline" hidden>Manage billing <span aria-hidden="true">↗</span></button><a id="portalLogin" class="button button-outline" hidden>Sign in to billing <span aria-hidden="true">↗</span></a><button id="refreshStatus" class="text-button" type="button">Refresh status</button></div>
+                <details id="editDetails" hidden><summary>Edit business details <span aria-hidden="true">+</span></summary><form id="manageForm"><div id="manageFields"></div><button class="button button-primary" type="submit" id="saveProfile">Save changes</button><p class="form-message" id="manageFormMessage" role="status" aria-live="polite"></p></form></details>
+                <p class="manage-support">Need help? <a href="mailto:cerneymedia@gmail.com?subject=Local%20Spotlight">cerneymedia@gmail.com</a></p>
+            </div>
+        </section>
+        <noscript><p class="notice">Enable JavaScript to create your listing, or email <a href="mailto:cerneymedia@gmail.com">cerneymedia@gmail.com</a>.</p></noscript>
+    </main>
+    <footer class="site-footer"><div class="shell footer-inner"><a class="wordmark" href="/">Chris <strong>Cerney</strong></a><span>© 2026 Chris Cerney</span></div></footer>
+</body>
+</html>
