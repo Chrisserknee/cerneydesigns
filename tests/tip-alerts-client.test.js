@@ -11,11 +11,12 @@ function client({ tip = false, serviceWorker, respond, ios = false, homeScreen =
     const get = id => { if (!elements.has(id)) elements.set(id, element()); return elements.get(id); };
     const context = vm.createContext({
         document: { documentElement: { classList: {toggle(){}}, style: {setProperty(){}} }, getElementById: get, createElement: element, addEventListener: (name,fn) => { events[name]=fn; }, hidden: false },
-        navigator: { userAgent: ios ? 'iPhone' : 'test', ...(serviceWorker ? { serviceWorker } : {}) }, window: {scrollY:0, addEventListener: (name,fn) => {events[name]=fn;}},
+        navigator: { userAgent: ios ? 'iPhone' : 'test', ...(serviceWorker ? { serviceWorker: {addEventListener:(name,fn)=>{events['worker:'+name]=fn;},...serviceWorker} } : {}) }, window: {scrollY:0, addEventListener: (name,fn) => {events[name]=fn;}},
         matchMedia: () => ({ matches: homeScreen }), URL, URLSearchParams, AbortSignal, Intl, Date, Uint8Array,
         requestAnimationFrame: fn=>setTimeout(fn,0), cancelAnimationFrame: clearTimeout,
         setTimeout: (fn, ms) => { timers.push({fn,ms}); const timer=setTimeout(fn,ms); timer.unref(); return timer; }, clearTimeout,
-        location: { search: tip ? '?tip=' + 'a'.repeat(64) : '', replace: url => destinations.push(url) },
+        location: { origin:'https://www.chriscerney.org', search: tip ? '?tip=' + 'a'.repeat(64) : '', replace: url => destinations.push(url) },
+        history: {replaceState:(_,__,url)=>destinations.push(url)},
         fetch: async (_, options) => {
             const { op } = JSON.parse(options.body); calls.push(op);
             const answer = await respond?.(op) || { status: 200, body: op === 'status' ? { subscribed: true, expiresAt: null } : { tips: [] } };
@@ -175,4 +176,34 @@ test('clipboard denial selects the full text for manual copying',async()=>{
  const section=c.elements.get('selected').children.find(e=>e.className==='report-copy');
  await section.children[2].children[0].handlers.click();
  assert.equal(section.open,true);assert.equal(section.children[1].value,vo);assert.equal(section.children[1].selection[1],vo.length);
+});
+
+test('a resumed inbox selects the report sent by its service worker',async()=>{
+ const caption='Full report caption',vo='Complete recording script',id='b'.repeat(64);
+ const worker={register:async()=>({}),ready:Promise.resolve({})};
+ const c=client({ios:true,serviceWorker:worker,respond:op=>op==='tip'?{status:200,body:{tips:[{title:'Soledad report',driveUrl:'https://drive.google.com/drive/folders/report',instagramDescription:caption,voiceover:vo}]}}:null});
+ await c.ready;
+ c.events['worker:message']({origin:'https://www.chriscerney.org',data:{type:'cerney-tip-open',url:'https://www.chriscerney.org/tip-alerts/?tip='+id}});
+ for(let i=0;i<20;i++)await Promise.resolve();
+ assert.equal(c.run('tipId'),id);assert.equal(c.elements.get('selected').hidden,false);
+ assert.equal(c.elements.get('selected').children[0].textContent,'Soledad report');
+ assert.equal(c.elements.get('selected').children[2].href,'googledrive://https://drive.google.com/drive/folders/report');
+ assert.deepEqual(c.destinations,['/tip-alerts/?tip='+id]);
+ assert.equal(c.elements.get('selected').children.filter(e=>e.className==='report-copy').length,2);
+});
+
+test('worker messages cannot select external, unrelated or malformed destinations',async()=>{
+ const c=client({serviceWorker:{register:async()=>({}),ready:Promise.resolve({})}});await c.ready;
+ for(const [origin,url] of [['https://evil.test','https://www.chriscerney.org/tip-alerts/?tip='+'a'.repeat(64)],['https://www.chriscerney.org','https://evil.test/tip-alerts/?tip='+'a'.repeat(64)],['https://www.chriscerney.org','https://www.chriscerney.org/admin/?tip='+'a'.repeat(64)],['https://www.chriscerney.org','https://www.chriscerney.org/tip-alerts/?tip=bad']])
+  c.events['worker:message']({origin,data:{type:'cerney-tip-open',url}});
+ assert.deepEqual(c.calls,['list']);assert.deepEqual(c.destinations,[]);
+});
+
+test('an earlier selected-report request cannot overwrite a newer notification',async()=>{
+ let release,number=0;
+ const c=client({serviceWorker:{register:async()=>({}),ready:Promise.resolve({})},respond:op=>op==='tip'?(++number===1?new Promise(resolve=>{release=resolve;}):{status:200,body:{tips:[{title:'Latest report',driveUrl:'https://drive.google.com/drive/folders/latest'}]}}):null});await c.ready;
+ const notify=id=>c.events['worker:message']({origin:'https://www.chriscerney.org',data:{type:'cerney-tip-open',url:'https://www.chriscerney.org/tip-alerts/?tip='+id}});
+ notify('a'.repeat(64));notify('b'.repeat(64));for(let i=0;i<20;i++)await Promise.resolve();
+ release({status:200,body:{tips:[{title:'Old report',driveUrl:'https://drive.google.com/drive/folders/old'}]}});for(let i=0;i<20;i++)await Promise.resolve();
+ assert.equal(c.elements.get('selected').children[0].textContent,'Latest report');
 });

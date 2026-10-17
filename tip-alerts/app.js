@@ -4,7 +4,7 @@ const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platfor
 const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
 let renderedTips, state, registration, retryTimer, inboxTimer, inboxRequest, loadRequest, sessionVersion = 0, openAttempts = 0;
 const thumbnails = new TipThumbnails(api);
-const tipId = new URLSearchParams(location.search).get('tip');
+let tipId = new URLSearchParams(location.search).get('tip');
 const show = (id, visible) => { $(id).hidden = !visible; };
 function message(text='', error=false) { $('message').textContent=text; $('message').classList.toggle('error',error); }
 function clearSession() {
@@ -178,9 +178,9 @@ async function fetchTips(quiet) {
 }
 async function openTip() {
     if (!/^[a-f0-9]{64}$/.test(tipId || '')) return;
-    const version=sessionVersion;
-    const {tips:[tip]}=await api('tip',{id:tipId});
-    if(version!==sessionVersion || !tip) return false;
+    const version=sessionVersion, requestedId=tipId;
+    const {tips:[tip]}=await api('tip',{id:requestedId});
+    if(version!==sessionVersion || requestedId!==tipId || !tip) return false;
     state=state || {};
     show('login',false); show('intro',false); show('connected',true);
     if(folderURL(tip.driveUrl)) {
@@ -297,6 +297,18 @@ if(standalone) {
     },{passive:true});
     document.addEventListener('touchcancel',resetPull,{passive:true});
 }
+// A notification can resume a running iPhone inbox instead of loading a page.
+// Only accept a same-origin inbox destination sent through our service worker.
+if('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message',event=>{
+    if(event.data?.type!=='cerney-tip-open' || event.origin!==location.origin)return;
+    let url;
+    try { url=new URL(event.data.url); } catch { return; }
+    const id=url.searchParams.get('tip');
+    if(url.origin!==location.origin || url.pathname!=='/tip-alerts/' || !/^[a-f0-9]{64}$/.test(id || ''))return;
+    tipId=id;openAttempts=0;clearTimeout(retryTimer);
+    history.replaceState(null,'',url.pathname+url.search);
+    openTip().catch(error=>message(error.message,true));
+});
 window.addEventListener('online',()=>{if(!document.hidden) load();});
 $('logout').addEventListener('click',async()=>{try{await api('logout');clearSession();await removeLocalSubscription();location.replace('/tip-alerts/');}catch(e){message(e.message,true);}});
 document.addEventListener('visibilitychange',()=>{
