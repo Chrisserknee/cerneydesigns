@@ -57,7 +57,7 @@
     if(!member.authenticated&&!searching){const join=element('button','primary','Join free ↗');join.addEventListener('click',account);actions.append(join);}
     const archive=element('a','secondary',postId?'Back to the feed':'Explore the portfolio ↗');archive.href=postId?'/news/':'/portfolio/';actions.append(archive);box.append(actions);return box;
   }
-  function setActive(){document.querySelectorAll('[data-view]').forEach(b=>{const active=b.dataset.view===view;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active));});document.querySelectorAll('[data-nav]').forEach(b=>b.classList.toggle('current',b.dataset.nav===view));$('feed').classList.toggle('video-view',view==='video');$('search').disabled=view==='saved';}
+  function setActive(){document.querySelectorAll('[data-view]').forEach(b=>{const active=b.dataset.view===view;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active));});document.querySelectorAll('[data-nav]').forEach(b=>b.classList.toggle('current',b.dataset.nav===view));$('feed').classList.toggle('video-view',view==='video');$('search').disabled=view==='saved'||Boolean(postId);}
   async function load(append=false){
     const number=++requestNumber;setActive();$('feed-status').textContent=append?'Loading more stories…':'Loading the latest reporting…';$('load-more').hidden=true;
     try{
@@ -72,7 +72,7 @@
       $('feed-status').textContent=posts.length? (view==='saved'?'Your saved reporting':'Latest reporting · newest first'):'';$('load-more').hidden=nextOffset===null;
     }catch(error){if(number!==requestNumber)return;$('feed-status').textContent=error.message+' ';const retry=element('button','secondary','Try again');retry.addEventListener('click',()=>load());$('feed-status').append(retry);}
   }
-  document.querySelectorAll('[data-view],[data-nav]').forEach(button=>button.addEventListener('click',event=>{if(postId)return;event.preventDefault();view=button.dataset.view || button.dataset.nav;history.replaceState({},'',view==='all'?'/news/':'/news/?view='+view);void load();}));
+  document.querySelectorAll('[data-view],[data-nav]').forEach(button=>button.addEventListener('click',event=>{if(postId){event.preventDefault();const target=button.dataset.view || button.dataset.nav;location.href=target==='all'?'/news/':'/news/?view='+target;return;}event.preventDefault();view=button.dataset.view || button.dataset.nav;history.replaceState({},'',view==='all'?'/news/':'/news/?view='+view);void load();}));
   $('search').addEventListener('input',()=>{clearTimeout(searchTimer);searchTimer=setTimeout(()=>load(),300);});$('load-more').addEventListener('click',()=>load(true));
   $('join-form').addEventListener('submit',async event=>{event.preventDefault();const button=event.submitter;button.disabled=true;showMessage('account-message','Sending your secure link…');try{await api({op:'signin',email:$('email').value,consent:$('consent').checked,updates:$('updates').checked});showMessage('account-message','Check your email for a sign-in link. It expires in 15 minutes.');}catch(error){showMessage('account-message',error.message,true);}finally{button.disabled=false;}});
   $('preferences').addEventListener('click',async()=>{try{member=await api({op:'preferences',updates:$('member-updates').checked});showMessage('account-message','Preferences saved.');}catch(error){showMessage('account-message',error.message,true);}});
