@@ -1,0 +1,6 @@
+.privacy{max-width:740px;padding:48px 24px 70px;margin:auto}
+.privacy>.eyebrow{margin-top:42px}
+.privacy h1{font-size:35px;letter-spacing:-1px;line-height:1.2;margin-bottom:16px}
+.privacy h2{font-size:23px;letter-spacing:-.4px;margin:32px 0 12px}
+.privacy p{color:#bac7d4;line-height:1.9;margin-bottom:14px}
+.privacy a{color:var(--blue);text-decoration:underline;text-underline-offset:4px}

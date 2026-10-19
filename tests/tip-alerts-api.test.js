@@ -64,11 +64,13 @@ test('a revoked thumbnail request does not refresh its cookie or become cacheabl
  assert.equal(p.res.code,401);assert.equal(p.res.headers['Set-Cookie'],undefined);assert.equal(p.res.headers['Cache-Control'],'no-store');
 });
 
-test('private preview Blob policy is restricted to the inbox and retains no-store',()=>{
+test('private preview Blob policies are restricted to the inbox and news publisher',()=>{
  const config=JSON.parse(fs.readFileSync(__dirname+'/../vercel.json','utf8'));
  const inbox=config.headers.find(rule=>rule.source==='/tip-alerts/(.*)');
  assert.equal(inbox.headers.find(h=>h.key==='Cache-Control').value,'no-store');
  const policy=inbox.headers.find(h=>h.key==='Content-Security-Policy').value;
  assert.match(policy,/img-src 'self' blob:;/);assert.match(policy,/connect-src 'self';/);assert.match(policy,/script-src 'self';/);
- assert(!policy.includes('unsafe-inline'));assert(!config.headers.filter(rule=>rule!==inbox).some(rule=>rule.headers.some(h=>h.value.includes('blob:'))));
+ const publisher=config.headers.find(rule=>rule.source==='/admin/news/(.*)');
+ assert(publisher.headers.some(h=>h.key==='Content-Security-Policy' && h.value.includes('media-src \'self\' blob:')));
+ assert(!policy.includes('unsafe-inline'));assert(!config.headers.filter(rule=>rule!==inbox && rule.source!=='/admin/news/(.*)').some(rule=>rule.headers.some(h=>h.value.includes('blob:'))));
 });

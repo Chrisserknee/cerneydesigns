@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>News — Chris Cerney</title>
+  <meta name="description" content="Watch and read independent news, photo stories and video reporting from Chris Cerney. Join free and stay connected directly.">
+  <meta name="theme-color" content="#0b1118"><meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta property="og:title" content="Chris Cerney — News"><meta property="og:description" content="Independent reporting. A direct connection."><meta property="og:type" content="website"><meta property="og:url" content="https://www.chriscerney.org/news/">
+  <link rel="canonical" href="https://www.chriscerney.org/news/"><link rel="icon" href="/images/favicon-cc.svg" type="image/svg+xml">
+  <link rel="alternate" type="application/rss+xml" title="Chris Cerney News" href="/api/news?op=rss">
+  <link rel="manifest" href="/news/manifest.webmanifest">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/news/news.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to news</a>
+<div class="app-shell">
+  <aside class="rail" aria-label="Site navigation">
+    <a class="wordmark" href="/">CHRIS <span>CERNEY</span><small>INDEPENDENT JOURNALISM</small></a>
+    <nav class="rail-nav">
+      <a href="/news/" class="nav-item current" data-nav="all"><svg><use href="/news/icons.svg#home"/></svg><span>News feed</span></a>
+      <a href="/news/?view=video" class="nav-item" data-nav="video"><svg><use href="/news/icons.svg#play"/></svg><span>Watch</span></a>
+      <a href="/news/?view=image" class="nav-item" data-nav="image"><svg><use href="/news/icons.svg#photo"/></svg><span>Photos</span></a>
+      <a href="/news/?view=saved" class="nav-item" data-nav="saved"><svg><use href="/news/icons.svg#bookmark"/></svg><span>Saved</span></a>
+      <button class="nav-item account-button" type="button"><svg><use href="/news/icons.svg#user"/></svg><span>Join / sign in</span></button>
+    </nav>
+    <div class="rail-bottom"><a href="/submit-story/">Have a story to share? <span>↗</span></a><p>News. Investigations.<br>The Central Coast &amp; beyond.</p><div class="fine-links"><a href="/portfolio/">Portfolio</a><a href="/news/privacy.html">Privacy</a><a href="/api/news?op=rss">RSS</a></div><small>© 2026 Chris Cerney</small></div>
+  </aside>
+  <main id="main" class="feed-column">
+    <header class="feed-header"><a class="mobile-brand" href="/">CHRIS <span>CERNEY</span></a><div class="desktop-title">News feed <span class="edition">THE DIRECT EDITION</span></div><button class="join-button account-button" type="button">Join free <span>↗</span></button></header>
+    <section class="profile-intro" aria-labelledby="intro-title">
+      <div class="profile-top"><div class="avatar" aria-hidden="true">CC<span></span></div><div><h1 id="intro-title">Chris Cerney</h1><p>Reporter &amp; photo/video journalist</p></div><a class="profile-link" href="/#about" aria-label="About Chris Cerney">↗</a></div>
+      <p class="profile-description">Independent reporting.<br><strong>A direct connection.</strong></p>
+      <div class="profile-meta"><span><svg><use href="/news/icons.svg#pin"/></svg> Central Coast, California</span><span>Photos · Video · Stories</span></div>
+    </section>
+    <div class="feed-controls"><div class="tabs" aria-label="Filter news"><button data-view="all" class="active" aria-pressed="true">All posts</button><button data-view="video" aria-pressed="false">Videos</button><button data-view="image" aria-pressed="false">Photos</button><button data-view="saved" aria-pressed="false">Saved</button></div><label class="search"><svg><use href="/news/icons.svg#search"/></svg><input type="search" id="search" maxlength="100" placeholder="Search stories" aria-label="Search stories"></label></div>
+    <p id="feed-status" class="feed-status" role="status">Loading the latest reporting…</p>
+    <div id="feed" aria-label="News posts"></div>
+    <button id="load-more" class="secondary load-more" hidden>Load more stories</button>
+    <section class="mobile-join"><p class="eyebrow">STAY CONNECTED</p><h2>Your news. On your terms.</h2><p>Join free to save stories and choose email updates.</p><button class="primary account-button">Join the community <span>↗</span></button></section>
+    <footer class="feed-footer"><span>Independent reporting, right here.</span><a href="/upload/">Send a tip ↗</a></footer>
+  </main>
+  <aside class="right-column" aria-label="About and membership">
+    <section class="join-card"><div class="card-symbol"><svg><use href="/news/icons.svg#mail"/></svg></div><p class="eyebrow">STAY CONNECTED</p><h2>Your news.<br>On your terms.</h2><p>Watch the reporting. Save the stories. Stay in touch directly.</p><button class="primary account-button">Join the community <span>↗</span></button><small>Free to join. Email updates are your choice.</small></section>
+    <section class="tip-card"><p class="eyebrow">FROM YOUR COMMUNITY</p><h3>Know something<br>worth covering?</h3><p>Send a news tip, photos or video directly to Chris.</p><a href="/upload/">Open the tipline <span>↗</span></a></section>
+    <div class="side-links"><a href="/portfolio/">Explore the reporting archive ↗</a><a href="/gofundme/">Support independent journalism ↗</a></div>
+    <p class="side-note">Published by Chris Cerney.<br>Built for a direct connection with the community.</p>
+  </aside>
+</div>
+<nav class="mobile-nav" aria-label="News navigation"><a href="/news/" data-nav="all" class="current"><svg><use href="/news/icons.svg#home"/></svg><span>Feed</span></a><a href="/news/?view=video" data-nav="video"><svg><use href="/news/icons.svg#play"/></svg><span>Watch</span></a><a href="/news/?view=saved" data-nav="saved"><svg><use href="/news/icons.svg#bookmark"/></svg><span>Saved</span></a><button type="button" class="account-button"><svg><use href="/news/icons.svg#user"/></svg><span>Account</span></button></nav>
+<dialog id="account-dialog" aria-labelledby="account-title"><button class="dialog-close" type="button" data-close aria-label="Close account">×</button><div id="join-view"><p class="eyebrow">YOUR DIRECT CONNECTION</p><h2 id="account-title">Join the community.</h2><p>A free account for saving stories and following Chris’s reporting. Sign in with an email link—no password needed.</p><form id="join-form"><label>Email address<input type="email" id="email" autocomplete="email" maxlength="254" required placeholder="you@example.com"></label><label class="check"><input type="checkbox" id="consent" required><span>Create or access my free account. I’ve read the <a href="/news/privacy.html">privacy notice</a>.</span></label><label class="check"><input type="checkbox" id="updates"><span>Email me new reporting when I join. Existing members can change this in Account.</span></label><button class="primary" type="submit">Email me a sign-in link <span>↗</span></button></form></div><div id="member-view" hidden><p class="eyebrow">YOU’RE PART OF THE COMMUNITY</p><h2>Your account</h2><p id="member-email"></p><label class="check"><input type="checkbox" id="member-updates"><span>Email updates when Chris publishes and chooses to notify subscribers.</span></label><button class="primary" id="preferences">Save preferences</button><button class="secondary" id="logout">Sign out</button><button class="text-danger" id="delete-account">Delete my account and saved stories</button></div><p id="account-message" class="message" role="status"></p></dialog>
+<dialog id="link-dialog" aria-labelledby="link-title"><p class="eyebrow">CHRIS CERNEY NEWS</p><h2 id="link-title">Finish signing in</h2><p id="link-text">Confirm to sign in securely on this device.</p><button class="primary" id="confirm-link">Continue</button><button class="secondary" data-close>Cancel</button><p id="link-message" class="message" role="status"></p></dialog>
+<div id="toast" class="toast" role="status" hidden></div>
+<script src="/news/news.js" defer></script>
+</body></html>

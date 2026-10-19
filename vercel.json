@@ -67,6 +67,24 @@
           "value": "no-referrer"
         }
       ]
+    },
+    {
+      "source": "/news/(.*)",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://us-west1-tip-line-8c2d7.cloudfunctions.net https://storage.googleapis.com; media-src 'self' https://us-west1-tip-line-8c2d7.cloudfunctions.net https://storage.googleapis.com; connect-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
+        }
+      ]
+    },
+    {
+      "source": "/admin/news/(.*)",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' blob: https://us-west1-tip-line-8c2d7.cloudfunctions.net https://storage.googleapis.com; media-src 'self' blob: https://us-west1-tip-line-8c2d7.cloudfunctions.net https://storage.googleapis.com; connect-src 'self' https://storage.googleapis.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
+        }
+      ]
     }
   ]
 }
