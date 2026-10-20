@@ -49,10 +49,11 @@ function paintMonitor(health) {
     const stale=Date.now()-Date.parse(health.updatedAt)>5*60000;
     const overdue=!health.lastAttemptAt || Date.now()-Date.parse(health.lastAttemptAt)>150*60000;
     summary.textContent=stale?'Monitoring status is out of date':overdue?'Collection check overdue':health.collectionStatus==='blocked'?'Facebook needs attention':health.collectionStatus==='catching_up'?'Facebook collection catching up':'Agency monitoring';
-    paragraph(body,'Last monitor check: '+dateLabel(health.lastAttemptAt || health.updatedAt));
+    paragraph(body,health.lastAttemptAt?'Last monitor check: '+dateLabel(health.lastAttemptAt):'No Facebook check has been recorded yet.');
     paragraph(body,`${health.agencyCount || 0} registered sources · ${health.pendingCount || 0} releases pending`);
     if(health.lastCompletedAt)paragraph(body,'Last finished collection run: '+dateLabel(health.lastCompletedAt));
     if(health.reason)paragraph(body,health.reason);
+    if(health.producer){const p=health.producer;const old=Date.now()-Date.parse(p.observedAt)>5*60000;paragraph(body,old?'Production status is out of date.':`${p.activeCount || 0} reports being prepared · ${p.waitingCount || 0} waiting to start`);if(p.resumeCount || p.failedCount)paragraph(body,`${p.resumeCount || 0} saved report chats need recovery · ${p.failedCount || 0} render failures. Existing quality holds stay in place; new jobs continue through the producer.`, 'production-attention');}
     paragraph(body,'Checks rotate across agencies. Hourly 8 a.m.–11 p.m.; 1, 3, 5 and 7 a.m. overnight, Pacific. The Mac and signed-in Safari must be available.','small muted');
 }
 function rememberedTip() {

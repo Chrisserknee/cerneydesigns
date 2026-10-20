@@ -14,6 +14,7 @@ function withDetails(card,data){
 function monitorHealth(data){
  if(!data||data.version!==1||!Number.isFinite(Date.parse(data.updatedAt)))return null;
  const date=v=>Number.isFinite(Date.parse(v))?v:null;const count=v=>Number.isSafeInteger(v)&&v>=0&&v<=10000?v:0;
- return {updatedAt:data.updatedAt,lastAttemptAt:date(data.lastAttemptAt),lastCompletedAt:date(data.lastCompletedAt),agencyCount:count(data.agencyCount),pendingCount:count(data.pendingCount),collectionStatus:['blocked','catching_up','monitoring'].includes(data.collectionStatus)?data.collectionStatus:'unknown',reason:copyText(data.reason,500)};
+ const p=data.producer;const producer=p&&Number.isFinite(Date.parse(p.observedAt))?{observedAt:p.observedAt,status:['working','idle','waiting_for_desktop','waiting_for_resume'].includes(p.status)?p.status:'unknown',waitingCount:count(p.waitingCount),activeCount:count(p.activeCount),resumeCount:count(p.resumeCount),failedCount:count(p.failedCount)}:null;
+ return {producer,updatedAt:data.updatedAt,lastAttemptAt:date(data.lastAttemptAt),lastCompletedAt:date(data.lastCompletedAt),agencyCount:count(data.agencyCount),pendingCount:count(data.pendingCount),collectionStatus:['blocked','catching_up','monitoring'].includes(data.collectionStatus)?data.collectionStatus:'unknown',reason:copyText(data.reason,500)};
 }
 module.exports={facebookPost,withDetails,monitorHealth};
