@@ -5,6 +5,7 @@
    const value=tip[key];if(typeof value!=='string'||!value.trim()||value.length>max)continue;
    const section=document.createElement('details');section.className='report-copy';
    const summary=document.createElement('summary');summary.textContent=title;
+   const count=value.trim().split(/\s+/).length;const meta=document.createElement('p');meta.className='copy-meta';meta.textContent=key==='voiceover'?count+' words · About '+Math.ceil(count/160*60)+' seconds to record · Text only':value.length+' characters · Complete caption';
    const area=document.createElement('textarea');area.readOnly=true;area.value=value;area.rows=6;area.setAttribute('aria-label',title);area.spellcheck=false;
    const button=document.createElement('button');button.type='button';button.className='secondary';button.textContent=label;
    const status=document.createElement('span');status.className='copy-status';status.setAttribute('role','status');
@@ -19,7 +20,7 @@
     }
    });
    const actions=document.createElement('div');actions.className='copy-actions';actions.append(button,status);
-   section.append(summary,area,actions);parent.append(section);
+   section.append(summary,meta,area,actions);parent.append(section);
   }
  }
  root.CerneyReportCopy={appendReportCopy};

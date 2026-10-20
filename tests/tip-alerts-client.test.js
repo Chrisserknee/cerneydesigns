@@ -153,9 +153,9 @@ test('Claude titles and context replace a generic card safely on automatic refre
  Object.assign(tip,{title:'Bicycle riders in Monterey',summary:'<img src=x onerror=alert(1)>',contextSource:'claude',reportState:'ready'});
  await c.run('loadTips({quiet:true})');
  const info=c.elements.get('tips').children[0].children[0].children[0];
- assert.equal(info.children[0].textContent,tip.title);
+ assert.equal(info.children[1].textContent,tip.title);
  assert.equal(info.children.find(e=>e.className==='tip-summary').textContent,tip.summary);
- assert.match(info.children.at(-1).textContent,/Claude draft.*Draft ready for your review/);
+ assert.match(info.children.find(e=>e.className==='tip-provenance').textContent,/Prepared draft/);
 });
 
 
@@ -166,8 +166,8 @@ test('selected report copies the complete VO and caption instead of its summary'
  await c.ready;c.run('globalThis.copied=[];navigator.clipboard={writeText:async text=>copied.push(text)}');
  const sections=c.elements.get('selected').children.filter(e=>e.className==='report-copy');
  assert.equal(sections.length,2);
- await sections[0].children[2].children[0].handlers.click();
- await sections[1].children[2].children[0].handlers.click();
+ await sections[0].children.find(e=>e.className==='copy-actions').children[0].handlers.click();
+ await sections[1].children.find(e=>e.className==='copy-actions').children[0].handlers.click();
  assert.equal(c.run('copied[0]'),caption);assert.equal(c.run('copied[1]'),vo);
 });
 
@@ -175,8 +175,8 @@ test('clipboard denial selects the full text for manual copying',async()=>{
  const vo='Full recording script.\n\nSecond paragraph.';
  const c=client({tip:true,respond:op=>op==='tip'?{status:200,body:{tips:[{driveUrl:'https://drive.google.com/drive/folders/test',voiceover:vo}]}}:null});await c.ready;
  const section=c.elements.get('selected').children.find(e=>e.className==='report-copy');
- await section.children[2].children[0].handlers.click();
- assert.equal(section.open,true);assert.equal(section.children[1].value,vo);assert.equal(section.children[1].selection[1],vo.length);
+ await section.children.find(e=>e.className==='copy-actions').children[0].handlers.click();
+ assert.equal(section.open,true);assert.equal(section.children[2].value,vo);assert.equal(section.children[2].selection[1],vo.length);
 });
 
 test('a resumed inbox selects the report sent by its service worker',async()=>{
@@ -187,7 +187,7 @@ test('a resumed inbox selects the report sent by its service worker',async()=>{
  c.events['worker:message']({origin:'https://www.chriscerney.org',data:{type:'cerney-tip-open',url:'https://www.chriscerney.org/tip-alerts/?tip='+id}});
  for(let i=0;i<20;i++)await Promise.resolve();
  assert.equal(c.run('tipId'),id);assert.equal(c.elements.get('selected').hidden,false);
- assert.equal(c.elements.get('selected').children[0].textContent,'Soledad report');
+ assert.equal(c.elements.get('selected').children[1].textContent,'Soledad report');
  assert.equal(c.elements.get('selected').children.find(e=>e.className==='folder').href,'googledrive://https://drive.google.com/drive/folders/report');
  assert.deepEqual(c.destinations,['/tip-alerts/?tip='+id]);
  assert.equal(c.elements.get('selected').children.filter(e=>e.className==='report-copy').length,2);
@@ -206,7 +206,7 @@ test('an earlier selected-report request cannot overwrite a newer notification',
  const notify=id=>c.events['worker:message']({origin:'https://www.chriscerney.org',data:{type:'cerney-tip-open',url:'https://www.chriscerney.org/tip-alerts/?tip='+id}});
  notify('a'.repeat(64));notify('b'.repeat(64));for(let i=0;i<20;i++)await Promise.resolve();
  release({status:200,body:{tips:[{title:'Old report',driveUrl:'https://drive.google.com/drive/folders/old'}]}});for(let i=0;i<20;i++)await Promise.resolve();
- assert.equal(c.elements.get('selected').children[0].textContent,'Latest report');
+ assert.equal(c.elements.get('selected').children[1].textContent,'Latest report');
 });
 
 test('Home Screen launches keep agency reports visible without a notification link',async()=>{
@@ -216,10 +216,10 @@ test('Home Screen launches keep agency reports visible without a notification li
  for(let i=0;i<2;i++){
   const c=client({ios:true,respond});await c.ready;
   assert.equal(c.elements.get('reportsSection').hidden,false);assert.equal(c.elements.get('reports').children.length,1);
-  const row=c.elements.get('reports').children[0];assert.equal(row.children[0].children[0].children[0].textContent,'Soledad report');
-  assert.match(row.children[0].children[0].children.at(-1).textContent,/Draft needs attention/);
+  const row=c.elements.get('reports').children[0];assert.equal(row.children[0].children[0].children[1].textContent,'Soledad report');
+  assert.equal(row.children[0].children[0].children[0].children[1].textContent,'Needs review');
   assert.equal(row.children.filter(e=>e.className==='report-copy').length,2);
-  assert.equal(c.elements.get('tips').children[0].children[0].children[0].children[0].textContent,'New tip');
+  assert.equal(c.elements.get('tips').children[0].children[0].children[0].children[1].textContent,'New tip');
   await c.run('loadTips({quiet:true})');assert.equal(c.elements.get('reports').children[0],row);
   c.run('clearSession()');assert.equal(c.elements.get('reports').children.length,0);assert.equal(c.elements.get('reportsSection').hidden,true);
  }
@@ -236,6 +236,20 @@ test('closing and reopening the Home Screen app reloads the last selected report
  const first=client({tip:true,saved,respond});await first.ready;
  assert.equal(saved.get('cerney-open-tip'),record.id);assert.equal(saved.size,1);assert.doesNotMatch(JSON.stringify([...saved]),/Private caption|Private VO|drive.google/);
  const reopened=client({saved,respond,ios:true});await reopened.ready;
- assert.deepEqual(reopened.calls,['list','tip']);assert.equal(reopened.elements.get('selected').children[0].textContent,'Soledad report');
+ assert.deepEqual(reopened.calls,['list','tip']);assert.equal(reopened.elements.get('selected').children[1].textContent,'Soledad report');
  reopened.run('clearSession()');assert.equal(saved.size,0);assert.equal(reopened.elements.get('selected').children.length,0);
+});
+
+test('search and workflow filters retain source separation and never call the network',async()=>{
+ const reports=[{id:'a'.repeat(64),type:'incident',receivedAt:new Date().toISOString(),title:'Road closure',agency:'Monterey Fire',reportState:'ready',draftDelivered:true},{id:'b'.repeat(64),type:'incident',receivedAt:new Date().toISOString(),title:'Second story',agency:'Santa Cruz Fire',reportState:'needs_review'}];
+ const c=client({respond:()=>({status:200,body:{tips:[],reports}})});await c.ready;const before=c.calls.length;
+ c.elements.get('storySearch').value='Monterey';c.elements.get('storySearch').handlers.input();assert.equal(c.elements.get('reports').children.length,1);assert.equal(c.elements.get('tips').children.length,0);
+ c.elements.get('workflowFilter').value='attention';c.elements.get('workflowFilter').handlers.change();assert.equal(c.elements.get('reports').children.length,0);assert.equal(c.elements.get('reportsEmpty').hidden,false);assert.equal(c.calls.length,before);
+});
+test('saving persists only opaque identifiers; dismissal removes a stale selected story',async()=>{
+ const saved=new Map(),id='a'.repeat(64),report={id,type:'incident',receivedAt:new Date().toISOString(),title:'Private title',driveUrl:'https://drive.google.com/drive/folders/test',reportState:'ready',draftDelivered:true};
+ const c=client({tip:true,saved,respond:op=>({status:200,body:{tips:op==='tip'?[report]:[],reports:[report]}})});await c.ready;
+ const info=c.elements.get('reports').children[0].children[0].children[0];const actions=info.children.find(x=>x.className==='story-actions');actions.children.at(-1).handlers.click();
+ assert.equal(saved.get('cerney-saved-stories'),JSON.stringify([id]));assert.doesNotMatch(JSON.stringify([...saved]),/Private title|drive.google/);
+ c.elements.get('selected').children[0].handlers.click();assert.equal(c.elements.get('selected').hidden,true);assert.equal(saved.has('cerney-open-tip'),false);
 });

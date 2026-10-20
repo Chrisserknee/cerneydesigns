@@ -1,5 +1,6 @@
 'use strict';
 const {incidentRecord}=require('./incident-record');
+const {withDetails,monitorHealth}=require('./newsroom-details');
 const { randomBytes, randomUUID } = require('node:crypto');
 const webpush = require('web-push');
 const { onRequest } = require('firebase-functions/v2/https');
@@ -274,7 +275,7 @@ async function handleApi(req, res) {
                 if (!stored) {
                     const incident=incidentRecord((await read(`incidents/${body.id}.json`))?.data);
                     if(!incident)return res.status(404).json({error:'Tip not found.'});
-                    return res.json({authenticated:true,expiresAt:device.expiresAt,tips:[incident]});
+                    return res.json({authenticated:true,expiresAt:device.expiresAt,tips:[withDetails(incident,(await read(`details/${body.id}.json`))?.data)]});
                 }
                 // Resolve the current destination even while a storage event is catching up.
                 const [latest] = await bucket().file(stored.data.path).getMetadata();
@@ -289,9 +290,12 @@ async function handleApi(req, res) {
                     .sort((a,b)=>Date.parse(b.receivedAt)-Date.parse(a.receivedAt)).slice(0,50);
             }
             const reports=await inboxDocuments('enrichment/');
+            const detailRecords=new Map((await inboxDocuments('details/')).map(d=>[d.id,d]));
+            const monitor=monitorHealth((await read('monitor/status.json'))?.data);
+            if(incidentReports)incidentReports=incidentReports.map(t=>withDetails(t,detailRecords.get(t.id)));
             const byId=new Map(reports.map(r=>[r.id,r]));
             const deliveries=new Map((await inboxDocuments('deliveries/')).map(d=>[d.id,d]));
-            return res.json({authenticated:true,expiresAt:device.expiresAt,...(incidentReports ? {reports:incidentReports} : {}),tips:tips.map(t=>t.type==='incident'?t:displayContext(t,byId.get(t.id),deliveries.get(t.id))).map(({path,sourceGeneration,sourceTitle,sourceSummary,sourceLocation,contextReceivedAt,...t})=>t)});
+            return res.json({authenticated:true,expiresAt:device.expiresAt,monitor,...(incidentReports ? {reports:incidentReports} : {}),tips:tips.map(t=>t.type==='incident'?withDetails(t,detailRecords.get(t.id)):displayContext(t,byId.get(t.id),deliveries.get(t.id))).map(({path,sourceGeneration,sourceTitle,sourceSummary,sourceLocation,contextReceivedAt,...t})=>t)});
         }
         if (body.op === 'test') {
             if (!device.subscription) return res.status(409).json({error:'Enable notifications on this device first.'});

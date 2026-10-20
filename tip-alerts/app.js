@@ -4,6 +4,57 @@ const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platfor
 const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
 let renderedTips, state, registration, retryTimer, inboxTimer, inboxRequest, loadRequest, sessionVersion = 0, openAttempts = 0;
 const thumbnails = new TipThumbnails(api);
+let inboxSnapshot = {tips:[],reports:[]};
+let savedStories = new Set();
+try { savedStories = new Set(JSON.parse(localStorage.getItem('cerney-saved-stories') || '[]').filter(x=>/^[a-f0-9]{64}$/.test(x)).slice(0,200)); } catch {}
+const reportStates={queued:'Queued',analyzing:'Analyzing media',awaiting_editor:'Preparing report',editing:'Editing',rendering:'Rendering',qc_pending:'Checking draft',ready:'Draft ready',approved:'Approved',needs_review:'Needs review',held:'Held for review',declined:'Tip saved',paused:'Paused',failed:'Processing stopped'};
+function workflow(tip) {
+    if(['needs_review','held','failed','paused'].includes(tip.reportState) || tip.status==='review') return 'attention';
+    if(tip.draftDelivered && ['ready','approved'].includes(tip.reportState)) return 'ready';
+    return 'processing';
+}
+function sourceURL(value) {
+    try { const u=new URL(value); if(u.protocol!=='https:' || u.username || u.password || u.port || !['www.facebook.com','facebook.com'].includes(u.hostname)) return null;
+        if(!(/\/posts\/[^/]+/.test(u.pathname) || /\/videos\/[^/]+/.test(u.pathname) || /^\/reel\/\d+\/?$/.test(u.pathname) || (u.pathname==='/watch/' && /^\d+$/.test(u.searchParams.get('v') || '')) || (u.pathname==='/permalink.php' && /^\d+$/.test(u.searchParams.get('story_fbid') || ''))))return null;
+        u.hash=''; return u.href;
+    } catch {return null;}
+}
+function videoURL(value){try{const u=new URL(value);return u.protocol==='https:'&&u.hostname==='drive.google.com'&&!u.username&&!u.password&&!u.port&&/^\/file\/d\/[A-Za-z0-9_-]{10,200}\/view$/.test(u.pathname)?u.origin+u.pathname:null;}catch{return null;}}
+function matchesStory(tip) {
+    const q=String($('storySearch').value || '').trim().toLocaleLowerCase();
+    const filter=$('workflowFilter').value || 'all';
+    return (!q || [tip.title,tip.summary,tip.location,tip.agency,tip.county].join(' ').toLocaleLowerCase().includes(q))
+        && (filter==='all' || (filter==='saved' ? savedStories.has(tip.id) : workflow(tip)===filter));
+}
+function paragraph(parent,text,className='') {const p=document.createElement('p');p.textContent=text;p.className=className;parent.append(p);return p;}
+function reportDetails(tip,parent) {
+    const url=sourceURL(tip.sourceUrl);
+    if(url) { const a=document.createElement('a');a.href=url;a.target='_blank';a.rel='noopener noreferrer';a.className='source-link';a.textContent='Open original Facebook post ↗';parent.append(a); }
+    if(!tip.agency && !tip.sourceText && !tip.verificationNotes?.length && !tip.reportRevision)return;
+    const details=document.createElement('details');details.className='story-details';
+    const title=document.createElement('summary');title.textContent='Source & reporting notes';details.append(title);
+    if(tip.agency)paragraph(details,tip.agency+(tip.county?' · '+tip.county+' County':''),'detail-agency');
+    if(tip.sourceKind==='official_email')paragraph(details,'Source: official agency email. The original is retained in the report folder.');
+    if(tip.publishedAt && Number.isFinite(Date.parse(tip.publishedAt)))paragraph(details,'Source published: '+dateLabel(tip.publishedAt));
+    if(tip.publicationTimeNote)paragraph(details,tip.publicationTimeNote,'time-note');
+    if(tip.sourceText){const quote=document.createElement('blockquote');quote.textContent=tip.sourceText;details.append(quote);if(tip.sourceTextTruncated)paragraph(details,'Source excerpt. Open the original post or report folder for the complete release.','small muted');}
+    if(tip.verificationNotes?.length){paragraph(details,'Review before publishing','detail-agency');for(const note of tip.verificationNotes)paragraph(details,note);}
+    if(tip.durationSeconds)paragraph(details,'Video length: '+tip.durationSeconds+' seconds','small muted');
+    if(tip.reportRevision)paragraph(details,'Report revision '+tip.reportRevision+(tip.reportEdition?' · Edition '+tip.reportEdition:''),'small muted');
+    parent.append(details);
+}
+function paintMonitor(health) {
+    const summary=$('monitorSummary'),body=$('monitorDetails');body.replaceChildren();
+    if(!health || !Number.isFinite(Date.parse(health.updatedAt))) {summary.textContent='Monitoring status unavailable';paragraph(body,'The inbox can update while collection is stopped. No recent monitor health has been received.');return;}
+    const stale=Date.now()-Date.parse(health.updatedAt)>5*60000;
+    const overdue=!health.lastAttemptAt || Date.now()-Date.parse(health.lastAttemptAt)>150*60000;
+    summary.textContent=stale?'Monitoring status is out of date':overdue?'Collection check overdue':health.collectionStatus==='blocked'?'Facebook needs attention':health.collectionStatus==='catching_up'?'Facebook collection catching up':'Agency monitoring';
+    paragraph(body,'Last monitor check: '+dateLabel(health.lastAttemptAt || health.updatedAt));
+    paragraph(body,`${health.agencyCount || 0} registered sources · ${health.pendingCount || 0} releases pending`);
+    if(health.lastCompletedAt)paragraph(body,'Last finished collection run: '+dateLabel(health.lastCompletedAt));
+    if(health.reason)paragraph(body,health.reason);
+    paragraph(body,'Checks rotate across agencies. Hourly 8 a.m.–11 p.m.; 1, 3, 5 and 7 a.m. overnight, Pacific. The Mac and signed-in Safari must be available.','small muted');
+}
 function rememberedTip() {
     try { const id=localStorage.getItem('cerney-open-tip');return /^[a-f0-9]{64}$/.test(id || '') ? id : null; } catch { return null; }
 }
@@ -13,7 +64,7 @@ function message(text='', error=false) { $('message').textContent=text; $('messa
 function clearSession() {
     try { localStorage.removeItem('cerney-open-tip'); } catch {}
     thumbnails.reset();
-    state = null; renderedTips=null; sessionVersion++; message(); resetPull();
+    state = null; renderedTips=null; inboxSnapshot={tips:[],reports:[]}; sessionVersion++; message(); resetPull();
     $('inboxStatus').textContent = '';
     clearTimeout(retryTimer); clearTimeout(inboxTimer);
     for (const id of ['tips','reports','devices','selected']) $(id).replaceChildren();
@@ -162,27 +213,9 @@ async function fetchTips(quiet) {
     const reports=Array.isArray(data.reports) ? data.reports : data.tips.filter(t=>t.type==='incident');
     const tips=data.tips.filter(t=>t.type!=='incident');
     message(); show('empty',!tips.length);show('reportsSection',reports.length>0);show('foundReportsLink',reports.length>0);
-    const signature=JSON.stringify({tips,reports});
-    if(signature!==renderedTips) {
-    thumbnails.reset();
-    $('tips').replaceChildren();$('reports').replaceChildren();
-    for(const [container,records] of [[$('reports'),reports],[$('tips'),tips]]) for(const tip of records) {
-        const row=document.createElement('article');row.className='tip tip-card '+sourceClass(tip);
-        const body=document.createElement('div');body.className='tip-body';
-        const info=document.createElement('div'); const title=document.createElement('h3');title.textContent=(tip.title || (tip.type==='story'?'Story submission':'Tipline upload'))+(tip.incomplete?' · Incomplete':'');
-        const time=document.createElement('time');time.dateTime=tip.receivedAt;time.textContent=dateLabel(tip.receivedAt);info.append(title,sourceBadge(tip),time);
-        if(tip.summary) { const summary=document.createElement('p');summary.className='tip-summary';summary.textContent=tip.summary;info.append(summary); }
-        if(tip.location) { const place=document.createElement('p');place.className='tip-location';place.textContent='Reported location: '+tip.location;info.append(place); }
-        const provenance=document.createElement('p');provenance.className='tip-provenance';
-        const reportStates={queued:'Report queued',analyzing:'Analyzing media',awaiting_editor:'Preparing report',editing:'Editing report',rendering:'Rendering report',qc_pending:'Checking draft',ready:'Draft ready for your review',approved:'Draft approved',needs_review:'Draft needs attention',held:'Report held',declined:'Not selected for a report',paused:'Report paused',failed:'Report processing stopped'};
-        provenance.textContent=(tip.contextSource==='claude'?'Claude draft':tip.contextSource==='tipster'?'Tipster context · Unverified':'Context pending')+(tip.reportState?' · '+(reportStates[tip.reportState] || 'Report processing'):'');
-        info.append(provenance);body.append(info);
-        if(folderURL(tip.driveUrl)) body.append(folderLink(tip)); else {const status=document.createElement('span');status.className='state';status.textContent=tip.status==='review'?'Needs review':'Files processing';body.append(status);}
-        row.append(body);CerneyReportCopy.appendReportCopy(tip,row);thumbnails.add(tip,row);
-        container.append(row);
-    }
-    renderedTips=signature;
-    }
+    inboxSnapshot={tips,reports};
+    paintMonitor(data.monitor);
+    renderInbox();
     const updated=new Intl.DateTimeFormat('en-US',{hour:'numeric',minute:'2-digit'}).format(new Date());
     $('reportsStatus').textContent=`${reports.length} found video ${reports.length===1?'report':'reports'} · Updated ${updated}`;
     $('inboxStatus').textContent=`${tips.length} community ${tips.length===1?'tip':'tips'} · Updated ${updated}`;
@@ -192,6 +225,44 @@ async function fetchTips(quiet) {
         scheduleInbox(processing ? 3000 : 30000);
     }
 }
+function renderInbox() {
+    const {tips,reports}=inboxSnapshot, all=[...reports,...tips];
+    $('readyCount').textContent=all.filter(t=>workflow(t)==='ready').length;
+    $('attentionCount').textContent=all.filter(t=>workflow(t)==='attention').length;
+    $('totalCount').textContent=all.length;$('foundCount').textContent=reports.length;$('communityCount').textContent=tips.length;
+    const signature=JSON.stringify({tips,reports,q:$('storySearch').value,status:$('workflowFilter').value,sort:$('storySort').value,saved:[...savedStories]});
+    if(signature===renderedTips)return;
+    thumbnails.reset();$('tips').replaceChildren();$('reports').replaceChildren();
+    let shown=0;
+    for(const [id,records] of [['reports',reports],['tips',tips]]) {
+        const filtered=records.filter(matchesStory).sort((a,b)=>($('storySort').value==='oldest'?1:-1)*(Date.parse(a.receivedAt)-Date.parse(b.receivedAt)));
+        show(id==='reports'?'reportsEmpty':'tipsEmpty',!filtered.length);shown+=filtered.length;
+        for(const tip of filtered) {
+            const row=document.createElement('article');row.className='tip tip-card '+sourceClass(tip);
+            const body=document.createElement('div');body.className='tip-body';const info=document.createElement('div');
+            const meta=document.createElement('div');meta.className='story-meta';meta.append(sourceBadge(tip));
+            const badge=document.createElement('span');badge.className='workflow-badge '+workflow(tip);badge.textContent=reportStates[tip.reportState] || (tip.status==='review'?'Needs review':'Tip received');meta.append(badge);info.append(meta);
+            const title=document.createElement('h3');title.textContent=(tip.title || (tip.type==='story'?'Story submission':'Tipline upload'))+(tip.incomplete?' · Incomplete':'');info.append(title);
+            if(tip.agency)paragraph(info,tip.agency,'agency-name');
+            const time=document.createElement('time');time.dateTime=tip.receivedAt;time.textContent='Received '+dateLabel(tip.receivedAt);info.append(time);
+            if(tip.summary)paragraph(info,tip.summary,'tip-summary');
+            if(tip.location)paragraph(info,'Reported location: '+tip.location,'tip-location');
+            paragraph(info,tip.contextSource==='claude'?'Prepared draft · Review before publishing':tip.contextSource==='tipster'?'Submitted context · Not independently verified':'Context pending','tip-provenance');
+            const actions=document.createElement('div');actions.className='story-actions';
+            if(videoURL(tip.videoUrl)){const v=document.createElement('a');v.className='folder watch-video';v.href=videoURL(tip.videoUrl);v.target='_blank';v.rel='noopener noreferrer';v.textContent='Watch draft'+(tip.durationSeconds?' · '+Math.round(tip.durationSeconds)+'s':'');actions.append(v);}
+            if(folderURL(tip.driveUrl)) actions.append(folderLink(tip)); else paragraph(actions,tip.status==='review'?'Files need review':'Files processing','state');
+            const save=document.createElement('button');save.type='button';save.className='save-story';save.textContent=savedStories.has(tip.id)?'Saved ✓':'Save';save.setAttribute('aria-label',(savedStories.has(tip.id)?'Unsave ':'Save ')+(tip.title || 'story'));save.setAttribute('aria-pressed',String(savedStories.has(tip.id)));
+            save.addEventListener('click',()=>{if(savedStories.has(tip.id))savedStories.delete(tip.id);else if(/^[a-f0-9]{64}$/.test(tip.id))savedStories.add(tip.id);try{localStorage.setItem('cerney-saved-stories',JSON.stringify([...savedStories].slice(-200)));}catch{}renderInbox();});actions.append(save);info.append(actions);
+            body.append(info);row.append(body);reportDetails(tip,row);CerneyReportCopy.appendReportCopy(tip,row);thumbnails.add(tip,row);$(id).append(row);
+        }
+    }
+    $('filterStatus').textContent=shown===all.length?'Showing all '+shown+' recent stories':shown+' of '+all.length+' stories match';
+    renderedTips=signature;
+}
+for(const id of ['storySearch','workflowFilter','storySort']) $(id).addEventListener(id==='storySearch'?'input':'change',renderInbox);
+$('refreshButton').addEventListener('click',async()=>{const b=$('refreshButton');b.disabled=true;try{await refreshInbox();}finally{b.disabled=false;}});
+function dismissSelection(){tipId=null;try{localStorage.removeItem('cerney-open-tip');}catch{}history.replaceState(null,'','/tip-alerts/');show('selected',false);$('selected').replaceChildren();}
+function dismissButton(){const b=document.createElement('button');b.type='button';b.className='dismiss-selection';b.textContent='Close selected story ×';b.addEventListener('click',dismissSelection);return b;}
 async function openTip() {
     if (!/^[a-f0-9]{64}$/.test(tipId || '')) return;
     const version=sessionVersion, requestedId=tipId;
@@ -208,13 +279,14 @@ async function openTip() {
         const title=document.createElement('h2');title.textContent='Your tip is ready to open';
         const text=document.createElement('p');text.textContent=isIOS ? 'Tap below to open this folder in the Google Drive app.' : 'Open this tip’s Google Drive folder.';
         title.textContent=tip.title || 'Your report is ready';
-        $('selected').replaceChildren(title,sourceBadge(tip),text,folderLink(tip));
+        $('selected').replaceChildren(dismissButton(),title,sourceBadge(tip),text,folderLink(tip));
+        reportDetails(tip,$('selected'));
         CerneyReportCopy.appendReportCopy(tip,$('selected'));
         return true;
     }
     show('selected',true); $('selected').replaceChildren();
     const title=document.createElement('h2');title.textContent='Your tip has arrived';const text=document.createElement('p');text.textContent=tip.status==='review'?'This submission needs review before its files can be copied to Drive.':'Its files are still being copied to Google Drive. The Open in Drive button will appear here when the folder is ready.';
-    $('selected').append(title,sourceBadge(tip),text);
+    $('selected').append(dismissButton(),title,sourceBadge(tip),text);
     if(tip.status!=='review' && openAttempts++<24) retryTimer=setTimeout(()=>openTip().catch(e=>message(e.message,true)),5000);
     else if(tip.status!=='review') { const note=document.createElement('p'); note.textContent='The transfer is taking longer than usual. Refresh this page to check again.'; $('selected').append(note); }
 }
