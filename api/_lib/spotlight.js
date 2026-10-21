@@ -3,6 +3,7 @@
 const crypto = require('node:crypto');
 const Stripe = require('stripe');
 const { moderationConfig, callModeration } = require('./spotlight-moderation');
+const { currentPaymentIsValid } = require('./spotlight-payment');
 
 const MARKER = 'local_spotlight_v1';
 const API_VERSION = '2026-08-26.dahlia';
@@ -150,6 +151,8 @@ function publicProfileHash(profile) {
 }
 
 function published(subscription, settings) {
+    // Structural eligibility only. Public responses additionally require the
+    // fresh canonical payment check in createService().isPublished().
     const profile = readProfile(subscription?.metadata);
     return subscription?.metadata?.spotlight_review_status === 'approved' && subscription.metadata.spotlight_approved_profile === publicProfileHash(profile) && validPaidSubscription(subscription, settings) && subscription.metadata.spotlight_paid_invoice === id(subscription.latest_invoice) && subscription.metadata.spotlight_hidden !== 'true' && Boolean(readProfile(subscription.metadata));
 }
@@ -159,6 +162,36 @@ function publicListing(subscription) {
 }
 
 function createService(stripe, settings = config(), moderation = callModeration) {
+    async function isPublished(subscription) {
+        if (!published(subscription, settings)) return false;
+        // Canonical negative results omit the listing. Provider failures instead
+        // reach the API's generic 502, never masquerading as an empty directory.
+        return currentPaymentIsValid(stripe, subscription, settings);
+    }
+
+    async function publicationStates(subscriptions) {
+        const states = new Array(subscriptions.length).fill(false);
+        let nextIndex = 0;
+        let failed = false;
+        let verificationError;
+        // At most four subscriptions (eight parallel charge/refund reads) are
+        // verified at once; unpublished candidates require no payment API calls.
+        await Promise.all(Array.from({ length: Math.min(4, subscriptions.length) }, async () => {
+            while (!failed && nextIndex < subscriptions.length) {
+                const index = nextIndex++;
+                try { states[index] = await isPublished(subscriptions[index]); }
+                catch (error) {
+                    if (!failed) verificationError = error;
+                    failed = true;
+                }
+            }
+        }));
+        // Finish the bounded in-flight batch before returning an outage, without
+        // continuing to read the rest of a large directory in the background.
+        if (failed) throw verificationError;
+        return states;
+    }
+
     async function subscriptionById(subscriptionId) {
         return stripe.subscriptions.retrieve(subscriptionId, { expand: ['latest_invoice'] });
     }
@@ -175,14 +208,14 @@ function createService(stripe, settings = config(), moderation = callModeration)
         return { session, subscription };
     }
 
-    function ownerStatus(record) {
+    async function ownerStatus(record) {
         if (!record) return { status: 'none', canManage: false, published: false };
         const { session, subscription } = record;
         if (!subscription) return { status: session.status === 'expired' ? 'expired' : 'pending', profile: readProfile(session.metadata), canManage: false, published: false };
         const status = ['canceled', 'incomplete_expired'].includes(subscription.status) ? 'canceled'
             : ['past_due', 'unpaid', 'paused'].includes(subscription.status) ? 'past_due'
                 : subscription.status === 'active' ? 'active' : 'pending';
-        return { status, paymentConfirmed: session.payment_status === 'paid', reviewStatus: subscription.metadata.spotlight_review_status || 'pending', declineReason: subscription.metadata.spotlight_decline_reason || '', refundStatus: subscription.metadata.spotlight_refund_status || 'not_requested', canEdit: false, hidden: subscription.metadata.spotlight_hidden === 'true', profile: readProfile(subscription.metadata), canManage: Boolean(id(subscription.customer) && settings.portalConfigurationId), published: published(subscription, settings), cancelAtPeriodEnd: Boolean(subscription.cancel_at_period_end || subscription.cancel_at), currentPeriodEnd: subscription.items?.data?.[0]?.current_period_end || null };
+        return { status, paymentConfirmed: session.payment_status === 'paid', reviewStatus: subscription.metadata.spotlight_review_status || 'pending', declineReason: subscription.metadata.spotlight_decline_reason || '', refundStatus: subscription.metadata.spotlight_refund_status || 'not_requested', canEdit: false, hidden: subscription.metadata.spotlight_hidden === 'true', profile: readProfile(subscription.metadata), canManage: Boolean(id(subscription.customer) && settings.portalConfigurationId), published: await isPublished(subscription), cancelAtPeriodEnd: Boolean(subscription.cancel_at_period_end || subscription.cancel_at), currentPeriodEnd: subscription.items?.data?.[0]?.current_period_end || null };
     }
 
     async function listSubscriptions(status = 'active') {
@@ -201,7 +234,8 @@ function createService(stripe, settings = config(), moderation = callModeration)
 
     async function directory() {
         const subscriptions = settings.secret && settings.priceId ? await listSubscriptions() : [];
-        return { listings: subscriptions.filter((subscription) => published(subscription, settings)).map(publicListing).sort((a, b) => a.businessName.localeCompare(b.businessName)), checkoutEnabled: settings.enabled, price: PRICE, portalLoginUrl: settings.portalLoginUrl };
+        const states = await publicationStates(subscriptions);
+        return { listings: subscriptions.filter((_, index) => states[index]).map(publicListing).sort((a, b) => a.businessName.localeCompare(b.businessName)), checkoutEnabled: settings.enabled, price: PRICE, portalLoginUrl: settings.portalLoginUrl };
     }
 
     async function checkout(request, response, body) {
@@ -267,7 +301,9 @@ function createService(stripe, settings = config(), moderation = callModeration)
     }
 
     async function adminList() {
-        return { listings: (await listSubscriptions('all')).map((subscription) => ({ subscriptionId: subscription.id, profile: readProfile(subscription.metadata), status: subscription.status, reviewStatus: subscription.metadata.spotlight_review_status || 'pending', hidden: subscription.metadata.spotlight_hidden === 'true', published: published(subscription, settings) })) };
+        const subscriptions = await listSubscriptions('all');
+        const states = await publicationStates(subscriptions);
+        return { listings: subscriptions.map((subscription, index) => ({ subscriptionId: subscription.id, profile: readProfile(subscription.metadata), status: subscription.status, reviewStatus: subscription.metadata.spotlight_review_status || 'pending', hidden: subscription.metadata.spotlight_hidden === 'true', published: states[index] })) };
     }
 
     async function adminUpdate(body) {

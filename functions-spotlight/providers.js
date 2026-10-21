@@ -107,6 +107,21 @@ function createProviders({ stripe, settings, fetchImpl = globalThis.fetch }) {
         const current = Math.floor(Date.now() / 1000);
         if (item.current_period_start > current || item.current_period_end <= current || line.period.start !== item.current_period_start || line.period.end !== item.current_period_end) throw error('Current paid service period needs review.', 409, 'PAYMENT_MISMATCH');
         if ((await refunds(snapshot.paymentIntentId)).some((refund) => !['failed', 'canceled'].includes(refund.status))) throw error('Initial payment was refunded.', 409, 'PAYMENT_REFUNDED');
+        // Paid invoices can outlive a refund or dispute. Check the current
+        // invoice's canonical payment before unpausing or publishing a listing.
+        const payments = await stripe.invoicePayments.list({ invoice: subscription.latest_invoice.id, status: 'paid', limit: 2, expand: ['data.payment.payment_intent'] });
+        const payment = payments.data?.[0];
+        const intent = payment?.payment?.payment_intent;
+        if (payments.has_more !== false || payments.data?.length !== 1 || payment.status !== 'paid' || payment.livemode !== live
+            || payment.amount_paid !== 10000 || payment.currency !== 'usd' || id(payment.invoice) !== subscription.latest_invoice.id || payment.payment?.type !== 'payment_intent'
+            || !intent || typeof intent !== 'object' || !id(intent) || intent.livemode !== live || intent.status !== 'succeeded' || intent.amount !== 10000
+            || intent.amount_received !== 10000 || intent.currency !== 'usd' || id(intent.customer) !== snapshot.customerId || !id(intent.latest_charge)
+            || (subscription.latest_invoice.id === snapshot.initialInvoiceId && intent.id !== snapshot.paymentIntentId)) throw error('Current payment needs review.', 409, 'PAYMENT_MISMATCH');
+        const charge = await stripe.charges.retrieve(id(intent.latest_charge));
+        if (!charge || charge.id !== id(intent.latest_charge) || charge.livemode !== live || id(charge.payment_intent) !== intent.id || id(charge.customer) !== snapshot.customerId
+            || charge.status !== 'succeeded' || charge.paid !== true || charge.captured !== true || charge.amount !== 10000 || charge.amount_captured !== 10000
+            || charge.currency !== 'usd' || charge.amount_refunded !== 0 || charge.refunded !== false || charge.disputed !== false) throw error('Current charge was reversed or needs review.', 409, 'PAYMENT_REVERSED');
+        if (intent.id !== snapshot.paymentIntentId && (await refunds(intent.id)).some(refund => !['failed', 'canceled'].includes(refund.status))) throw error('Current payment was refunded.', 409, 'PAYMENT_REFUNDED');
         if (subscription.metadata.spotlight_review_status === 'approved' && subscription.metadata.spotlight_approved_profile === snapshot.profileHash && !subscription.pause_collection) return;
         if (subscription.metadata.spotlight_review_hold !== 'true' || subscription.pause_collection?.behavior !== 'void' || subscription.pause_collection.resumes_at) throw error('The application billing hold changed.', 409, 'BILLING_CHANGED');
         // Preserve cancel_at_period_end: it may be the applicant's own choice.

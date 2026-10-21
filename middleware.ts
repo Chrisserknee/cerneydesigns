@@ -8,16 +8,42 @@ const previewHeaders = {
 };
 const directoryCsp = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
 
+function requestPath(url: URL) {
+    const raw = url.pathname;
+    let decoded: string;
+    try { decoded = decodeURIComponent(raw); }
+    catch { return null; }
+    // Reject paths whose meaning could change when a downstream router decodes
+    // them again or treats a separator differently. Ordinary encoded filenames
+    // on the reporting site (for example spaces) are preserved below.
+    if (/%(?:2f|5c)/i.test(raw) || /%[0-9a-f]{2}/i.test(decoded)
+        || /[\\\u0000-\u001f\u007f]/.test(decoded) || decoded.includes('//')) return null;
+    const normalized = new URL('https://path.invalid');
+    normalized.pathname = decoded;
+    return { pathname: normalized.pathname, encoded: decoded !== raw };
+}
+
 export default async function middleware(request: Request) {
     const url = new URL(request.url);
     const staging = url.hostname === 'preview.cerneyselects.com';
     const selects = staging || url.hostname === 'cerneyselects.com' || url.hostname === 'www.cerneyselects.com';
+    const path = requestPath(url);
+    const invalidPath = () => new Response('Invalid request path.', { status: 400, headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex', 'X-Content-Type-Options': 'nosniff' } });
+    if (!path) return invalidPath();
+    // These routes have only ASCII filenames. Never let an encoded alias skip a
+    // preview/domain check and later resolve to a protected static file.
+    const selectsNamespace = /^\/(?:apply|localspotlight|spotlight|spotlightsignup|spotlightreview)(?:\/|$)/.test(path.pathname)
+        || /^\/api\/(?:spotlight|spotlight-logo|spotlight-review|spotlight-webhook)\/?$/.test(path.pathname);
+    if (path.encoded && (selects || selectsNamespace)) return invalidPath();
+    url.pathname = path.pathname;
     const root = url.pathname === '/' || url.pathname === '/index.html';
     const crawlerFile = url.pathname === '/robots.txt' || url.pathname === '/sitemap.xml';
     const publicSite = selects && !staging && process.env.CERNEYSELECTS_PUBLIC === 'true';
     const privateExamples = /^\/localspotlight\/preview(?:\/|$)/.test(url.pathname);
-    const spotlightPath = /^\/(?:apply|localspotlight|spotlight|spotlightsignup|spotlightreview)(?:\/|$)/.test(url.pathname)
-        || /^\/api\/(?:spotlight|spotlight-logo|spotlight-review|spotlight-webhook)\/?$/.test(url.pathname);
+    const retiredExamples = privateExamples && !staging && process.env.CERNEYSELECTS_PUBLIC === 'true'
+        && (selects || process.env.VERCEL_ENV === 'production');
+    if (retiredExamples) return new Response('Not found.', { status: 404, headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex', 'X-Content-Type-Options': 'nosniff' } });
+    const spotlightPath = selectsNamespace;
     const selectsAdmin = /^\/admin\/spotlight(?:\/|$)/.test(url.pathname) || ['/admin/style.css', '/api/admin-auth'].includes(url.pathname);
     const policyPath = /^\/(privacy|terms)(?:\/|\/index\.html)?$/.exec(url.pathname);
     if (!selects && !spotlightPath) return next();
@@ -63,7 +89,7 @@ export default async function middleware(request: Request) {
         url.pathname = '/apply/';
         return Response.redirect(url, 308);
     }
-    // Launching the directory never publishes the example data or preview controls.
+    // Example workflows remain gated on staging and preview deployments.
     if (!publicSite || privateExamples) {
         const blocked = await gate(request);
         if (blocked) return blocked;

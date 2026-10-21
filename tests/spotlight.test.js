@@ -40,11 +40,14 @@ function cookie(sessionId = 'cs_test_owner') {
 }
 function request(body = {}, ownerCookie = '') { return { method: 'POST', headers: { origin: settings.siteUrl, 'content-type': 'application/json', cookie: ownerCookie }, body }; }
 function mockStripe(initialSubscription = subscription()) {
-    const state = { subscription: initialSubscription, session: session(), updates: [], checkouts: [], portals: [], expirations: [], price: price(), listingPages: null };
+    const state = { subscription: initialSubscription, session: session(), updates: [], checkouts: [], portals: [], expirations: [], price: price(), listingPages: null, chargeChanges: {}, refundHistory: [] };
     const real = new Stripe(settings.secret);
     const stripe = {
         webhooks: real.webhooks,
         prices: { retrieve: async () => structuredClone(state.price) },
+        invoicePayments: { list: async params => ({ has_more: false, data: [{ status: 'paid', livemode: false, amount_paid: 10000, currency: 'usd', invoice: params.invoice, payment: { type: 'payment_intent', payment_intent: { id: 'pi_current', status: 'succeeded', livemode: false, amount: 10000, amount_received: 10000, currency: 'usd', customer: 'cus_owner', latest_charge: 'ch_current' } } }] }) },
+        charges: { retrieve: async () => ({ id: 'ch_current', payment_intent: 'pi_current', customer: 'cus_owner', livemode: false, status: 'succeeded', paid: true, captured: true, amount: 10000, amount_captured: 10000, currency: 'usd', amount_refunded: 0, refunded: false, disputed: false, ...state.chargeChanges }) },
+        refunds: { list: async () => ({ has_more: false, data: structuredClone(state.refundHistory) }) },
         subscriptions: {
             retrieve: async (subscriptionId) => { assert.equal(subscriptionId, state.subscription.id); return structuredClone(state.subscription); },
             list: async (params) => state.listingPages ? state.listingPages(params) : { has_more: false, data: state.subscription ? [structuredClone(state.subscription)] : [] },
@@ -314,6 +317,76 @@ test('missing configuration leaves an empty directory with checkout disabled', a
     const res = recorder();
     await handler(null, { secret: '', priceId: '', enabled: false })({ method: 'GET', headers: {} }, res);
     assert.equal(res.statusCode, 200); assert.deepEqual(res.body.listings, []); assert.equal(res.body.checkoutEnabled, false);
+});
+
+test('directory, owner status and admin visibility reflect current refunds and disputes without webhook delivery', async () => {
+    const { stripe, state } = mockStripe();
+    state.subscription.metadata.spotlight_paid_invoice = state.subscription.latest_invoice.id;
+    const service = createService(stripe, settings);
+    assert.equal((await service.directory()).listings.length, 1);
+    assert.equal((await post(stripe, { op: 'status' }, cookie())).body.published, true);
+    assert.equal((await service.adminList()).listings[0].published, true);
+    for (const kind of ['dispute', 'untagged-refund']) {
+        state.chargeChanges = kind === 'dispute' ? { disputed: true } : {};
+        state.refundHistory = kind === 'untagged-refund' ? [{ payment_intent: 'pi_current', currency: 'usd', amount: 10000, status: 'succeeded', metadata: {} }] : [];
+        assert.equal((await service.directory()).listings.length, 0);
+        const status = (await post(stripe, { op: 'status' }, cookie())).body;
+        assert.equal(status.published, false);
+        assert.equal(status.canManage, true);
+        assert.equal((await service.adminList()).listings[0].published, false);
+    }
+    assert.equal(state.updates.length, 0);
+});
+
+test('current payment API failure returns generic 502 while portal creation remains independent', async () => {
+    const { stripe, state } = mockStripe();
+    state.subscription.metadata.spotlight_paid_invoice = state.subscription.latest_invoice.id;
+    stripe.charges.retrieve = async () => { throw Object.assign(new Error('private provider message'), { type: 'StripeAPIError', statusCode: 503 }); };
+    const response = recorder(); await handler(stripe)({ method: 'GET', headers: {} }, response);
+    assert.equal(response.statusCode, 502);
+    assert.equal(response.body.code, 'STRIPE_UNAVAILABLE');
+    assert.doesNotMatch(JSON.stringify(response.body), /private provider message/);
+    assert.equal((await post(stripe, { op: 'portal' }, cookie())).statusCode, 200);
+});
+
+test('directory current-payment verification uses at most four subscription workers', async () => {
+    const { stripe, state } = mockStripe();
+    state.subscription.metadata.spotlight_paid_invoice = state.subscription.latest_invoice.id;
+    const rows = Array.from({ length: 13 }, (_, index) => {
+        const row = structuredClone(state.subscription); row.id = `sub_business${index}`;
+        row.latest_invoice.parent.subscription_details.subscription = row.id;
+        return row;
+    });
+    state.listingPages = async () => ({ data: rows, has_more: false });
+    const list = stripe.invoicePayments.list;
+    let active = 0; let peak = 0;
+    stripe.invoicePayments.list = async params => {
+        active++; peak = Math.max(peak, active);
+        await new Promise(resolve => setImmediate(resolve));
+        try { return await list(params); } finally { active--; }
+    };
+    assert.equal((await createService(stripe, settings).directory()).listings.length, 13);
+    assert.equal(peak, 4);
+});
+
+test('a verification outage stops dequeuing listings and waits for its bounded in-flight batch', async () => {
+    const { stripe, state } = mockStripe();
+    state.subscription.metadata.spotlight_paid_invoice = state.subscription.latest_invoice.id;
+    state.listingPages = async () => ({ has_more: false, data: Array.from({ length: 20 }, () => structuredClone(state.subscription)) });
+    const list = stripe.invoicePayments.list;
+    const outage = Object.assign(new Error('Stripe unavailable'), { type: 'StripeAPIError' });
+    let started = 0; let completed = 0;
+    stripe.invoicePayments.list = async params => {
+        const index = started++;
+        try {
+            if (index === 0) throw outage;
+            await new Promise(resolve => setImmediate(resolve));
+            return await list(params);
+        } finally { completed++; }
+    };
+    await assert.rejects(createService(stripe, settings).directory(), error => error === outage);
+    assert.equal(started, 4);
+    assert.equal(completed, 4);
 });
 
 

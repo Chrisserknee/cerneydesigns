@@ -8,7 +8,8 @@ function fixture(live = false) {
     const profile = { businessName: 'Sandbox Coffee', category: 'Food & drink', city: 'Monterey', description: 'A synthetic test listing.', website: 'https://example.com/', phone: '', logoUrl: '' };
     const invoice = { id: 'in_initial', livemode: live, status: 'paid', currency: 'usd', amount_paid: 10000, amount_due: 10000, total: 10000, amount_remaining: 0, amount_paid_off_stripe: 0, post_payment_credit_notes_amount: 0, customer: 'cus_test', parent: { subscription_details: { subscription: 'sub_test' } }, billing_reason: 'subscription_create', created: start, status_transitions: { paid_at: start }, lines: { has_more: false, data: [{ amount: 10000, currency: 'usd', quantity: 1, pricing: { price_details: { price: 'price_test' } }, parent: { subscription_item_details: { proration: false, subscription_item: 'si_test' } }, period: { start, end: start + 30 * 86400 } }] } };
     const subscription = { id: 'sub_test', livemode: live, customer: 'cus_test', status: 'active', cancel_at_period_end: true, metadata: { spotlight: MARKER, business_name: profile.businessName, category: profile.category, city: profile.city, description: profile.description, website: profile.website, phone: '', logo_url: '', spotlight_review_status: 'pending' }, items: { has_more: false, data: [{ id: 'si_test', quantity: 1, current_period_start: start, current_period_end: start + 30 * 86400, price: { id: 'price_test', currency: 'usd', unit_amount: 10000, type: 'recurring', recurring: { interval: 'month', interval_count: 1, usage_type: 'licensed' } } }] }, latest_invoice: structuredClone(invoice), pause_collection: null };
-    const intent = { id: 'pi_initial', livemode: live, status: 'succeeded', amount_received: 10000, currency: 'usd', customer: 'cus_test' };
+    const intent = { id: 'pi_initial', livemode: live, status: 'succeeded', amount: 10000, amount_received: 10000, currency: 'usd', customer: 'cus_test', latest_charge: 'ch_initial' };
+    const charge = { id: 'ch_initial', payment_intent: 'pi_initial', customer: 'cus_test', livemode: live, status: 'succeeded', paid: true, captured: true, amount: 10000, amount_captured: 10000, currency: 'usd', amount_refunded: 0, refunded: false, disputed: false };
     const payment = { status: 'paid', livemode: live, amount_paid: 10000, currency: 'usd', invoice: 'in_initial', payment: { type: 'payment_intent', payment_intent: intent } };
     const controls = { refundStatus: 'succeeded', refundsHasMore: false, loseRefundResponse: false, loseCancelResponse: false, loseApprovalResponse: false };
     const history = []; const calls = { updates: [], cancels: [], refunds: [], invoiceLists: [], paymentLists: [], email: [] }; const idempotency = new Map();
@@ -31,6 +32,7 @@ function fixture(live = false) {
         },
         invoices: { async retrieve(id) { assert.equal(id, snapshot.initialInvoiceId); return structuredClone(invoice); }, async list(params) { calls.invoiceLists.push(params); return { has_more: false, data: [structuredClone(invoice)] }; } },
         invoicePayments: { async list(params) { calls.paymentLists.push(params); return { has_more: false, data: [structuredClone(payment)] }; } },
+        charges: { async retrieve(chargeId) { assert.equal(chargeId, 'ch_initial'); return structuredClone(charge); } },
         customers: { async retrieve() { return { id: 'cus_test', livemode: live, email: 'delivered@resend.dev' }; } },
         refunds: {
             async list(params) { assert.equal(params.payment_intent, 'pi_initial'); return { has_more: controls.refundsHasMore, data: structuredClone(history) }; },
@@ -49,7 +51,7 @@ function fixture(live = false) {
     const fetchImpl = async (url, options) => { calls.email.push({ url, options }); return { ok: true, async json() { return { id: 'mail_receipt' }; } }; };
     const providers = createProviders({ stripe, settings, fetchImpl });
     const addRefund = (changes = {}) => history.push({ id: `re_${history.length + 1}`, amount: 10000, currency: 'usd', payment_intent: 'pi_initial', status: 'succeeded', created: start + history.length, ...changes });
-    return { providers, stripe, settings, subscription, invoice, payment, intent, snapshot, history, controls, calls, addRefund };
+    return { providers, stripe, settings, subscription, invoice, payment, intent, charge, snapshot, history, controls, calls, addRefund };
 }
 
 test('initial inspection pins the genuine paid invoice, PaymentIntent and submitted profile', async () => {
@@ -129,6 +131,22 @@ test('approval refuses changed profile, expired service, refunds or canceled bil
         (f) => { f.addRefund(); },
         (f) => { f.subscription.status = 'canceled'; },
     ]) { const f = fixture(); await f.providers.hold(f.snapshot); mutate(f); await assert.rejects(f.providers.approve(f.snapshot), { status: 409 }); assert.equal(f.subscription.metadata.spotlight_review_status, 'pending'); }
+});
+
+test('approval cannot publish a disputed, partially refunded or mismatched canonical current charge', async () => {
+    for (const mutate of [
+        f => { f.charge.disputed = true; }, f => { f.charge.amount_refunded = 1; },
+        f => { f.charge.customer = 'cus_foreign'; }, f => { f.charge.payment_intent = 'pi_foreign'; },
+        f => { f.payment.invoice = 'in_foreign'; }, f => { f.intent.customer = 'cus_foreign'; },
+        f => { f.intent.latest_charge = null; }, f => { f.intent.livemode = !f.settings.live; },
+    ]) {
+        const f = fixture(); await f.providers.hold(f.snapshot); mutate(f);
+        await assert.rejects(f.providers.approve(f.snapshot), { status: 409 });
+        assert.equal(f.subscription.metadata.spotlight_review_status, 'pending');
+        assert.equal(f.subscription.pause_collection.behavior, 'void');
+        assert.equal(f.calls.updates.length, 1);
+        assert.equal(f.calls.refunds.length, 0);
+    }
 });
 
 test('cancel retries a lost response safely and never generates a final invoice or proration', async () => {

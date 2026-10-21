@@ -5,6 +5,7 @@ import { issueCookie } from '../spotlight-gate.cjs';
 
 process.env.SPOTLIGHT_PREVIEW_PASSWORD = 'test-only-password';
 process.env.SPOTLIGHT_PREVIEW_SESSION_SECRET = 'test-only-secret-'.repeat(4);
+process.env.VERCEL_ENV = 'preview';
 delete process.env.CERNEYSELECTS_PUBLIC;
 const cookie = issueCookie(process.env.SPOTLIGHT_PREVIEW_SESSION_SECRET);
 
@@ -56,7 +57,7 @@ test('new domain crawler files retain the private preview policy', async () => {
     assert.doesNotMatch(await sitemap.text(), /chriscerney.org/);
 });
 
-test('public launch serves real listings while example pages and data remain password protected', async () => {
+test('public launch serves real listings while production example pages and data are unavailable', async () => {
     process.env.CERNEYSELECTS_PUBLIC = 'true';
     try {
         const home = await middleware(new Request('https://cerneyselects.com/'));
@@ -64,7 +65,7 @@ test('public launch serves real listings while example pages and data remain pas
         assert.equal(home.headers.get('x-robots-tag'), 'index, follow');
         for (const path of ['/localspotlight/preview/', '/localspotlight/preview/businesses.json', '/localspotlight/preview/assets/brand-000.png']) {
             const response = await middleware(new Request('https://cerneyselects.com' + path));
-            assert.equal(response.status, 401);
+            assert.equal(response.status, 404);
             assert.match(response.headers.get('cache-control'), /no-store/);
         }
         const api = await middleware(new Request('https://cerneyselects.com/api/spotlight'));
@@ -154,6 +155,108 @@ test('policy pages follow launch protection and do not open arbitrary routes or 
             const original = await middleware(new Request(`https://www.chriscerney.org/${name}/`));
             assert.equal(original.headers.get('x-middleware-next'), '1');
             assert.equal(original.headers.get('x-middleware-rewrite'), null);
+        }
+    } finally { delete process.env.CERNEYSELECTS_PUBLIC; }
+});
+
+test('encoded preview aliases never reach static files on any serving host', async () => {
+    process.env.CERNEYSELECTS_PUBLIC = 'true';
+    try {
+        const paths = [
+            '/localspotlight/%70review/businesses.json',
+            '/localspotlight/pr%65view/index.html',
+            '/%6cocalspotlight/preview/businesses.json',
+            '/localspotlight/preview%2Fbusinesses.json',
+            '/localspotlight%2fpreview/businesses.json',
+            '/localspotlight/preview%5cbusinesses.json',
+            '/localspotlight/preview%5Cbusinesses.json',
+            '/localspotlight/%2570review/businesses.json',
+            '/localspotlight/preview%252fbusinesses.json',
+            '/%256cocalspotlight/preview/businesses.json',
+            '/other%2f..%2flocalspotlight/preview/businesses.json',
+            '/localspotlight//preview/businesses.json',
+        ];
+        for (const host of ['cerneyselects.com', 'www.cerneyselects.com', 'preview.cerneyselects.com', 'www.chriscerney.org', 'cerneydesigns.vercel.app']) {
+            for (const path of paths) {
+                const response = await middleware(new Request(`https://${host}${path}`));
+                assert.equal(response.status, 400, `${host}${path}`);
+                assert.equal(response.headers.get('x-middleware-next'), null);
+                assert.equal(response.headers.get('x-middleware-rewrite'), null);
+                assert.match(response.headers.get('cache-control'), /no-store/);
+            }
+        }
+    } finally { delete process.env.CERNEYSELECTS_PUBLIC; }
+});
+
+test('ambiguous encodings and traversal cannot bypass domain isolation', async () => {
+    process.env.CERNEYSELECTS_PUBLIC = 'true';
+    try {
+        for (const path of ['/localspotlight/%', '/localspotlight/%ZZ', '/localspotlight/%C0%AFpreview/', '/localspotlight/%00preview/', '/localspotlight/%252e%252e/api/products', '/localspotlight/%2e%2e%2fapi/products', '/localspotlight/%2e%2e%5capi/products', '/%61pi/products', '/%70ortfolio/']) {
+            const response = await middleware(new Request('https://cerneyselects.com' + path));
+            assert.equal(response.status, 400, path);
+            assert.equal(response.headers.get('x-middleware-next'), null);
+        }
+        // WHATWG URL canonicalizes ordinary/encoded dot segments before the
+        // middleware sees them; the resulting protected/unrelated paths still fail closed.
+        for (const path of ['/localspotlight/../api/products', '/localspotlight/%2e%2e/api/products']) {
+            assert.equal((await middleware(new Request('https://cerneyselects.com' + path))).status, 404);
+        }
+        for (const [host, status] of [['cerneyselects.com', 404], ['preview.cerneyselects.com', 401], ['www.chriscerney.org', 401]]) {
+            assert.equal((await middleware(new Request(`https://${host}/other/%2e%2e/localspotlight/preview/businesses.json`))).status, status);
+        }
+        assert.equal((await middleware(new Request('https://cerneyselects.com/localspotlight\\preview\\businesses.json'))).status, 404);
+    } finally { delete process.env.CERNEYSELECTS_PUBLIC; }
+});
+
+test('launched production retires examples on original and deployment hosts, including valid preview cookies', async () => {
+    const previousEnvironment = process.env.VERCEL_ENV;
+    process.env.VERCEL_ENV = 'production';
+    process.env.CERNEYSELECTS_PUBLIC = 'true';
+    try {
+        for (const host of ['cerneyselects.com', 'www.cerneyselects.com', 'www.chriscerney.org', 'cerneydesigns.vercel.app']) {
+            for (const path of ['/localspotlight/preview/', '/localspotlight/preview/businesses.json', '/localspotlight/preview/assets/brand-000.png']) {
+                for (const headers of [{}, { cookie }]) {
+                    const response = await middleware(new Request(`https://${host}${path}`, { headers }));
+                    assert.equal(response.status, 404, `${host}${path}`);
+                    assert.equal(response.headers.get('x-middleware-next'), null);
+                    assert.doesNotMatch(await response.text(), /password/i);
+                }
+            }
+        }
+        const staging = 'https://preview.cerneyselects.com/localspotlight/preview/businesses.json';
+        assert.equal((await middleware(new Request(staging))).status, 401);
+        assert.equal((await middleware(new Request(staging, { headers: { cookie } }))).headers.get('x-middleware-next'), '1');
+        process.env.VERCEL_ENV = 'preview';
+        const preview = 'https://cerneydesigns.vercel.app/localspotlight/preview/businesses.json';
+        assert.equal((await middleware(new Request(preview))).status, 401);
+        assert.equal((await middleware(new Request(preview, { headers: { cookie } }))).headers.get('x-middleware-next'), '1');
+    } finally {
+        delete process.env.CERNEYSELECTS_PUBLIC;
+        if (previousEnvironment === undefined) delete process.env.VERCEL_ENV;
+        else process.env.VERCEL_ENV = previousEnvironment;
+    }
+});
+
+test('canonical public pages and assets work while ordinary reporting filenames remain untouched', async () => {
+    process.env.CERNEYSELECTS_PUBLIC = 'true';
+    try {
+        for (const path of ['/', '/apply/', '/privacy/', '/terms/']) {
+            const response = await middleware(new Request('https://cerneyselects.com' + path));
+            assert.equal(response.status, 200);
+            assert.ok(response.headers.get('x-middleware-rewrite'), path);
+        }
+        const query = await middleware(new Request('https://cerneyselects.com/?search=food%2Fdrink&offer=20%25'));
+        assert.equal(query.headers.get('x-middleware-rewrite'), 'https://cerneyselects.com/localspotlight/index.html?search=food%2Fdrink&offer=20%25');
+        for (const path of ['/localspotlight/app.js', '/localspotlight/brand.css', '/localspotlight/favicon.svg', '/spotlightsignup/app.js', '/api/spotlight']) {
+            const response = await middleware(new Request('https://cerneyselects.com' + path));
+            assert.equal(response.headers.get('x-middleware-next'), '1', path);
+        }
+        const preview = await middleware(new Request('https://preview.cerneyselects.com/localspotlight/preview/businesses.json', { headers: { cookie } }));
+        assert.equal(preview.headers.get('x-middleware-next'), '1');
+        for (const path of ['/', '/portfolio/', '/merchandise/', '/images/My%20Photo.jpg', '/images/caf%C3%A9.jpg']) {
+            const response = await middleware(new Request('https://www.chriscerney.org' + path));
+            assert.equal(response.headers.get('x-middleware-next'), '1', path);
+            assert.equal(response.headers.get('x-middleware-rewrite'), null);
         }
     } finally { delete process.env.CERNEYSELECTS_PUBLIC; }
 });
