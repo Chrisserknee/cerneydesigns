@@ -1,5 +1,5 @@
 'use strict';
-// Worker/client release: 2026-10-21-storydesk-2.
+// Worker/client release: 2026-10-21-inbox-4.
 self.addEventListener('install',event=>event.waitUntil(self.skipWaiting()));
 function inboxURL(value) {
     try {

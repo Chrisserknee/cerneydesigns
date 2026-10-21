@@ -73,10 +73,9 @@ function paintMonitor(health) {
     if(health.producer){const p=health.producer;const old=Date.now()-Date.parse(p.observedAt)>5*60000;paragraph(body,old?'Production status is out of date.':`${p.activeCount || 0} reports being prepared · ${p.waitingCount || 0} waiting to start`);if(p.resumeCount || p.failedCount)paragraph(body,`${p.resumeCount || 0} saved report chats need recovery · ${p.failedCount || 0} render failures. Existing quality holds stay in place; new jobs continue through the producer.`, 'production-attention');}
     paragraph(body,'Checks rotate across agencies. Hourly 8 a.m.–11 p.m.; 1, 3, 5 and 7 a.m. overnight, Pacific. The Mac and signed-in Safari must be available.','small muted');
 }
-function rememberedTip() {
-    try { const id=localStorage.getItem('cerney-open-tip');return /^[a-f0-9]{64}$/.test(id || '') ? id : null; } catch { return null; }
-}
-let tipId = new URLSearchParams(location.search).get('tip') || rememberedTip();
+// An ordinary launch opens the current inbox. Only an explicit notification
+// link selects a story; a remembered old selection must not hide new arrivals.
+let tipId = new URLSearchParams(location.search).get('tip');
 const show = (id, visible) => { $(id).hidden = !visible; };
 function message(text='', error=false) { $('message').textContent=text; $('message').classList.toggle('error',error); }
 function clearSession() {
@@ -216,11 +215,13 @@ async function fetchTips(quiet) {
     clearTimeout(inboxTimer);
     const version=sessionVersion;
     if (!quiet) $('inboxStatus').textContent=$('tips').children.length ? 'Updating…' : 'Loading community tips…';
+    if (!quiet) $('inboxFreshness').textContent='Checking for new tips…';
     let data;
     try { data=await api('list'); }
     catch(e) {
         if (version===sessionVersion) {
             $('inboxStatus').textContent='Could not update. Retrying automatically…';
+            $('inboxFreshness').textContent='Could not check for new tips. Retrying automatically…';
             scheduleInbox(10000);
         }
         throw e;
@@ -233,11 +234,15 @@ async function fetchTips(quiet) {
     const tips=data.tips.filter(t=>t.type!=='incident');
     message(); show('empty',!tips.length);show('reportsSection',reports.length>0);show('foundReportsLink',reports.length>0);
     inboxSnapshot={tips,reports};
+    const latest=tips.filter(tip=>Number.isFinite(Date.parse(tip.receivedAt))).reduce((newest,tip)=>!newest || Date.parse(tip.receivedAt)>Date.parse(newest.receivedAt) ? tip : newest,null);
+    show('latestTipButton',!!latest);
+    if(latest) $('latestTipButton').textContent='Latest community tip · '+shortDate(latest.receivedAt)+' · '+(latest.title || 'Tipline upload');
     paintMonitor(data.monitor);
     renderInbox();
     const updated=new Intl.DateTimeFormat('en-US',{hour:'numeric',minute:'2-digit'}).format(new Date());
     $('reportsStatus').textContent=`${reports.length} found video ${reports.length===1?'report':'reports'} · Updated ${updated}`;
     $('inboxStatus').textContent=`${tips.length} community ${tips.length===1?'tip':'tips'} · Updated ${updated}`;
+    $('inboxFreshness').textContent=`Inbox checked ${updated} · Updates automatically`;
     // Keep a newly arrived photo current without requiring manual refresh.
     if (!document.hidden) {
         const processing=data.tips.some(t=>!folderURL(t.driveUrl) && t.status==='processing' && Date.parse(t.receivedAt)>Date.now()-3600000);
@@ -262,8 +267,10 @@ function renderInbox() {
     for(const [id,records] of [['reports',reports],['tips',tips]]) {
         const filtered=records.filter(t=>matchesSearch(t) && matchesFilter(t,statusFilter));
         show(id==='reports'?'reportsEmpty':'tipsEmpty',!filtered.length);shown+=filtered.length;
-        for(const [key,label] of storyGroups) {
-            const members=filtered.filter(t=>groupOf(t)===key).sort((a,b)=>($('storySort').value==='oldest'?1:-1)*(Date.parse(a.receivedAt)-Date.parse(b.receivedAt)));
+        const sort=$('storySort').value || 'newest';
+        const groups=sort==='status' ? storyGroups : [['chronological',sort==='oldest'?'Oldest first':'Newest first']];
+        for(const [key,label] of groups) {
+            const members=filtered.filter(t=>key==='chronological' || groupOf(t)===key).sort((a,b)=>(sort==='oldest'?1:-1)*(Date.parse(a.receivedAt)-Date.parse(b.receivedAt)));
             if(members.length) $(id).append(storyGroup(id+':'+key,label,members));
         }
     }
@@ -355,6 +362,10 @@ document.addEventListener('keydown',event=>{if(event.key==='Escape' && reviewQue
 $('storySearch').addEventListener('input',renderInbox);$('storySort').addEventListener('change',renderInbox);
 for(const [id,filter] of statusChips) $(id).addEventListener('click',()=>{statusFilter=filter;renderInbox();});
 $('refreshButton').addEventListener('click',async()=>{const b=$('refreshButton');b.disabled=true;try{await refreshInbox();}finally{b.disabled=false;}});
+$('latestTipButton').addEventListener('click',()=>{
+    dismissSelection();closeReview();statusFilter='all';$('storySearch').value='';$('storySort').value='newest';
+    groupLimits.clear();renderInbox();$('communitySection').scrollIntoView({block:'start'});
+});
 function dismissSelection(){tipId=null;try{localStorage.removeItem('cerney-open-tip');}catch{}history.replaceState(null,'','/tip-alerts/');show('selected',false);$('selected').replaceChildren();}
 function dismissButton(){const b=document.createElement('button');b.type='button';b.className='dismiss-selection';b.textContent='Close selected story ×';b.addEventListener('click',dismissSelection);return b;}
 async function openTip() {

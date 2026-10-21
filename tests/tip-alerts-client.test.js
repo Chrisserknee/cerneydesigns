@@ -7,7 +7,7 @@ function client({ tip = false, serviceWorker, respond, ios = false, homeScreen =
     const elements = new Map(), calls = [], destinations = [], events = {}, timers = [];
     const element = () => ({ hidden: false, children: [], handlers: {}, classList: { toggle() {} },
         replaceChildren(...children) { this.children = children; }, append(...children) { this.children.push(...children); },
-        setAttribute(name,value){this[name]=value;}, focus(){this.focused=true;}, select(){this.selected=true;}, setSelectionRange(a,b){this.selection=[a,b];}, addEventListener(name, callback) { this.handlers[name] = callback; } });
+        setAttribute(name,value){this[name]=value;}, scrollIntoView(){this.scrolled=true;}, focus(){this.focused=true;}, select(){this.selected=true;}, setSelectionRange(a,b){this.selection=[a,b];}, addEventListener(name, callback) { this.handlers[name] = callback; } });
     const get = id => { if (!elements.has(id)) elements.set(id, element()); return elements.get(id); };
     const context = vm.createContext({
         document: { documentElement: { classList: {toggle(){}}, style: {setProperty(){}} }, getElementById: get, createElement: element, addEventListener: (name,fn) => { events[name]=fn; }, hidden: false },
@@ -233,13 +233,13 @@ test('a client using the previous API still keeps incident cards in Video report
  assert.equal(cards(c,'reports').length,1);assert.equal(cards(c,'tips').length,0);assert.equal(c.elements.get('empty').hidden,false);
 });
 
-test('closing and reopening the Home Screen app reloads the last selected report from the server',async()=>{
+test('ordinary Home Screen launches show the current inbox without resurrecting an old selection',async()=>{
  const saved=new Map(),record={id:'a'.repeat(64),type:'incident',title:'Soledad report',receivedAt:new Date().toISOString(),driveUrl:'https://drive.google.com/drive/folders/report',instagramDescription:'Private caption',voiceover:'Private VO'};
  const respond=op=>({status:200,body:{tips:op==='tip'?[record]:[],reports:[record]}});
  const first=client({tip:true,saved,respond});await first.ready;
  assert.equal(saved.get('cerney-open-tip'),record.id);assert.equal(saved.size,1);assert.doesNotMatch(JSON.stringify([...saved]),/Private caption|Private VO|drive.google/);
  const reopened=client({saved,respond,ios:true});await reopened.ready;
- assert.deepEqual(reopened.calls,['list','tip']);assert.equal(reopened.elements.get('selected').children[1].textContent,'Soledad report');
+ assert.deepEqual(reopened.calls,['list']);assert.equal(reopened.run('tipId'),null);assert.equal(reopened.elements.get('selected')?.children.length || 0,0);
  reopened.run('clearSession()');assert.equal(saved.size,0);assert.equal(reopened.elements.get('selected').children.length,0);
 });
 
@@ -265,6 +265,7 @@ test('stories are grouped by what needs attention first, with status counts that
   {id:'c'.repeat(64),type:'incident',title:'Held story',agency:'Monterey Police',receivedAt:at(30),reportState:'held'},
   {id:'d'.repeat(64),type:'incident',title:'Rendering story',agency:'Salinas Police',receivedAt:at(5),reportState:'rendering'}];
  const c=client({respond:()=>({status:200,body:{tips:[],reports}})});await c.ready;
+ c.elements.get('storySort').value='status';c.elements.get('storySort').handlers.change();
  const groups=c.elements.get('reports').children;
  assert.deepEqual(groups.map(g=>g.children[0].children[0].textContent),['Needs attention','Draft ready','In progress']);
  assert.deepEqual(groups.map(g=>g.children[0].children[1].textContent),['1','2','1']);
@@ -312,6 +313,7 @@ test('marking a story done moves it to Done, saves only its opaque id and update
  const done=actions.children.find(e=>e.className==='mark-done');assert.equal(done.textContent,'Done');
  done.handlers.click();
  assert.equal(saved.get('cerney-done-stories'),JSON.stringify(['a'.repeat(64)]));assert.doesNotMatch(JSON.stringify([...saved]),/First draft|drive.google/);
+ c.elements.get('storySort').value='status';c.elements.get('storySort').handlers.change();
  assert.deepEqual(c.elements.get('reports').children.map(g=>g.children[0].children[0].textContent),['Draft ready','Done']);
  assert.equal(c.elements.get('readyCount').textContent,1);assert.equal(c.elements.get('chipDoneCount').textContent,1);assert.equal(c.elements.get('chipReadyCount').textContent,1);
  c.elements.get('chipDone').handlers.click();
@@ -346,4 +348,37 @@ test('revoking the device closes review mode and clears its private content',asy
  c.elements.get('reviewStart').handlers.click();assert.equal(c.elements.get('reviewStory').children.length,1);
  c.run('clearSession()');
  assert.equal(c.elements.get('reviewMode').hidden,true);assert.equal(c.elements.get('reviewStory').children.length,0);
+});
+
+
+test('Newest is chronological across held, ready and processing tips, including a newly arriving tip',async()=>{
+ const at=m=>new Date(Date.now()-m*60000).toISOString();
+ const tips=[{id:'a'.repeat(64),title:'Old held tip',receivedAt:at(60),reportState:'held'},
+ {id:'b'.repeat(64),title:'New draft tip',receivedAt:at(5),reportState:'ready',draftDelivered:true},
+ {id:'c'.repeat(64),title:'Processing tip',receivedAt:at(20),reportState:'rendering'}];
+ const c=client({respond:()=>({status:200,body:{tips}})});await c.ready;
+ const titles=()=>cards(c,'tips').map(card=>card.children[0].children[0].children[1].textContent);
+ assert.deepEqual(titles(),['New draft tip','Processing tip','Old held tip']);
+ tips.push({id:'d'.repeat(64),title:'Just submitted',receivedAt:at(0),status:'processing'});
+ await c.run('loadTips({quiet:true})');
+ assert.equal(titles()[0],'Just submitted');assert.match(c.elements.get('latestTipButton').textContent,/Just submitted/);
+ c.elements.get('storySort').value='oldest';c.elements.get('storySort').handlers.change();
+ assert.deepEqual(titles(),['Old held tip','Processing tip','New draft tip','Just submitted']);
+ c.elements.get('chipAttention').handlers.click();c.elements.get('storySearch').value='Old';
+ c.elements.get('latestTipButton').handlers.click();
+ assert.equal(titles()[0],'Just submitted');assert.equal(c.elements.get('communitySection').scrolled,true);
+ assert.equal(c.elements.get('storySearch').value,'');assert.equal(c.run('statusFilter'),'all');
+});
+
+test('community inbox precedes found reports and describes the full thirty-day window',()=>{
+ const html=fs.readFileSync(__dirname+'/../tip-alerts/index.html','utf8');
+ assert.ok(html.indexOf('<section id="communitySection"')<html.indexOf('<section id="reportsSection"'));
+ assert.match(html,/All submissions received in the past 30 days/);
+});
+
+test('failed refresh reports stale status at the top and a successful retry clears it',async()=>{
+ let fail=false;const c=client({respond:()=>fail?{status:503,body:{error:'Unavailable'}}:null});await c.ready;
+ fail=true;await c.run('loadTips({quiet:true})').catch(()=>{});
+ assert.match(c.elements.get('inboxFreshness').textContent,/Could not check/);
+ fail=false;await c.run('loadTips({quiet:true})');assert.match(c.elements.get('inboxFreshness').textContent,/Inbox checked/);
 });

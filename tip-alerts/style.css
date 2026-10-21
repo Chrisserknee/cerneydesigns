@@ -89,3 +89,5 @@ html.review-open,html.review-open body{overflow:hidden}
 .review-finished{padding:28px 8px;text-align:center;color:#506574;font-size:14px;line-height:1.6}
 .review-actions{display:flex;gap:10px;padding:10px 16px max(12px,env(safe-area-inset-bottom));background:#fff;border-top:1px solid #dde4e4}.review-actions button{flex:1}.review-actions #reviewDone{flex:2;background:#23634f}
 #reviewStory .mark-done{display:none}
+
+.latest-tip{display:block;width:100%;margin:0 0 18px;padding:15px 18px;text-align:left;line-height:1.5;background:#f4eef8;color:#56366f;border:1px solid #d9c9e5;border-radius:14px;overflow-wrap:anywhere}.latest-tip:hover{background:#e9def1}.latest-tip[hidden]{display:none}#communitySection{scroll-margin-top:18px}

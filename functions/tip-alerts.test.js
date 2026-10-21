@@ -173,7 +173,7 @@ test('prepared reports remain in the home inbox when 50 newer submissions fill t
  for(let i=0;i<55;i++){const record={id:h.hash('tip-'+i),receivedAt:new Date(now-i*1000).toISOString(),type:'upload',status:'processing'};initial['_tipalerts/v1/tips/'+record.id+'.json']=record;}
  const c=harness({initial}),res={set(){},status(n){this.code=n;return this;},json(body){this.body=body;}};
  await c.handleApi({method:'POST',is:()=>true,body:{op:'list',token}},res);
- assert.equal(res.body.tips.length,50);assert(!res.body.tips.some(t=>t.id===id));
+ assert.equal(res.body.tips.length,55);assert(!res.body.tips.some(t=>t.id===id));
  assert.equal(res.body.reports.length,1);assert.equal(res.body.reports[0].id,id);assert.equal(res.body.reports[0].voiceover,'Complete VO');
  assert.doesNotMatch(JSON.stringify(res.body.reports),/SECRET|privateContact|jobId/);
  // A fresh server/session reads the same durable report, independent of an alert.
@@ -184,4 +184,22 @@ test('report listings still require a live paired device',async()=>{
  const c=harness(),res={set(){},status(n){this.code=n;return this;},json(body){this.body=body;}};
  await c.handleApi({method:'POST',is:()=>true,body:{op:'list',token:'x'.repeat(43)}},res);
  assert.equal(res.code,401);assert.equal(res.body.reports,undefined);
+});
+
+
+test('agency reports never crowd community tips out and new cards appear after a cached list',async()=>{
+ const token='x'.repeat(43),initial={['_tipalerts/v1/devices/'+h.hash(token)+'.json']:device};
+ for(let i=0;i<65;i++){
+  const source='incident:'+i.toString(16).padStart(20,'0')+':e1',id=h.hash(source);
+  initial['_tipalerts/v1/incidents/'+id+'.json']={version:1,id,source,jobId:h.hash(JSON.stringify(source)).slice(0,20),incidentId:i.toString(16).padStart(20,'0'),edition:1,revision:1,state:'ready',draftDelivered:true,receivedAt:new Date(now-i*1000).toISOString(),updatedAt:new Date(now-i*1000).toISOString(),title:'Found report',driveUrl:'https://drive.google.com/drive/folders/report'};
+ }
+ for(let i=0;i<117;i++){
+  const record={id:h.hash('community-'+i),receivedAt:new Date(now-86400000-i*1000).toISOString(),type:'upload',status:'processing'};
+  initial['_tipalerts/v1/tips/'+record.id+'.json']=record;
+ }
+ const c=harness({initial}),res={set(){},status(n){this.code=n;return this;},json(body){this.body=body;}};
+ const request={method:'POST',is:()=>true,body:{op:'list',token}};
+ await c.handleApi(request,res);assert.equal(res.body.tips.length,117);assert.equal(res.body.reports.length,50);
+ const id=h.hash('new-arrival');c.files.set('_tipalerts/v1/tips/'+id+'.json',{generation:2,data:{id,receivedAt:new Date(now).toISOString(),type:'upload',status:'processing'}});
+ await c.handleApi(request,res);assert.equal(res.body.tips.length,118);assert.equal(res.body.tips[0].id,id);
 });

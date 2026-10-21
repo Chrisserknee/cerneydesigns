@@ -286,8 +286,11 @@ async function handleApi(req, res) {
                 // 50 newer tip submissions fill the general inbox window.
                 incidentReports=incidents.filter(t=>Date.parse(t.receivedAt)>Date.now()-30*86400000)
                     .sort((a,b)=>Date.parse(b.contextUpdatedAt)-Date.parse(a.contextUpdatedAt)).slice(0,50);
-                tips = [...await inboxDocuments(),...incidents].filter(t => Date.parse(t.receivedAt) > Date.now()-30*86400000)
-                    .sort((a,b)=>Date.parse(b.receivedAt)-Date.parse(a.receivedAt)).slice(0,50);
+                // Community submissions have their own complete 30-day inbox.
+                // Agency reports must never consume its slots. The client pages
+                // the cards locally so search can also find older recent tips.
+                tips = (await inboxDocuments()).filter(t => Date.parse(t.receivedAt) > Date.now()-30*86400000)
+                    .sort((a,b)=>Date.parse(b.receivedAt)-Date.parse(a.receivedAt));
             }
             const reports=await inboxDocuments('enrichment/');
             const detailRecords=new Map((await inboxDocuments('details/')).map(d=>[d.id,d]));
