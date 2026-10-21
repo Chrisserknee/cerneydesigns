@@ -85,6 +85,8 @@ test('public sitemap contains only CerneySelects public pages and protects priva
         const xml = await sitemap.text();
         assert.match(xml, /<loc>https:\/\/cerneyselects.com\/<\/loc>/);
         assert.match(xml, /<loc>https:\/\/cerneyselects.com\/apply\/<\/loc>/);
+        assert.match(xml, /<loc>https:\/\/cerneyselects.com\/privacy\/<\/loc>/);
+        assert.match(xml, /<loc>https:\/\/cerneyselects.com\/terms\/<\/loc>/);
         assert.doesNotMatch(xml, /preview|chriscerney.org|api\//);
     } finally { delete process.env.CERNEYSELECTS_PUBLIC; }
 });
@@ -130,5 +132,28 @@ test('sandbox host stays private even when the production public flag is enabled
         const authenticated = await middleware(new Request('https://preview.cerneyselects.com/', { headers: { cookie } }));
         assert.equal(authenticated.headers.get('x-middleware-rewrite'), 'https://preview.cerneyselects.com/localspotlight/index.html');
         assert.match(authenticated.headers.get('x-robots-tag'), /noindex/);
+    } finally { delete process.env.CERNEYSELECTS_PUBLIC; }
+});
+
+test('policy pages follow launch protection and do not open arbitrary routes or change the reporting domain', async () => {
+    for (const path of ['/privacy/', '/terms/']) {
+        assert.equal((await middleware(new Request('https://cerneyselects.com' + path))).status, 401);
+    }
+    process.env.CERNEYSELECTS_PUBLIC = 'true';
+    try {
+        for (const name of ['privacy', 'terms']) {
+            const response = await middleware(new Request(`https://cerneyselects.com/${name}/`));
+            assert.equal(response.headers.get('x-middleware-rewrite'), `https://cerneyselects.com/localspotlight/${name}.html`);
+            assert.match(response.headers.get('content-security-policy'), /frame-ancestors 'none'/);
+            assert.equal((await middleware(new Request(`https://preview.cerneyselects.com/${name}/`))).status, 401);
+            const alias = await middleware(new Request(`https://cerneyselects.com/${name}/index.html?source=billing`));
+            assert.equal(alias.status, 308);
+            assert.equal(alias.headers.get('location'), `https://cerneyselects.com/${name}/?source=billing`);
+            assert.equal((await middleware(new Request(`https://cerneyselects.com/${name}/other`))).status, 404);
+            assert.equal((await middleware(new Request(`https://cerneyselects.com/${name}/`, { method: 'POST' }))).status, 405);
+            const original = await middleware(new Request(`https://www.chriscerney.org/${name}/`));
+            assert.equal(original.headers.get('x-middleware-next'), '1');
+            assert.equal(original.headers.get('x-middleware-rewrite'), null);
+        }
     } finally { delete process.env.CERNEYSELECTS_PUBLIC; }
 });

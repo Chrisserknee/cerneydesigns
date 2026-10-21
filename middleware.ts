@@ -19,10 +19,11 @@ export default async function middleware(request: Request) {
     const spotlightPath = /^\/(?:apply|localspotlight|spotlight|spotlightsignup|spotlightreview)(?:\/|$)/.test(url.pathname)
         || /^\/api\/(?:spotlight|spotlight-logo|spotlight-review|spotlight-webhook)\/?$/.test(url.pathname);
     const selectsAdmin = /^\/admin\/spotlight(?:\/|$)/.test(url.pathname) || ['/admin/style.css', '/api/admin-auth'].includes(url.pathname);
+    const policyPath = /^\/(privacy|terms)(?:\/|\/index\.html)?$/.exec(url.pathname);
     if (!selects && !spotlightPath) return next();
     // The new domain contains only CerneySelects. Other site features stay on
     // chriscerney.org, including their private administration and payment APIs.
-    if (selects && !root && !crawlerFile && !spotlightPath && !selectsAdmin && url.pathname !== '/favicon.ico') {
+    if (selects && !root && !crawlerFile && !spotlightPath && !selectsAdmin && !policyPath && url.pathname !== '/favicon.ico') {
         return new Response('<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Page not found — CerneySelects</title><h1>Page not found</h1><p><a href="/">Explore CerneySelects</a></p></html>', { status: 404, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' } });
     }
     if (selects && url.pathname === '/favicon.ico') return Response.redirect(new URL('/localspotlight/favicon.svg', url), 308);
@@ -47,7 +48,7 @@ export default async function middleware(request: Request) {
         const robotsText = publicSite
             ? 'User-agent: *\nAllow: /\nDisallow: /localspotlight/preview/\nDisallow: /admin/\nDisallow: /api/\nDisallow: /spotlightreview/\nSitemap: https://cerneyselects.com/sitemap.xml\n'
             : 'User-agent: *\nDisallow: /\n';
-        const locations = publicSite ? ['https://cerneyselects.com/','https://cerneyselects.com/apply/'] : [];
+        const locations = publicSite ? ['https://cerneyselects.com/','https://cerneyselects.com/apply/','https://cerneyselects.com/privacy/','https://cerneyselects.com/terms/'] : [];
         const sitemap = '<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' + locations.map(location => `<url><loc>${location}</loc></url>`).join('') + '</urlset>';
         return new Response(robots ? robotsText : sitemap, {
             headers: { ...previewHeaders, 'Content-Type': robots ? 'text/plain; charset=utf-8' : 'application/xml; charset=utf-8' },
@@ -66,6 +67,16 @@ export default async function middleware(request: Request) {
     if (!publicSite || privateExamples) {
         const blocked = await gate(request);
         if (blocked) return blocked;
+    }
+    if (selects && policyPath) {
+        if (!['GET', 'HEAD'].includes(request.method)) return new Response('Method not allowed.', { status: 405, headers: { Allow: 'GET, HEAD', 'Cache-Control': 'no-store' } });
+        const canonicalPath = `/${policyPath[1]}/`;
+        if (url.pathname !== canonicalPath) {
+            url.pathname = canonicalPath;
+            return Response.redirect(url, 308);
+        }
+        url.pathname = `/localspotlight/${policyPath[1]}.html`;
+        return rewrite(url, { headers: { ...(publicSite ? { 'Cache-Control': 'no-cache' } : previewHeaders), 'Content-Security-Policy': directoryCsp } });
     }
     if (selects && root) {
         if (!['GET','HEAD'].includes(request.method)) return new Response('Method not allowed.', { status: 405, headers: { Allow: 'GET, HEAD', 'Cache-Control': 'no-store' } });

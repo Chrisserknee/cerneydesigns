@@ -1,0 +1,19 @@
+.footer-inner{flex-wrap:wrap}
+.policy-links{display:flex;flex-wrap:wrap;gap:10px 20px;font-size:.75rem}
+.policy-links a{color:var(--dim)}
+.policy-header .nav-inner{flex-wrap:wrap;padding-block:18px}
+.policy-nav{display:flex;flex-wrap:wrap;gap:12px 24px;font-size:.85rem}
+.policy-main{max-width:800px;padding-block:48px 64px}
+.policy-main>header{padding-bottom:28px;border-bottom:1px solid var(--border)}
+.policy-main h1{font-size:clamp(2.6rem,7vw,3.6rem)}
+.policy-main h2{font-size:1.8rem;margin-bottom:12px}
+.policy-main section{margin-top:32px}
+.policy-main p,.policy-main li{color:var(--dim);overflow-wrap:anywhere}
+.policy-main p+p{margin-top:14px}
+.policy-main ul{padding-left:24px;margin-block:14px}
+.policy-main li+li{margin-top:10px}
+.policy-main strong{color:var(--text)}
+.policy-date{margin-block:12px 18px;font-size:.8rem}
+.policy-notice{margin-top:24px;padding:18px;border:1px solid var(--border);background:var(--elev)}
+.policy-intro{margin-top:18px}
+@media(max-width:600px){.policy-main{padding-block:30px 40px}.policy-nav{font-size:.8rem;gap:10px 18px}.policy-main section{margin-top:26px}}
