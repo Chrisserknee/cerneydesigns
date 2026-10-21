@@ -1,0 +1,18 @@
+{
+  "functions": [
+    {
+      "source": "functions-selects",
+      "codebase": "cerneyselects",
+      "predeploy": [
+        "node scripts/prepare-selects-functions.cjs"
+      ],
+      "ignore": [
+        "node_modules",
+        ".git",
+        ".env*",
+        "*.log",
+        "*.test.js"
+      ]
+    }
+  ]
+}

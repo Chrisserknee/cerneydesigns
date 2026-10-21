@@ -245,6 +245,14 @@ body.directory-page{color-scheme:light;--bg:#d4cfc4;--elev:#fffefa;--text:#24313
 }
 
 /* A quiet invitation for local business owners. */
+.selects-about{margin-top:48px;padding:34px 0 12px;border-top:1px solid #9babac55;max-width:820px;scroll-margin-top:100px}
+.selects-about h2{font-size:2.1rem;margin:0 0 18px;color:#263c46}
+.selects-about>p:not(.directory-eyebrow){font-size:.9rem;line-height:1.8;color:#536269;margin-bottom:14px;max-width:720px}
+.selects-about-links{display:flex;flex-wrap:wrap;gap:12px 28px;margin-top:18px}
+.selects-about-links a{display:inline-flex;align-items:center;min-height:44px;font-weight:600;font-size:.85rem;color:#345363}
+#emptyApply{margin:18px auto 0;min-height:44px;justify-content:center}
+#businesses{scroll-margin-top:100px}
+.directory-page .directory-empty #emptyApply{color:#345363}
 .directory-page .spotlight-owner-invitation{max-width:340px;padding:22px 24px;background:#f7f4ec;border:1px solid #bca78366;border-radius:18px;align-self:center}
 .directory-page .spotlight-owner-invitation h2{margin:0 0 9px;font-size:1.25rem;line-height:1.2;color:#263c46}
 .directory-page .spotlight-owner-invitation p{font-size:.82rem;line-height:1.65;margin:0 0 12px;color:#536269}

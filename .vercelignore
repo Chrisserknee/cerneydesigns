@@ -10,3 +10,9 @@ scripts/
 firebase.json
 storage.rules
 firebase-debug.log
+
+functions-spotlight/
+firebase.spotlight.json
+**/*.test.mjs
+functions-selects/
+firebase.cerneyselects.json

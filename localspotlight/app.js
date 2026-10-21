@@ -206,6 +206,7 @@
         byId('emptyDescription').textContent = description;
         byId('clearFilters').hidden = !clear;
         byId('retryDirectory').hidden = !retry;
+        if (byId('emptyApply')) byId('emptyApply').hidden = clear || retry;
     }
 
     function matchesCategory(listing, category) {
@@ -246,7 +247,7 @@
         byId('nextPage').disabled = page === pages;
         if (!filtered.length) {
             if (search || category || city) setEmpty('No matches just yet.', 'Try another business name, community, or category.', { clear: true });
-            else setEmpty('No businesses featured yet.', 'Check back soon to discover local businesses in the spotlight.');
+            else setEmpty('Be part of the first selects.', 'We’re welcoming the first businesses to CerneySelects. Own a local business? Explore how to join.');
         }
     }
 

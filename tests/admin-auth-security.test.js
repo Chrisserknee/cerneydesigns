@@ -1,8 +1,8 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs');
-function handler({allowed=true,unavailable=false}={}){
+function handler({allowed=true,unavailable=false,environment="production"}={}){
  let verified=0,gated=0;
- const c=vm.createContext({module:{exports:{}},Buffer,require(name){
+ const c=vm.createContext({module:{exports:{}},Buffer,process:{env:{VERCEL_ENV:environment}},require(name){
   if(name==='./_lib/http')return require('../api/_lib/http');
   if(name==='./_lib/tip-backend')return {reserveLoginAttempt:async()=>{gated++;if(unavailable)throw Error();return allowed;}};
   if(name==='./_lib/admin-auth')return {isConfigured:()=>true,loginAllowed:()=>true,verifyPassword:()=>{verified++;return true;},recordLogin(){},setSessionCookie(){}};
@@ -22,4 +22,12 @@ test('missing/foreign origins and oversized parsed bodies are rejected before au
  for(const req of [request(''),request('https://attacker.example'),request(undefined,{password:'x'.repeat(5000)})]){
   const h=handler();await h.run(req,h.res);assert.ok([403,413].includes(h.res.code));assert.equal(h.counts().gated,0);assert.equal(h.counts().verified,0);
  }
+});
+
+test('CerneySelects sign-in keeps exact first-party origins and sandbox separation',async()=>{
+ for(const origin of ['https://cerneyselects.com','https://www.chriscerney.org']){
+  const h=handler();await h.run(request(origin),h.res);assert.equal(h.res.code,200);assert.equal(h.counts().gated,1);
+ }
+ const production=handler();await production.run(request('https://preview.cerneyselects.com'),production.res);assert.equal(production.res.code,403);
+ const preview=handler({environment:'preview'});await preview.run(request('https://preview.cerneyselects.com'),preview.res);assert.equal(preview.res.code,200);
 });

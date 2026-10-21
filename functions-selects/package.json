@@ -1,0 +1,17 @@
+{
+  "name": "cerneyselects-production",
+  "private": true,
+  "version": "1.0.0",
+  "description": "CerneySelects live review, email and logo services",
+  "main": "index.js",
+  "engines": {
+    "node": "22"
+  },
+  "scripts": {},
+  "dependencies": {
+    "firebase-admin": "14.5.0",
+    "firebase-functions": "7.3.2",
+    "sharp": "0.35.5",
+    "stripe": "22.6.0"
+  }
+}

@@ -12,13 +12,19 @@ const {
 const { bodyIsTooLarge, parseBody, sendJson } = require('./_lib/http');
 const {reserveLoginAttempt}=require('./_lib/tip-backend');
 
+function allowedOrigin(request) {
+    const allowed = ['https://www.chriscerney.org', 'https://cerneyselects.com'];
+    if (process.env.VERCEL_ENV === 'preview') allowed.push('https://preview.cerneyselects.com');
+    return allowed.includes(request.headers.origin);
+}
+
 module.exports = async function adminAuth(request, response) {
     if (request.method === 'GET') {
         return sendJson(response, 200, { configured: isConfigured(), authenticated: isAuthenticated(request) });
     }
 
     if (request.method === 'DELETE') {
-        if (request.headers.origin !== 'https://www.chriscerney.org') return sendJson(response, 403, { error: 'Request origin is not allowed.' });
+        if (!allowedOrigin(request)) return sendJson(response, 403, { error: 'Request origin is not allowed.' });
         clearSessionCookie(response);
         return sendJson(response, 200, { authenticated: false });
     }
@@ -28,7 +34,7 @@ module.exports = async function adminAuth(request, response) {
         return sendJson(response, 405, { error: 'Method not allowed.' });
     }
     if (!isConfigured()) return sendJson(response, 503, { error: 'Administrator access is not configured.' });
-    if (request.headers.origin !== 'https://www.chriscerney.org') return sendJson(response, 403, { error: 'Request origin is not allowed.' });
+    if (!allowedOrigin(request)) return sendJson(response, 403, { error: 'Request origin is not allowed.' });
     if (!String(request.headers['content-type'] || '').toLowerCase().startsWith('application/json')) {
         return sendJson(response, 415, { error: 'JSON request required.' });
     }
