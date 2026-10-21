@@ -1,0 +1,252 @@
+/* Directory-only additions: signup continues to use style.css unchanged. */
+.directory-page .directory-main{padding-top:53px;padding-bottom:38px}
+.directory-page .directory-heading{align-items:flex-end;gap:24px;margin-bottom:32px;padding-bottom:30px;border-bottom:1px solid var(--border)}
+.directory-page .directory-eyebrow{margin:0 0 13px;color:#8eabc1;font-size:.64rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase}
+.directory-page .directory-heading h1{font-size:4.7rem;line-height:1;letter-spacing:-.015em}
+.directory-page .directory-heading h1 span{color:#88afcf}
+.directory-page .directory-heading p:not(.directory-eyebrow){margin-top:14px;font-size:.88rem;color:#aebbc6}
+.directory-page .directory-feature-link{flex-shrink:0;display:inline-flex;align-items:center;gap:22px;padding:11px 0;color:#bcd4e6;text-decoration:none;font-size:.76rem;font-weight:500}
+.directory-page .directory-feature-link:hover{color:#fff;text-decoration:underline}
+.directory-page .directory-tools{grid-template-columns:minmax(220px,1fr) 235px 220px;gap:12px}
+.directory-page .directory-tools input,.directory-page .directory-tools select{height:48px;background:#101a24;border:1px solid #344757;border-radius:5px;font-size:.78rem}
+.directory-page .directory-tools input{padding-left:46px}
+.directory-page .directory-results-bar{display:flex;align-items:center;justify-content:space-between;gap:18px;margin:18px 0}
+.directory-page .results-count{margin:0;font-size:.7rem;min-height:19px}
+.directory-page .directory-sort{font-size:.63rem;color:#8498aa}
+.directory-page .directory-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:15px}
+.directory-page .directory-card{position:relative;min-width:0;padding:22px;background:#111d28;border:1px solid #2b4052;border-radius:7px;display:flex;flex-direction:column;transition:border-color .18s,background .18s}
+.directory-page .directory-card:hover{border-color:#6788a4;background:#152432}
+.directory-page .directory-card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:21px}
+.directory-page .directory-card-category{font-size:.58rem;line-height:1.6;letter-spacing:.09em;text-transform:uppercase;color:#b1c9db;max-width:160px}
+.directory-page .directory-mark{width:70px;height:58px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:#22374a;border:1px solid #3a5369;border-radius:5px;color:#b9d2e6;font:600 1.6rem var(--display)}
+.directory-page .directory-mark.has-logo{background:#f5f7f8;border-color:#dce3e7;padding:7px}
+.directory-page .directory-mark img{display:block;max-width:100%;max-height:100%;object-fit:contain}
+.directory-page .directory-card h3{font:600 1.75rem/1.1 var(--display);overflow-wrap:anywhere;letter-spacing:.005em}
+.directory-page .directory-name{color:#f1f4f6;text-decoration:none}
+.directory-page .directory-name:hover{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:4px}
+.directory-page .directory-city{font-size:.71rem;line-height:1.5;color:#93a9bc;margin-top:8px}
+.directory-page .directory-description{font-size:.74rem;line-height:1.65;color:#bdc8d0;margin-top:15px;overflow-wrap:anywhere;white-space:pre-line}
+.directory-page .directory-card-bottom{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;margin-top:auto;padding-top:21px}
+.directory-page .directory-site-link{display:flex;align-items:center;gap:10px;font-size:.67rem;color:#bdd7eb;text-decoration:none}
+.directory-page .directory-site-link:hover{text-decoration:underline}
+.directory-page .directory-phone{font-size:.66rem;color:#98aebf;text-decoration:none}
+.directory-page .directory-card.without-logo .directory-card-top{margin-bottom:17px;min-height:20px}
+.directory-page .directory-card.without-logo .directory-card-category{max-width:none}
+.directory-page .directory-grid.is-text-view{grid-template-columns:repeat(2,minmax(0,1fr));gap:0 35px;border-top:1px solid #2b4052}
+.directory-page .directory-text-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;min-width:0;padding:20px 0;border-bottom:1px solid #2b4052}
+.directory-page .directory-text-row h3{font:500 1rem/1.4 var(--font);overflow-wrap:anywhere}
+.directory-page .directory-text-meta{color:#8fa6b9;font-size:.66rem;margin-top:5px;line-height:1.6}
+.directory-page .directory-text-arrow{font-size:1.1rem;color:#83a9c8}
+.directory-page .directory-pagination{display:flex;align-items:center;justify-content:center;gap:25px;margin-top:29px;padding-top:23px;border-top:1px solid #283c4d}
+.directory-page .directory-pagination button{min-height:42px;background:transparent;border:1px solid #3c5367;padding:8px 15px;border-radius:4px;color:#bcd1e1;font-size:.72rem}
+.directory-page .directory-pagination button:hover:not(:disabled){background:#1d3041}
+.directory-page .directory-pagination p{font-size:.71rem;color:#a4b6c4}
+.directory-page .directory-pagination button:disabled{opacity:.35}
+.directory-page .directory-empty{padding:52px 24px;border:1px dashed #3b5368;border-radius:7px;background:#101b26}
+.directory-page .directory-empty-mark{display:inline-flex;width:43px;height:43px;align-items:center;justify-content:center;color:#9abbd4;background:#21384a;border-radius:50%;font-size:1.3rem;margin-bottom:20px}
+.directory-page .directory-empty h2{font-size:2rem}
+.directory-page .directory-empty p{max-width:430px;margin:10px auto 0;line-height:1.7}
+.directory-page .advertising-note{max-width:800px;font-size:.64rem;line-height:1.75;margin-top:26px;color:#8498aa}
+.directory-page .design-controls{display:grid;grid-template-columns:minmax(0,1fr) 125px 205px;align-items:end;gap:23px;background:#23352f;border:1px solid #466555;border-radius:7px;padding:19px 21px;margin-bottom:24px}
+.directory-page .design-explanation strong{color:#d5e7dc;font-size:.77rem;font-weight:600}
+.directory-page .design-explanation p{font-size:.7rem;color:#bed0c4;line-height:1.7;margin-top:5px;max-width:540px}
+.directory-page .design-control label{display:block;font-size:.63rem;color:#c0d3c8;margin-bottom:6px}
+.directory-page .design-control select{background:#13271e;border-color:#56745f;border-radius:4px;font-size:.74rem;height:40px;padding:8px 10px}
+@media(min-width:1450px){.directory-page .shell{width:min(1260px,calc(100% - 80px))}.directory-page .directory-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.directory-page .directory-grid.is-text-view{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:1000px){.directory-page .directory-tools{grid-template-columns:minmax(0,1fr) 210px 190px}.directory-page .directory-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.directory-page .design-controls{gap:18px;grid-template-columns:minmax(0,1fr) 110px 185px}.directory-page .directory-heading h1{font-size:4.2rem}}
+@media(max-width:800px){.directory-page .directory-main{padding-top:37px}.directory-page .directory-heading{align-items:flex-start;gap:12px;flex-direction:column;padding-bottom:23px;margin-bottom:23px}.directory-page .directory-heading h1{font-size:3.6rem}.directory-page .directory-tools{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.directory-page .search-field{grid-column:1/-1}.directory-page .design-controls{grid-template-columns:110px minmax(0,1fr);gap:16px}.directory-page .design-explanation{grid-column:1/-1}.directory-page .design-control select{font-size:16px}.directory-page .directory-grid{gap:13px}.directory-page .directory-card{padding:20px}.directory-page .directory-card h3{font-size:1.7rem}}
+@media(max-width:600px){.directory-page .directory-main{padding-top:30px}.directory-page .directory-heading h1{font-size:3.45rem}.directory-page .directory-eyebrow{font-size:.58rem;margin-bottom:11px}.directory-page .directory-heading p:not(.directory-eyebrow){font-size:.79rem;line-height:1.7;margin-top:12px}.directory-page .directory-feature-link{font-size:.73rem}.directory-page .directory-tools{gap:10px}.directory-page .directory-tools input,.directory-page .directory-tools select{font-size:16px}.directory-page .directory-results-bar{gap:12px;margin:16px 0}.directory-page .directory-sort{display:none}.directory-page .directory-grid,.directory-page .directory-grid.is-text-view{grid-template-columns:minmax(0,1fr)}.directory-page .directory-card{padding:22px}.directory-page .directory-card h3{font-size:1.9rem}.directory-page .directory-card-top{margin-bottom:17px}.directory-page .directory-description{font-size:.76rem}.directory-page .directory-pagination{gap:14px}.directory-page .directory-pagination button{padding:8px 12px;font-size:.69rem}.directory-page .design-controls{padding:17px;gap:15px;grid-template-columns:95px minmax(0,1fr)}.directory-page .design-explanation p{font-size:.7rem}.directory-page .directory-empty{padding:39px 20px}.directory-page .directory-empty h2{font-size:1.8rem}}
+
+/* Compact phone cards keep the full paid description and contact links. */
+@media(max-width:600px){
+.directory-page .directory-main{padding-top:24px}
+.directory-page .directory-heading{margin-bottom:20px;padding-bottom:18px;gap:8px}
+.directory-page .directory-heading h1{font-size:2.9rem}
+.directory-page .directory-heading p:not(.directory-eyebrow){margin-top:9px}
+.directory-page .directory-card{padding:18px}
+.directory-page .directory-card-top{margin-bottom:10px;align-items:center}
+.directory-page .directory-mark{width:52px;height:44px;font-size:1.3rem}
+.directory-page .directory-card h3{font-size:1.65rem;line-height:1.15}
+.directory-page .directory-city{margin-top:6px}
+.directory-page .directory-description{margin-top:10px;font-size:.83rem;line-height:1.6}
+.directory-page .directory-card-bottom{padding-top:10px;gap:4px 16px}
+.directory-page .directory-site-link,.directory-page .directory-phone{min-height:44px;font-size:.76rem}
+.directory-page .directory-pagination button{min-height:44px}
+}
+
+.directory-page .preview-page-option{grid-column:1/-1;display:flex;align-items:center;gap:10px;min-height:44px;font-size:.78rem;color:#d5e7dc;cursor:pointer}
+.directory-page .preview-page-option input{width:20px;height:20px;flex-shrink:0;accent-color:#8dbb9c}
+
+/* Open logo space: each brand keeps its proportions, with no avatar frame. */
+.directory-page .directory-card{--card-paper:#edf2ee;--card-ink:#253e34;background:var(--card-paper);border:1px solid #ffffff18;border-radius:16px;padding:24px;color:var(--card-ink);box-shadow:0 3px 16px #0000000a}
+.directory-page .directory-card[data-tone="1"]{--card-paper:#f3eee4;--card-ink:#51432b;border-radius:16px 28px 16px 16px}
+.directory-page .directory-card[data-tone="2"]{--card-paper:#e9eff4;--card-ink:#2d4457;border-radius:28px 16px 16px 16px}
+.directory-page .directory-card[data-tone="3"]{--card-paper:#f1eae7;--card-ink:#533b35}
+.directory-page .directory-card:hover{background:var(--card-paper);border-color:#afc2c9;box-shadow:0 5px 20px #00000018}
+.directory-page .directory-card-top{justify-content:center;align-items:center;min-height:112px;margin:0 0 22px;padding:4px 0 18px;border-bottom:1px solid #263b421c}
+.directory-page .directory-mark,.directory-page .directory-mark.has-logo{width:100%;height:92px;max-width:240px;background:none;border:0;border-radius:0;padding:0;color:var(--card-ink);font-size:3.7rem;letter-spacing:-.035em}
+.directory-page .directory-mark img{width:auto;height:80px;max-width:100%;max-height:92px;border-radius:0;object-fit:contain}
+.directory-page .directory-mark.wide-logo img{width:100%;height:auto;max-height:80px}
+.directory-page .directory-mark.tall-logo img{height:92px;width:auto}
+.directory-page .directory-card-category{color:var(--card-ink);opacity:.8;font-size:.6rem;max-width:none;margin-bottom:10px;letter-spacing:.1em}
+.directory-page .directory-card h3{font-size:1.85rem;line-height:1.12}
+.directory-page .directory-card .directory-name{color:#172b35}
+.directory-page .directory-card .directory-city{color:#4a5b61;margin-top:8px}
+.directory-page .directory-card .directory-description{color:#405259;font-size:.8rem;line-height:1.65}
+.directory-page .directory-card-bottom{padding-top:16px}
+.directory-page .directory-site-link,.directory-page .directory-phone{color:#294653;min-height:44px;font-size:.74rem}
+.directory-page .directory-site-link{font-weight:600}
+.directory-page .directory-card.without-logo{padding-top:28px}
+.directory-page .directory-card.without-logo .directory-card-category{margin-bottom:14px}
+@media(max-width:600px){
+.directory-page .directory-card{padding:21px}
+.directory-page .directory-card-top{min-height:96px;margin-bottom:18px;padding-bottom:16px}
+.directory-page .directory-mark,.directory-page .directory-mark.has-logo{height:78px;max-width:220px}
+.directory-page .directory-mark img{height:68px;max-height:78px}
+.directory-page .directory-mark.tall-logo img{height:78px}
+.directory-page .directory-card h3{font-size:1.75rem}
+.directory-page .directory-card .directory-description{font-size:.84rem}
+}
+
+.directory-page .directory-card h3{font-family:var(--font);font-weight:650;font-size:1.1rem;line-height:1.4;letter-spacing:-.015em}
+.directory-page .directory-card-category{font-size:.66rem;letter-spacing:.045em;line-height:1.5}
+.directory-page .directory-card .directory-city{font-size:.76rem}
+.directory-page .directory-card .directory-description{font-size:.84rem}
+
+
+/* Keep the site’s navy palette; give logos a shared open display area. */
+.directory-page .directory-card{--card-paper:#14212d;--card-ink:#d9e5ed;background:var(--card-paper);border-color:#344656;overflow:hidden}
+.directory-page .directory-card[data-tone="1"]{--card-paper:#18242f;--card-ink:#d9e5ed}
+.directory-page .directory-card[data-tone="2"]{--card-paper:#162432;--card-ink:#d9e5ed}
+.directory-page .directory-card[data-tone="3"]{--card-paper:#18232e;--card-ink:#d9e5ed}
+.directory-page .directory-card-top{margin:-24px -24px 22px;padding:20px 24px;min-height:130px;background:#e3e9ed;border:0}
+.directory-page .directory-card[data-tone="1"] .directory-card-top{background:#e7e7e2}
+.directory-page .directory-card[data-tone="2"] .directory-card-top{background:#dce6ed}
+.directory-page .directory-card[data-tone="3"] .directory-card-top{background:#e2e6e7}
+.directory-page .directory-mark,.directory-page .directory-mark.has-logo{color:#385365}
+.directory-page .directory-mark img{mix-blend-mode:multiply}
+.directory-page .directory-card .directory-name{color:#edf3f7}
+.directory-page .directory-card .directory-city{color:#a7bbc9}
+.directory-page .directory-card .directory-description{color:#bdcbd5}
+.directory-page .directory-card-category{color:#a9c3d6}
+.directory-page .directory-site-link,.directory-page .directory-phone{color:#b9d4e7}
+.directory-page .directory-heading p:not(.directory-eyebrow){max-width:530px;line-height:1.65}
+.directory-page .directory-tools{grid-template-columns:minmax(0,1fr) 220px}
+.directory-page .category-chips{display:flex;flex-wrap:wrap;gap:9px;margin-bottom:20px}
+.directory-page .category-chip{display:inline-flex;align-items:center;gap:8px;min-height:44px;border:1px solid #344d61;border-radius:24px;padding:9px 15px;background:#131f2b;color:#bfd0de;font-size:.78rem;line-height:1.3;transition:background .15s,border-color .15s}
+.directory-page .category-chip>span{font-size:1.05rem;color:#91b7d2}
+.directory-page .category-chip:hover{background:#203449;border-color:#779db9}
+.directory-page .category-chip[aria-pressed="true"]{background:#9bbbd6;color:#102331;border-color:#9bbbd6;font-weight:600}
+.directory-page .category-chip[aria-pressed="true"]>span{color:#284b64}
+@media(max-width:800px){.directory-page .directory-tools{grid-template-columns:minmax(0,1fr) 180px}.directory-page .search-field{grid-column:auto}}
+@media(max-width:600px){
+.directory-page .directory-card-top{margin:-21px -21px 18px;padding:18px 21px;min-height:108px}
+.directory-page .category-chips{gap:8px;margin-bottom:16px}
+.directory-page .category-chip{font-size:.76rem;padding:9px 12px}
+.directory-page .directory-tools{grid-template-columns:minmax(0,1fr)}
+.directory-page .directory-tools .city-field{max-width:100%}
+}
+
+/* Warm paper surfaces, anchored by the site's familiar navy typography. */
+body.directory-page{color-scheme:light;--bg:#d4cfc4;--elev:#fffefa;--text:#24313b;--dim:#5f696e;--blue:#365c72;--accent:#54778a;--border:#d8dcd7;--salmon:#9a4f47}
+.directory-page .site-header{background:#fbfaf6}
+.directory-page .directory-heading h1{color:#22343e}
+.directory-page .directory-heading h1 span{color:#557c8c}
+.directory-page .directory-heading p:not(.directory-eyebrow){color:#5a686f}
+.directory-page .directory-eyebrow,.directory-page .directory-sort,.directory-page .advertising-note{color:#5d6e75}
+.directory-page .directory-feature-link{color:#365c72}
+.directory-page .directory-feature-link:hover{color:#1c3d50}
+.directory-page .directory-card{--card-paper:#fffefa;--card-ink:#344c58;border-color:#dce0da;box-shadow:0 3px 14px #243b4510}
+.directory-page .directory-card[data-tone="1"],.directory-page .directory-card[data-tone="2"],.directory-page .directory-card[data-tone="3"]{--card-paper:#fffefa;--card-ink:#344c58}
+.directory-page .directory-card:hover{border-color:#adbfbf;box-shadow:0 6px 20px #243b4518}
+.directory-page .directory-card-top{background:#eef1ea}
+.directory-page .directory-card[data-tone="1"] .directory-card-top{background:#f3eee3}
+.directory-page .directory-card[data-tone="2"] .directory-card-top{background:#eaf0f2}
+.directory-page .directory-card[data-tone="3"] .directory-card-top{background:#f2ece7}
+.directory-page .directory-card .directory-name,.directory-page .directory-text-row .directory-name{color:#233b47}
+.directory-page .directory-card .directory-city,.directory-page .directory-text-meta{color:#617176}
+.directory-page .directory-card .directory-description{color:#4e5f65}
+.directory-page .directory-card-category{color:#526e79;opacity:1}
+.directory-page .directory-site-link,.directory-page .directory-phone,.directory-page .directory-text-arrow{color:#365c72}
+.directory-page .directory-tools input,.directory-page .directory-tools select{background:#fffefa;border-color:#c3cecd;color:#2e4652}
+.directory-page input::placeholder{color:#65777e}
+.directory-page .category-chip{background:#fffefa;border-color:#c7d1cf;color:#465e68;transition:background .2s,border-color .2s,color .2s,box-shadow .2s}
+.directory-page .category-chip>span{color:#607e89;transition:transform .2s}
+.directory-page .category-chip:hover{background:#e9efeb;border-color:#8fa8aa}
+.directory-page .category-chip[aria-pressed="true"]{background:#304e5f;border-color:#304e5f;color:#fff;box-shadow:0 3px 9px #304e5f22}
+.directory-page .category-chip[aria-pressed="true"]>span{color:#d9e6e8;transform:scale(1.1)}
+.directory-page .design-controls{background:#e8ede5;border-color:#c5d1bf}
+.directory-page .design-explanation strong{color:#344e42}
+.directory-page .design-explanation p,.directory-page .design-control label,.directory-page .preview-page-option{color:#4c6355}
+.directory-page .design-control select{background:#fafcf7;border-color:#b6c8b4;color:#344e42}
+.directory-page .preview-page-option input{accent-color:#496c57}
+.directory-page .directory-pagination,.directory-page .directory-grid.is-text-view,.directory-page .directory-text-row{border-color:#cdd6d3}
+.directory-page .directory-pagination button{color:#365466;border-color:#afc1c4;background:#fffefa}
+.directory-page .directory-pagination button:hover:not(:disabled){background:#e7eeea}
+.directory-page .directory-pagination p{color:#586c75}
+.directory-page .directory-empty{background:#fffefa;border-color:#bdccca}
+.directory-page .directory-empty-mark{background:#e4ece7;color:#466678}
+@media(prefers-reduced-motion:reduce){.directory-page .category-chip,.directory-page .category-chip>span{transition:none}.directory-page .category-chip[aria-pressed="true"]>span{transform:none}}
+
+/* A deeper warm backdrop and small, friendly browsing details. */
+.directory-page .browse-invitation{font-size:.83rem;font-weight:500;color:#4b626a;margin-bottom:13px}
+.directory-page .browse-invitation span{display:inline-block;color:#8a6544;margin-right:6px}
+.directory-page .category-chip>span{display:inline-flex;align-items:center;justify-content:center;width:23px;height:23px;border-radius:50%;background:#e9eee7}
+.directory-page .category-chip[aria-pressed="true"]>span{background:#ffffff18}
+.directory-page .category-chip{transition:background .2s,border-color .2s,color .2s,box-shadow .2s,transform .2s}
+.directory-page .directory-card{transition:border-color .2s,box-shadow .2s,transform .2s}
+.directory-page .directory-heading h1 span{display:inline-block;transform:rotate(-12deg);color:#896442}
+@media(hover:hover) and (pointer:fine){
+.directory-page .category-chip:hover{transform:translateY(-2px);box-shadow:0 3px 8px #304e5f12}
+.directory-page .directory-card:hover{transform:translateY(-3px)}
+}
+@media(prefers-reduced-motion:reduce){.directory-page .directory-card,.directory-page .category-chip{transition:none}.directory-page .directory-card:hover,.directory-page .category-chip:hover{transform:none}}
+
+.directory-page .directory-card-body{display:flex;flex-direction:column;flex:1;min-width:0}
+.directory-page .directory-card-top.dark-logo-backdrop{background:#304651}
+.directory-page .dark-logo-backdrop .directory-mark img{mix-blend-mode:normal}
+.directory-page .directory-mark.text-wordmark{font-family:var(--display);font-size:2rem;line-height:1.2;text-align:center;letter-spacing:0}
+.directory-page .weekly-badge{align-self:flex-start;display:inline-flex;align-items:center;gap:7px;background:#f1e3bc;color:#68481d;border:1px solid #dcc28b;border-radius:20px;padding:5px 11px;font-size:.7rem;line-height:1.5;font-weight:600;letter-spacing:.015em;margin-bottom:14px}
+.directory-page .directory-card.is-weekly-feature{grid-column:span 2;border:1px solid #b89553;background:#fffdf5;box-shadow:0 5px 24px #8c6d2730,0 0 0 3px #e5cd932b;display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:26px}
+.directory-page .is-weekly-feature .directory-card-top{margin:-24px 0 -24px -24px;padding:28px 22px;min-height:100%;height:calc(100% + 48px);background:#eee6d5}
+.directory-page .is-weekly-feature .directory-card-top.dark-logo-backdrop{background:#304651}
+.directory-page .is-weekly-feature .directory-mark{height:128px;max-width:270px}
+.directory-page .is-weekly-feature .directory-mark img{height:112px;max-height:128px}
+.directory-page .is-weekly-feature .directory-mark.wide-logo img{height:auto;max-height:112px}
+.directory-page .is-weekly-feature .directory-mark.tall-logo img{height:128px}
+.directory-page .is-weekly-feature h3{font-size:1.35rem;line-height:1.35}
+.directory-page .weekly-note{font-size:.67rem;line-height:1.5;color:#766444;margin-top:9px}
+.directory-page .is-weekly-feature.without-logo{display:flex}
+.directory-page .directory-card.is-weekly-feature:hover{box-shadow:0 9px 30px #8c6d273b,0 0 0 3px #e5cd9340;border-color:#a48140}
+.directory-page .directory-text-row .weekly-badge{margin:0 0 8px}
+@media(max-width:600px){
+.directory-page .directory-card.is-weekly-feature{grid-column:auto;display:flex;gap:0;padding:21px;border-radius:18px;box-shadow:0 4px 18px #8c6d2730,0 0 0 2px #e5cd932b}
+.directory-page .is-weekly-feature .directory-card-top{margin:-21px -21px 19px;padding:23px 21px;min-height:130px;height:auto}
+.directory-page .is-weekly-feature .directory-mark{height:95px;max-width:240px}
+.directory-page .is-weekly-feature .directory-mark img{height:82px;max-height:95px}
+.directory-page .is-weekly-feature .directory-mark.tall-logo img{height:95px}
+.directory-page .is-weekly-feature .directory-mark.wide-logo img{height:auto;max-height:82px}
+.directory-page .is-weekly-feature h3{font-size:1.2rem}
+}
+
+/* A little on-air personality, without adding weight to the directory. */
+.directory-page .spotlight-hero-kicker{display:flex;align-items:center;gap:15px;margin-bottom:17px}
+.directory-page .spotlight-mic{display:block;width:72px;height:72px;flex:none;overflow:visible}
+.directory-page .spotlight-hero-kicker .directory-eyebrow{margin:0;color:#665637;letter-spacing:.14em;font-size:.67rem;line-height:1.6}
+.directory-page .spotlight-hero-copy{min-width:0}
+.directory-page .spotlight-hero-copy h1{position:relative;display:inline-block}
+.directory-page .spotlight-hero-copy h1:after{content:"";position:absolute;left:1px;right:5px;bottom:-7px;height:5px;background:#b79b6b55;border-radius:60% 30% 50% 25%;transform:rotate(-.7deg)}
+.directory-page .spotlight-hero-copy>p{padding-top:5px}
+@media(max-width:600px){
+.directory-page .spotlight-hero-kicker{gap:11px;margin-bottom:13px}
+.directory-page .spotlight-mic{width:56px;height:56px}
+.directory-page .spotlight-hero-kicker .directory-eyebrow{font-size:.58rem;letter-spacing:.1em}
+.directory-page .hero-copy-break{display:none}
+}
+
+/* A quiet invitation for local business owners. */
+.directory-page .spotlight-owner-invitation{max-width:340px;padding:22px 24px;background:#f7f4ec;border:1px solid #bca78366;border-radius:18px;align-self:center}
+.directory-page .spotlight-owner-invitation h2{margin:0 0 9px;font-size:1.25rem;line-height:1.2;color:#263c46}
+.directory-page .spotlight-owner-invitation p{font-size:.82rem;line-height:1.65;margin:0 0 12px;color:#536269}
+.directory-page .spotlight-owner-invitation .directory-feature-link{min-height:44px;display:inline-flex;align-items:center;gap:14px;padding:0;color:#345363;font-weight:700}
+@media(max-width:700px){.directory-page .spotlight-owner-invitation{max-width:none;width:100%;padding:17px 19px;box-sizing:border-box}.directory-page .spotlight-owner-invitation h2{font-size:1.15rem}}
