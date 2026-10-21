@@ -20,12 +20,16 @@ function sourceURL(value) {
     } catch {return null;}
 }
 function videoURL(value){try{const u=new URL(value);return u.protocol==='https:'&&u.hostname==='drive.google.com'&&!u.username&&!u.password&&!u.port&&/^\/file\/d\/[A-Za-z0-9_-]{10,200}\/view$/.test(u.pathname)?u.origin+u.pathname:null;}catch{return null;}}
-function matchesStory(tip) {
+// Stories are grouped by what they need from Chris, most urgent first.
+const storyGroups=[['attention','Needs attention'],['ready','Draft ready'],['processing','In progress']];
+const statusChips=[['chipAll','all'],['chipAttention','attention'],['chipReady','ready'],['chipProcessing','processing'],['chipSaved','saved']];
+const GROUP_PAGE=10, groupLimits=new Map();
+let statusFilter='all';
+function matchesSearch(tip) {
     const q=String($('storySearch').value || '').trim().toLocaleLowerCase();
-    const filter=$('workflowFilter').value || 'all';
-    return (!q || [tip.title,tip.summary,tip.location,tip.agency,tip.county].join(' ').toLocaleLowerCase().includes(q))
-        && (filter==='all' || (filter==='saved' ? savedStories.has(tip.id) : workflow(tip)===filter));
+    return !q || [tip.title,tip.summary,tip.location,tip.agency,tip.county].join(' ').toLocaleLowerCase().includes(q);
 }
+function matchesFilter(tip,filter) { return filter==='all' || (filter==='saved' ? savedStories.has(tip.id) : workflow(tip)===filter); }
 function paragraph(parent,text,className='') {const p=document.createElement('p');p.textContent=text;p.className=className;parent.append(p);return p;}
 function reportDetails(tip,parent) {
     const url=sourceURL(tip.sourceUrl);
@@ -145,6 +149,7 @@ $('notificationSettings').addEventListener('toggle',async()=>{
     catch { if (state) { registration=null; await updateControls(); } }
 });
 function dateLabel(value) { return new Intl.DateTimeFormat('en-US',{timeZone:'America/Los_Angeles',month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'}).format(new Date(value)); }
+function shortDate(value) { return new Intl.DateTimeFormat('en-US',{timeZone:'America/Los_Angeles',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}).format(new Date(value)); }
 // Source stays independent of report status: Claude can prepare either kind.
 function sourceClass(tip) { return tip.type==='incident' ? 'source-found' : 'source-community'; }
 function sourceBadge(tip) {
@@ -231,36 +236,71 @@ function renderInbox() {
     $('readyCount').textContent=all.filter(t=>workflow(t)==='ready').length;
     $('attentionCount').textContent=all.filter(t=>workflow(t)==='attention').length;
     $('totalCount').textContent=all.length;$('foundCount').textContent=reports.length;$('communityCount').textContent=tips.length;
-    const signature=JSON.stringify({tips,reports,q:$('storySearch').value,status:$('workflowFilter').value,sort:$('storySort').value,saved:[...savedStories]});
+    const searched=all.filter(matchesSearch);
+    for(const [id,filter] of statusChips) {
+        $(id+'Count').textContent=searched.filter(t=>matchesFilter(t,filter)).length;
+        $(id).setAttribute('aria-pressed',String(statusFilter===filter));$(id).classList.toggle('active',statusFilter===filter);
+    }
+    const signature=JSON.stringify({tips,reports,q:$('storySearch').value,status:statusFilter,sort:$('storySort').value,saved:[...savedStories],limits:[...groupLimits]});
     if(signature===renderedTips)return;
     thumbnails.reset();$('tips').replaceChildren();$('reports').replaceChildren();
     let shown=0;
     for(const [id,records] of [['reports',reports],['tips',tips]]) {
-        const filtered=records.filter(matchesStory).sort((a,b)=>($('storySort').value==='oldest'?1:-1)*(Date.parse(a.receivedAt)-Date.parse(b.receivedAt)));
+        const filtered=records.filter(t=>matchesSearch(t) && matchesFilter(t,statusFilter));
         show(id==='reports'?'reportsEmpty':'tipsEmpty',!filtered.length);shown+=filtered.length;
-        for(const tip of filtered) {
-            const row=document.createElement('article');row.className='tip tip-card '+sourceClass(tip);
-            const body=document.createElement('div');body.className='tip-body';const info=document.createElement('div');
-            const meta=document.createElement('div');meta.className='story-meta';meta.append(sourceBadge(tip));
-            const badge=document.createElement('span');badge.className='workflow-badge '+workflow(tip);badge.textContent=reportStates[tip.reportState] || (tip.status==='review'?'Needs review':'Tip received');meta.append(badge);info.append(meta);
-            const title=document.createElement('h3');title.textContent=(tip.title || (tip.type==='story'?'Story submission':'Tipline upload'))+(tip.incomplete?' · Incomplete':'');info.append(title);
-            if(tip.agency)paragraph(info,tip.agency,'agency-name');
-            const time=document.createElement('time');time.dateTime=tip.receivedAt;time.textContent='Received '+dateLabel(tip.receivedAt);info.append(time);
-            if(tip.summary)paragraph(info,tip.summary,'tip-summary');
-            if(tip.location)paragraph(info,'Reported location: '+tip.location,'tip-location');
-            paragraph(info,tip.contextSource==='claude'?'Prepared draft · Review before publishing':tip.contextSource==='tipster'?'Submitted context · Not independently verified':'Context pending','tip-provenance');
-            const actions=document.createElement('div');actions.className='story-actions';
-            if(videoURL(tip.videoUrl)){const v=document.createElement('a');v.className='folder watch-video';v.href=videoURL(tip.videoUrl);v.target='_blank';v.rel='noopener noreferrer';v.textContent='Watch draft'+(tip.durationSeconds?' · '+Math.round(tip.durationSeconds)+'s':'');actions.append(v);}
-            if(folderURL(tip.driveUrl)) actions.append(folderLink(tip)); else paragraph(actions,tip.status==='review'?'Files need review':'Files processing','state');
-            const save=document.createElement('button');save.type='button';save.className='save-story';save.textContent=savedStories.has(tip.id)?'Saved ✓':'Save';save.setAttribute('aria-label',(savedStories.has(tip.id)?'Unsave ':'Save ')+(tip.title || 'story'));save.setAttribute('aria-pressed',String(savedStories.has(tip.id)));
-            save.addEventListener('click',()=>{if(savedStories.has(tip.id))savedStories.delete(tip.id);else if(/^[a-f0-9]{64}$/.test(tip.id))savedStories.add(tip.id);try{localStorage.setItem('cerney-saved-stories',JSON.stringify([...savedStories].slice(-200)));}catch{}renderInbox();});actions.append(save);info.append(actions);
-            body.append(info);row.append(body);reportDetails(tip,row);CerneyReportCopy.appendReportCopy(tip,row);thumbnails.add(tip,row);$(id).append(row);
+        for(const [key,label] of storyGroups) {
+            const members=filtered.filter(t=>workflow(t)===key).sort((a,b)=>($('storySort').value==='oldest'?1:-1)*(Date.parse(a.receivedAt)-Date.parse(b.receivedAt)));
+            if(members.length) $(id).append(storyGroup(id+':'+key,label,members));
         }
     }
     $('filterStatus').textContent=shown===all.length?'Showing all '+shown+' recent stories':shown+' of '+all.length+' stories match';
     renderedTips=signature;
 }
-for(const id of ['storySearch','workflowFilter','storySort']) $(id).addEventListener(id==='storySearch'?'input':'change',renderInbox);
+function storyGroup(key,label,members) {
+    const limit=groupLimits.get(key) || GROUP_PAGE;
+    const section=document.createElement('section');section.className='story-group group-'+key.split(':')[1];
+    const heading=document.createElement('div');heading.className='group-heading';
+    const title=document.createElement('h3');title.textContent=label;const count=document.createElement('span');count.textContent=String(members.length);heading.append(title,count);
+    const list=document.createElement('div');list.className='story-list';
+    for(const tip of members.slice(0,limit)) list.append(storyCard(tip));
+    section.append(heading,list);
+    if(members.length>limit) {
+        const more=document.createElement('button');more.type='button';more.className='secondary show-more';
+        more.textContent=`Show ${Math.min(GROUP_PAGE,members.length-limit)} more · ${members.length-limit} remaining`;
+        more.addEventListener('click',()=>{groupLimits.set(key,limit+GROUP_PAGE);renderInbox();});section.append(more);
+    }
+    return section;
+}
+function storyCard(tip) {
+    const row=document.createElement('article');row.className='tip tip-card '+sourceClass(tip);
+    const body=document.createElement('div');body.className='tip-body';const info=document.createElement('div');
+    const meta=document.createElement('div');meta.className='story-meta';meta.append(sourceBadge(tip));
+    const badge=document.createElement('span');badge.className='workflow-badge '+workflow(tip);badge.textContent=reportStates[tip.reportState] || (tip.status==='review'?'Needs review':'Tip received');meta.append(badge);info.append(meta);
+    const title=document.createElement('h4');title.textContent=(tip.title || (tip.type==='story'?'Story submission':'Tipline upload'))+(tip.incomplete?' · Incomplete':'');info.append(title);
+    if(tip.agency)paragraph(info,tip.agency,'agency-name');
+    const time=document.createElement('time');time.dateTime=tip.receivedAt;time.textContent='Received '+shortDate(tip.receivedAt);time.title=dateLabel(tip.receivedAt);info.append(time);
+    if(tip.summary) {
+        const summary=paragraph(info,tip.summary,'tip-summary');
+        // Long summaries start as three lines so a phone shows more stories at once.
+        if(tip.summary.length>140) {
+            summary.classList.toggle('clamped',true);
+            const more=document.createElement('button');more.type='button';more.className='text-button summary-toggle';more.textContent='More';more.setAttribute('aria-expanded','false');
+            more.addEventListener('click',()=>{const open=more.textContent==='More';summary.classList.toggle('clamped',!open);more.textContent=open?'Less':'More';more.setAttribute('aria-expanded',String(open));});
+            info.append(more);
+        }
+    }
+    if(tip.location)paragraph(info,'Reported location: '+tip.location,'tip-location');
+    paragraph(info,tip.contextSource==='claude'?'Prepared draft · Review before publishing':tip.contextSource==='tipster'?'Submitted context · Not independently verified':'Context pending','tip-provenance');
+    const actions=document.createElement('div');actions.className='story-actions';
+    if(videoURL(tip.videoUrl)){const v=document.createElement('a');v.className='folder watch-video';v.href=videoURL(tip.videoUrl);v.target='_blank';v.rel='noopener noreferrer';v.textContent='Watch draft'+(tip.durationSeconds?' · '+Math.round(tip.durationSeconds)+'s':'');actions.append(v);}
+    if(folderURL(tip.driveUrl)) actions.append(folderLink(tip)); else paragraph(actions,tip.status==='review'?'Files need review':'Files processing','state');
+    const save=document.createElement('button');save.type='button';save.className='save-story';save.textContent=savedStories.has(tip.id)?'Saved ✓':'Save';save.setAttribute('aria-label',(savedStories.has(tip.id)?'Unsave ':'Save ')+(tip.title || 'story'));save.setAttribute('aria-pressed',String(savedStories.has(tip.id)));
+    save.addEventListener('click',()=>{if(savedStories.has(tip.id))savedStories.delete(tip.id);else if(/^[a-f0-9]{64}$/.test(tip.id))savedStories.add(tip.id);try{localStorage.setItem('cerney-saved-stories',JSON.stringify([...savedStories].slice(-200)));}catch{}renderInbox();});actions.append(save);info.append(actions);
+    body.append(info);row.append(body);reportDetails(tip,row);CerneyReportCopy.appendReportCopy(tip,row);thumbnails.add(tip,row);
+    return row;
+}
+$('storySearch').addEventListener('input',renderInbox);$('storySort').addEventListener('change',renderInbox);
+for(const [id,filter] of statusChips) $(id).addEventListener('click',()=>{statusFilter=filter;renderInbox();});
 $('refreshButton').addEventListener('click',async()=>{const b=$('refreshButton');b.disabled=true;try{await refreshInbox();}finally{b.disabled=false;}});
 function dismissSelection(){tipId=null;try{localStorage.removeItem('cerney-open-tip');}catch{}history.replaceState(null,'','/tip-alerts/');show('selected',false);$('selected').replaceChildren();}
 function dismissButton(){const b=document.createElement('button');b.type='button';b.className='dismiss-selection';b.textContent='Close selected story ×';b.addEventListener('click',dismissSelection);return b;}

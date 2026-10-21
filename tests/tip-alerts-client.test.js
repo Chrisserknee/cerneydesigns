@@ -32,6 +32,9 @@ function client({ tip = false, serviceWorker, respond, ios = false, homeScreen =
     return { elements, calls, destinations, events, timers, ready: context.started, run: code => vm.runInContext(code, context) };
 }
 
+// Cards sit inside status groups: <section.story-group> holds [heading, .story-list, show-more?].
+const cards=(c,id)=>c.elements.get(id).children.flatMap(group=>group.children?.[1]?.children ?? []);
+
 test('notification arrival offers a direct Drive app tap without automatic web navigation', async () => {
     const c = client({ tip: true, ios: true,
         respond: op => op === 'tip' ? { status: 200, body: { tips: [{ driveUrl: 'https://drive.google.com/drive/folders/test' }] } } : null });
@@ -141,10 +144,10 @@ test('regular Safari has no custom gesture handlers',async()=>{
 test('unchanged auto refresh preserves the actual rendered card nodes',async()=>{
  const record={type:'upload',receivedAt:new Date().toISOString(),status:'ready',driveUrl:'https://drive.google.com/drive/folders/test'};
  const c=client({respond:()=>({status:200,body:{tips:[record]}})});await c.ready;
- const row=c.elements.get('tips').children[0];await c.run('loadTips({quiet:true})');
- assert.equal(c.elements.get('tips').children[0],row);
+ const row=cards(c,'tips')[0];await c.run('loadTips({quiet:true})');
+ assert.equal(cards(c,'tips')[0],row);
  record.status='processing';await c.run('loadTips({quiet:true})');
- assert.notEqual(c.elements.get('tips').children[0],row);
+ assert.notEqual(cards(c,'tips')[0],row);
 });
 
 test('Claude titles and context replace a generic card safely on automatic refresh',async()=>{
@@ -152,7 +155,7 @@ test('Claude titles and context replace a generic card safely on automatic refre
  const c=client({respond:()=>({status:200,body:{tips:[{...tip}]}})});await c.ready;
  Object.assign(tip,{title:'Bicycle riders in Monterey',summary:'<img src=x onerror=alert(1)>',contextSource:'claude',reportState:'ready'});
  await c.run('loadTips({quiet:true})');
- const info=c.elements.get('tips').children[0].children[0].children[0];
+ const info=cards(c,'tips')[0].children[0].children[0];
  assert.equal(info.children[1].textContent,tip.title);
  assert.equal(info.children.find(e=>e.className==='tip-summary').textContent,tip.summary);
  assert.match(info.children.find(e=>e.className==='tip-provenance').textContent,/Prepared draft/);
@@ -215,19 +218,19 @@ test('Home Screen launches keep agency reports visible without a notification li
  const respond=()=>({status:200,body:{expiresAt:null,tips:[newTip],reports:[report]}});
  for(let i=0;i<2;i++){
   const c=client({ios:true,respond});await c.ready;
-  assert.equal(c.elements.get('reportsSection').hidden,false);assert.equal(c.elements.get('reports').children.length,1);
-  const row=c.elements.get('reports').children[0];assert.equal(row.children[0].children[0].children[1].textContent,'Soledad report');
+  assert.equal(c.elements.get('reportsSection').hidden,false);assert.equal(cards(c,'reports').length,1);
+  const row=cards(c,'reports')[0];assert.equal(row.children[0].children[0].children[1].textContent,'Soledad report');
   assert.equal(row.children[0].children[0].children[0].children[1].textContent,'Needs review');
   assert.equal(row.children.filter(e=>e.className==='report-copy').length,2);
-  assert.equal(c.elements.get('tips').children[0].children[0].children[0].children[1].textContent,'New tip');
-  await c.run('loadTips({quiet:true})');assert.equal(c.elements.get('reports').children[0],row);
+  assert.equal(cards(c,'tips')[0].children[0].children[0].children[1].textContent,'New tip');
+  await c.run('loadTips({quiet:true})');assert.equal(cards(c,'reports')[0],row);
   c.run('clearSession()');assert.equal(c.elements.get('reports').children.length,0);assert.equal(c.elements.get('reportsSection').hidden,true);
  }
 });
 
 test('a client using the previous API still keeps incident cards in Video reports',async()=>{
  const c=client({respond:()=>({status:200,body:{tips:[{type:'incident',title:'Soledad report',receivedAt:new Date().toISOString(),driveUrl:'https://drive.google.com/drive/folders/report'}]}})});await c.ready;
- assert.equal(c.elements.get('reports').children.length,1);assert.equal(c.elements.get('tips').children.length,0);assert.equal(c.elements.get('empty').hidden,false);
+ assert.equal(cards(c,'reports').length,1);assert.equal(cards(c,'tips').length,0);assert.equal(c.elements.get('empty').hidden,false);
 });
 
 test('closing and reopening the Home Screen app reloads the last selected report from the server',async()=>{
@@ -243,13 +246,58 @@ test('closing and reopening the Home Screen app reloads the last selected report
 test('search and workflow filters retain source separation and never call the network',async()=>{
  const reports=[{id:'a'.repeat(64),type:'incident',receivedAt:new Date().toISOString(),title:'Road closure',agency:'Monterey Fire',reportState:'ready',draftDelivered:true},{id:'b'.repeat(64),type:'incident',receivedAt:new Date().toISOString(),title:'Second story',agency:'Santa Cruz Fire',reportState:'needs_review'}];
  const c=client({respond:()=>({status:200,body:{tips:[],reports}})});await c.ready;const before=c.calls.length;
- c.elements.get('storySearch').value='Monterey';c.elements.get('storySearch').handlers.input();assert.equal(c.elements.get('reports').children.length,1);assert.equal(c.elements.get('tips').children.length,0);
- c.elements.get('workflowFilter').value='attention';c.elements.get('workflowFilter').handlers.change();assert.equal(c.elements.get('reports').children.length,0);assert.equal(c.elements.get('reportsEmpty').hidden,false);assert.equal(c.calls.length,before);
+ c.elements.get('storySearch').value='Monterey';c.elements.get('storySearch').handlers.input();assert.equal(cards(c,'reports').length,1);assert.equal(cards(c,'tips').length,0);
+ c.elements.get('chipAttention').handlers.click();assert.equal(cards(c,'reports').length,0);assert.equal(c.elements.get('reportsEmpty').hidden,false);assert.equal(c.calls.length,before);
 });
 test('saving persists only opaque identifiers; dismissal removes a stale selected story',async()=>{
  const saved=new Map(),id='a'.repeat(64),report={id,type:'incident',receivedAt:new Date().toISOString(),title:'Private title',driveUrl:'https://drive.google.com/drive/folders/test',reportState:'ready',draftDelivered:true};
  const c=client({tip:true,saved,respond:op=>({status:200,body:{tips:op==='tip'?[report]:[],reports:[report]}})});await c.ready;
- const info=c.elements.get('reports').children[0].children[0].children[0];const actions=info.children.find(x=>x.className==='story-actions');actions.children.at(-1).handlers.click();
+ const info=cards(c,'reports')[0].children[0].children[0];const actions=info.children.find(x=>x.className==='story-actions');actions.children.at(-1).handlers.click();
  assert.equal(saved.get('cerney-saved-stories'),JSON.stringify([id]));assert.doesNotMatch(JSON.stringify([...saved]),/Private title|drive.google/);
  c.elements.get('selected').children[0].handlers.click();assert.equal(c.elements.get('selected').hidden,true);assert.equal(saved.has('cerney-open-tip'),false);
+});
+
+test('stories are grouped by what needs attention first, with status counts that follow the search',async()=>{
+ const at=minutes=>new Date(Date.now()-minutes*60000).toISOString();
+ const reports=[
+  {id:'a'.repeat(64),type:'incident',title:'Older draft',agency:'Monterey Fire',receivedAt:at(90),reportState:'ready',draftDelivered:true},
+  {id:'b'.repeat(64),type:'incident',title:'Newer draft',agency:'Santa Cruz Fire',receivedAt:at(10),reportState:'ready',draftDelivered:true},
+  {id:'c'.repeat(64),type:'incident',title:'Held story',agency:'Monterey Police',receivedAt:at(30),reportState:'held'},
+  {id:'d'.repeat(64),type:'incident',title:'Rendering story',agency:'Salinas Police',receivedAt:at(5),reportState:'rendering'}];
+ const c=client({respond:()=>({status:200,body:{tips:[],reports}})});await c.ready;
+ const groups=c.elements.get('reports').children;
+ assert.deepEqual(groups.map(g=>g.children[0].children[0].textContent),['Needs attention','Draft ready','In progress']);
+ assert.deepEqual(groups.map(g=>g.children[0].children[1].textContent),['1','2','1']);
+ assert.deepEqual(groups[1].children[1].children.map(card=>card.children[0].children[0].children[1].textContent),['Newer draft','Older draft']);
+ assert.deepEqual(['chipAll','chipAttention','chipReady','chipProcessing','chipSaved'].map(id=>c.elements.get(id+'Count').textContent),[4,1,2,1,0]);
+ c.elements.get('chipReady').handlers.click();
+ assert.deepEqual(c.elements.get('reports').children.map(g=>g.children[0].children[0].textContent),['Draft ready']);
+ assert.equal(c.elements.get('chipReady')['aria-pressed'],'true');assert.equal(c.elements.get('chipAll')['aria-pressed'],'false');
+ c.elements.get('storySearch').value='Monterey';c.elements.get('storySearch').handlers.input();
+ assert.deepEqual(['chipAll','chipAttention','chipReady'].map(id=>c.elements.get(id+'Count').textContent),[2,1,1]);
+ assert.equal(cards(c,'reports').length,1);
+});
+
+test('long groups show ten stories first and reveal more on request',async()=>{
+ const reports=Array.from({length:12},(_,i)=>({id:i.toString(16).padStart(64,'0'),type:'incident',title:'Story '+i,receivedAt:new Date(Date.now()-i*60000).toISOString(),reportState:'ready',draftDelivered:true}));
+ const c=client({respond:()=>({status:200,body:{tips:[],reports}})});await c.ready;
+ assert.equal(cards(c,'reports').length,10);
+ const button=c.elements.get('reports').children[0].children[2];
+ assert.match(button.textContent,/Show 2 more · 2 remaining/);
+ button.handlers.click();
+ assert.equal(cards(c,'reports').length,12);assert.equal(c.elements.get('reports').children[0].children.length,2);
+});
+
+test('long summaries start collapsed with a More toggle; short ones have none',async()=>{
+ const long='Road closure details. '.repeat(10),short='Brief note.';
+ const reports=[{id:'a'.repeat(64),type:'incident',title:'Long',receivedAt:new Date().toISOString(),summary:long,reportState:'ready',draftDelivered:true},
+  {id:'b'.repeat(64),type:'incident',title:'Short',receivedAt:new Date(Date.now()-1000).toISOString(),summary:short,reportState:'ready',draftDelivered:true}];
+ const c=client({respond:()=>({status:200,body:{tips:[],reports}})});await c.ready;
+ const [longInfo,shortInfo]=cards(c,'reports').map(card=>card.children[0].children[0]);
+ const toggle=longInfo.children.find(e=>e.className==='text-button summary-toggle');
+ assert.equal(toggle.textContent,'More');assert.equal(toggle['aria-expanded'],'false');
+ assert.equal(longInfo.children.find(e=>e.className==='tip-summary').textContent,long);
+ toggle.handlers.click();assert.equal(toggle.textContent,'Less');assert.equal(toggle['aria-expanded'],'true');
+ toggle.handlers.click();assert.equal(toggle.textContent,'More');
+ assert.equal(shortInfo.children.some(e=>e.className==='text-button summary-toggle'),false);
 });
