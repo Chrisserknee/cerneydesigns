@@ -24,7 +24,7 @@ test('missing/foreign origins and oversized parsed bodies are rejected before au
  }
 });
 
-test('CerneySelects sign-in keeps exact first-party origins and sandbox separation',async()=>{
+test('Cerney Selects sign-in keeps exact first-party origins and sandbox separation',async()=>{
  for(const origin of ['https://cerneyselects.com','https://www.chriscerney.org']){
   const h=handler();await h.run(request(origin),h.res);assert.equal(h.res.code,200);assert.equal(h.counts().gated,1);
  }

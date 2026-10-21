@@ -6,4 +6,4 @@ fs.mkdirSync(destination, { recursive: true });
 for (const file of ['storage.js', 'gateway.js', 'logos-gateway.js', 'logos.js', 'moderation.js', 'providers.js', 'emails.js']) {
     fs.copyFileSync(path.join(root, 'functions-spotlight', file), path.join(destination, file));
 }
-console.log('Prepared shared CerneySelects workflow sources.');
+console.log('Prepared shared Cerney Selects workflow sources.');

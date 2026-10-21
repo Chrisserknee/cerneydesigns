@@ -277,8 +277,8 @@ test('live confirmation emails use the real brand and new domain without a test 
     const settings = { ...f.settings, live: true, siteUrl: 'https://cerneyselects.com' };
     const received = buildEmail({ snapshot: f.snapshot }, 'applicant-received', settings, '');
     const approved = buildEmail({ snapshot: f.snapshot }, 'applicant-approved', settings, '');
-    assert.equal(received.subject, 'Your CerneySelects application is in');
-    assert.match(received.from, /^CerneySelects </);
+    assert.equal(received.subject, 'Your Cerney Selects application is in');
+    assert.match(received.from, /^Cerney Selects </);
     assert.match(approved.text, /https:\/\/cerneyselects.com\/apply\/#manage/);
     assert.doesNotMatch(approved.text, /chriscerney.org|spotlightsignup/);
 });

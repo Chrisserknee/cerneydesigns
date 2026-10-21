@@ -34,7 +34,7 @@ function createProviders({ stripe, settings, fetchImpl = globalThis.fetch }) {
     function validateSubscription(subscription) {
         const items = subscription.items;
         const price = items?.data?.[0]?.price;
-        if (subscription.livemode !== live || subscription.metadata?.spotlight !== MARKER || items?.has_more || items?.data?.length !== 1 || items.data[0].quantity !== 1 || price?.id !== settings.priceId || price.currency !== 'usd' || price.unit_amount !== 10000 || price.type !== 'recurring' || price.recurring?.interval !== 'month' || price.recurring?.interval_count !== 1 || price.recurring?.usage_type !== 'licensed') throw error('Subscription does not match CerneySelects.', 409, 'PAYMENT_MISMATCH');
+        if (subscription.livemode !== live || subscription.metadata?.spotlight !== MARKER || items?.has_more || items?.data?.length !== 1 || items.data[0].quantity !== 1 || price?.id !== settings.priceId || price.currency !== 'usd' || price.unit_amount !== 10000 || price.type !== 'recurring' || price.recurring?.interval !== 'month' || price.recurring?.interval_count !== 1 || price.recurring?.usage_type !== 'licensed') throw error('Subscription does not match Cerney Selects.', 409, 'PAYMENT_MISMATCH');
     }
     function validateInvoice(invoice, subscription, initial = false) {
         const line = invoice.lines?.data?.[0];

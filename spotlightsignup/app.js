@@ -170,7 +170,7 @@
             });
             const data = await response.json().catch(() => null);
             if (!response.ok || !data || typeof data !== 'object') {
-                throw new Error(string(data?.error, 240) || 'CerneySelects is temporarily unavailable. Please try again.');
+                throw new Error(string(data?.error, 240) || 'Cerney Selects is temporarily unavailable. Please try again.');
             }
             return data;
         } catch (error) {
@@ -370,7 +370,7 @@
             notice.hidden = false;
             notice.classList.remove('ready-notice');
             if (active && published) {
-                notice.textContent = 'Payment confirmed. Your business is now in CerneySelects. You can manage your listing below.';
+                notice.textContent = 'Payment confirmed. Your business is now in Cerney Selects. You can manage your listing below.';
                 notice.classList.add('ready-notice');
                 removeStored(DRAFT_KEY);
                 removeStored(REQUEST_KEY);

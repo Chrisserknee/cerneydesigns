@@ -2,7 +2,7 @@
   "name": "chris-cerney-spotlight-moderation",
   "private": true,
   "version": "1.0.0",
-  "description": "Private sandbox approval workflow for CerneySelects",
+  "description": "Private sandbox approval workflow for Cerney Selects",
   "main": "index.js",
   "engines": {
     "node": "22"

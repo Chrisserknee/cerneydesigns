@@ -13,7 +13,7 @@ test('new domain requires the preview password at its root and on assets', async
     for (const path of ['/', '/localspotlight/preview/businesses.json', '/apply/']) {
         const response = await middleware(new Request('https://cerneyselects.com' + path));
         assert.equal(response.status, 401);
-        assert.match(await response.text(), /CerneySelects/);
+        assert.match(await response.text(), /Cerney Selects/);
     }
 });
 
@@ -75,7 +75,7 @@ test('public launch serves real listings while production example pages and data
     } finally { delete process.env.CERNEYSELECTS_PUBLIC; }
 });
 
-test('public sitemap contains only CerneySelects public pages and protects private discovery paths', async () => {
+test('public sitemap contains only Cerney Selects public pages and protects private discovery paths', async () => {
     process.env.CERNEYSELECTS_PUBLIC = 'true';
     try {
         const robots = await middleware(new Request('https://cerneyselects.com/robots.txt'));
@@ -109,7 +109,7 @@ test('a public launch flag never opens examples on the reporting or deployment h
 });
 
 
-test('CerneySelects excludes portfolio, merchandise, tipline and their APIs without changing the reporting domain', async () => {
+test('Cerney Selects excludes portfolio, merchandise, tipline and their APIs without changing the reporting domain', async () => {
     process.env.CERNEYSELECTS_PUBLIC = 'true';
     try {
         for (const path of ['/portfolio/', '/store/', '/support/', '/upload/', '/admin/', '/api/create-checkout-session', '/api/admin-store', '/api/tip-upload']) {

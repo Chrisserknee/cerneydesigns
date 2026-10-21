@@ -1,4 +1,4 @@
-# CerneySelects moderation
+# Cerney Selects moderation
 
 This Firebase codebase is isolated from the existing Tip Line functions. It accepts sandbox Stripe keys only and stores private application records under `_spotlight/v1/sandbox/applications/` in the existing `tip-line-8c2d7.firebasestorage.app` bucket. It never writes the sponsorship ledger.
 

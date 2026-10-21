@@ -37,7 +37,7 @@ function liveModeration() {
 exports.cerneySelectsModerationApi = onRequest({ ...options, secrets: [liveProxy, ...liveSecrets] }, createGateway({ getSecret: () => liveProxy.value(), makeModeration: liveModeration }));
 exports.retryCerneySelectsModeration = onSchedule({ ...options, schedule: 'every 5 minutes', secrets: liveSecrets, retryCount: 0 }, async () => {
     try { await liveModeration().retry(); }
-    catch { console.error('CerneySelects moderation retry needs attention.'); throw new Error('Moderation retry failed.'); }
+    catch { console.error('Cerney Selects moderation retry needs attention.'); throw new Error('Moderation retry failed.'); }
 });
 exports.cerneySelectsLogoApi = onRequest({
     region: 'us-west1', memory: '512MiB', timeoutSeconds: 60, maxInstances: 2, concurrency: 1,

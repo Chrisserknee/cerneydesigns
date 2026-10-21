@@ -49,7 +49,7 @@ function safeStripeUrl(value, hostname) {
 }
 
 function createStripe(settings = config()) {
-    return new Stripe(settings.secret, { apiVersion: API_VERSION, maxNetworkRetries: 2, timeout: 15000, appInfo: { name: 'Chris Cerney CerneySelects', version: '1.0.0' } });
+    return new Stripe(settings.secret, { apiVersion: API_VERSION, maxNetworkRetries: 2, timeout: 15000, appInfo: { name: 'Chris Cerney Cerney Selects', version: '1.0.0' } });
 }
 
 function validateProfile(input, requireEmail = false) {

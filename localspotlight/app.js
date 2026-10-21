@@ -247,7 +247,7 @@
         byId('nextPage').disabled = page === pages;
         if (!filtered.length) {
             if (search || category || city) setEmpty('No matches just yet.', 'Try another business name, community, or category.', { clear: true });
-            else setEmpty('Be part of the first selects.', 'We’re welcoming the first businesses to CerneySelects. Own a local business? Explore how to join.');
+            else setEmpty('Be part of the first selects.', 'We’re welcoming the first businesses to Cerney Selects. Own a local business? Explore how to join.');
         }
     }
 

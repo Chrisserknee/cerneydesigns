@@ -6,7 +6,7 @@
   async function api(body) {
     const response = await fetch('/api/spotlight', {method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const result = await response.json();
-    if (!response.ok) { const error = new Error(result.error || 'Unable to load CerneySelects.'); error.status = response.status; throw error; }
+    if (!response.ok) { const error = new Error(result.error || 'Unable to load Cerney Selects.'); error.status = response.status; throw error; }
     return result;
   }
   async function load() {
@@ -30,7 +30,7 @@
         });
         card.append(button);byId('list').append(card);
       }
-      byId('message').textContent = data.listings.length ? `${data.listings.length} business listing${data.listings.length === 1 ? '' : 's'}.` : 'No paid CerneySelects subscriptions yet.';
+      byId('message').textContent = data.listings.length ? `${data.listings.length} business listing${data.listings.length === 1 ? '' : 's'}.` : 'No paid Cerney Selects subscriptions yet.';
     } catch(error) {
       byId('message').textContent=error.message;byId('login').hidden=error.status!==401;
     } finally {busy=false;byId('refresh').disabled=false;}

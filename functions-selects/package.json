@@ -2,7 +2,7 @@
   "name": "cerneyselects-production",
   "private": true,
   "version": "1.0.0",
-  "description": "CerneySelects live review, email and logo services",
+  "description": "Cerney Selects live review, email and logo services",
   "main": "index.js",
   "engines": {
     "node": "22"

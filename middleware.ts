@@ -47,10 +47,10 @@ export default async function middleware(request: Request) {
     const selectsAdmin = /^\/admin\/spotlight(?:\/|$)/.test(url.pathname) || ['/admin/style.css', '/api/admin-auth'].includes(url.pathname);
     const policyPath = /^\/(privacy|terms)(?:\/|\/index\.html)?$/.exec(url.pathname);
     if (!selects && !spotlightPath) return next();
-    // The new domain contains only CerneySelects. Other site features stay on
+    // The new domain contains only Cerney Selects. Other site features stay on
     // chriscerney.org, including their private administration and payment APIs.
     if (selects && !root && !crawlerFile && !spotlightPath && !selectsAdmin && !policyPath && url.pathname !== '/favicon.ico') {
-        return new Response('<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Page not found — CerneySelects</title><h1>Page not found</h1><p><a href="/">Explore CerneySelects</a></p></html>', { status: 404, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' } });
+        return new Response('<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Page not found — Cerney Selects</title><h1>Page not found</h1><p><a href="/">Explore Cerney Selects</a></p></html>', { status: 404, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' } });
     }
     if (selects && url.pathname === '/favicon.ico') return Response.redirect(new URL('/localspotlight/favicon.svg', url), 308);
     // Stripe authenticates this route using its signature over the raw body.

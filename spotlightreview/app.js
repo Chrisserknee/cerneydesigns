@@ -85,7 +85,7 @@
     });
     $('refresh').addEventListener('click', load);
     if (['approve', 'decline'].includes(suggested)) { form.elements.decision.value = suggested; updateChoice(); }
-    if (token.length < 30 || token.length > 2000) { notice('Open the secure review link in your CerneySelects email. If you refreshed this page, reopen that original link.', true); return; }
+    if (token.length < 30 || token.length > 2000) { notice('Open the secure review link in your Cerney Selects email. If you refreshed this page, reopen that original link.', true); return; }
     $('refresh').hidden = false;
     load();
 })();
