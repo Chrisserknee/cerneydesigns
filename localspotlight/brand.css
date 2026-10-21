@@ -73,7 +73,20 @@ body.cerneyselects-site {
     padding-bottom: 48px;
     margin-bottom: 40px;
     border-color: var(--border);
-    background: radial-gradient(ellipse at 20% 25%, rgba(111, 149, 184, .1), transparent 65%);
+    background: var(--bg);
+}
+.cerneyselects-site.directory-page .spotlight-hero-copy { flex: 1; }
+.cerneyselects-site.directory-page .spotlight-hero-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+}
+.cerneyselects-site.directory-page .spotlight-hero-sticker {
+    display: block;
+    flex: none;
+    width: clamp(136px, 19vw, 240px);
+    height: auto;
 }
 .cerneyselects-site.directory-page .spotlight-hero-kicker { margin-bottom: 24px; }
 .cerneyselects-site.directory-page .directory-eyebrow {
@@ -185,7 +198,9 @@ body.cerneyselects-site {
     .cerneyselects-site .nav-inner { min-height: 68px; }
     .cerneyselects-site.directory-page .directory-main { padding-top: 38px; padding-bottom: 40px; }
     .cerneyselects-site.directory-page .directory-heading { gap: 28px; padding-bottom: 30px; margin-bottom: 28px; }
-    .cerneyselects-site.directory-page .directory-heading h1 { font-size: clamp(3.8rem, 18vw, 5.2rem); }
+    .cerneyselects-site.directory-page .directory-heading h1 { font-size: clamp(2.75rem, 14vw, 4rem); }
+    .cerneyselects-site.directory-page .spotlight-hero-heading { gap: 12px; }
+    .cerneyselects-site.directory-page .spotlight-hero-sticker { width: clamp(104px, 30vw, 160px); }
     .cerneyselects-site.directory-page .directory-heading p:not(.directory-eyebrow) { font-size: .9rem; }
     .cerneyselects-site.directory-page .directory-eyebrow { font-size: .65rem; letter-spacing: .15em; }
     .cerneyselects-site.directory-page .spotlight-owner-invitation { padding: 20px; }
