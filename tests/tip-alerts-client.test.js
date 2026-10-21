@@ -301,3 +301,49 @@ test('long summaries start collapsed with a More toggle; short ones have none',a
  toggle.handlers.click();assert.equal(toggle.textContent,'More');
  assert.equal(shortInfo.children.some(e=>e.className==='text-button summary-toggle'),false);
 });
+
+test('marking a story done moves it to Done, saves only its opaque id and updates the counts',async()=>{
+ const saved=new Map(),at=m=>new Date(Date.now()-m*60000).toISOString();
+ const reports=[{id:'a'.repeat(64),type:'incident',title:'First draft',receivedAt:at(5),reportState:'ready',draftDelivered:true},
+  {id:'b'.repeat(64),type:'incident',title:'Second draft',receivedAt:at(10),reportState:'ready',draftDelivered:true}];
+ const c=client({saved,respond:()=>({status:200,body:{tips:[],reports}})});await c.ready;
+ const first=cards(c,'reports')[0],actions=first.children[0].children[0].children.find(e=>e.className==='story-actions');
+ assert.equal(actions.children.at(-1).className,'save-story');
+ const done=actions.children.find(e=>e.className==='mark-done');assert.equal(done.textContent,'Done');
+ done.handlers.click();
+ assert.equal(saved.get('cerney-done-stories'),JSON.stringify(['a'.repeat(64)]));assert.doesNotMatch(JSON.stringify([...saved]),/First draft|drive.google/);
+ assert.deepEqual(c.elements.get('reports').children.map(g=>g.children[0].children[0].textContent),['Draft ready','Done']);
+ assert.equal(c.elements.get('readyCount').textContent,1);assert.equal(c.elements.get('chipDoneCount').textContent,1);assert.equal(c.elements.get('chipReadyCount').textContent,1);
+ c.elements.get('chipDone').handlers.click();
+ assert.deepEqual(cards(c,'reports').map(card=>card.children[0].children[0].children[1].textContent),['First draft']);
+ const again=cards(c,'reports')[0].children[0].children[0].children.find(e=>e.className==='story-actions').children.find(e=>e.className==='mark-done');
+ assert.equal(again.textContent,'Undo done');again.handlers.click();assert.equal(saved.get('cerney-done-stories'),'[]');
+});
+
+test('review mode walks the drafts that need attention newest first, marks them done and finishes',async()=>{
+ const at=m=>new Date(Date.now()-m*60000).toISOString();
+ const reports=[{id:'a'.repeat(64),type:'incident',title:'Older draft',receivedAt:at(60),reportState:'ready',draftDelivered:true,instagramDescription:'Caption A'},
+  {id:'b'.repeat(64),type:'incident',title:'Newest draft',receivedAt:at(5),reportState:'needs_review',instagramDescription:'Caption B',voiceover:'VO B'},
+  {id:'c'.repeat(64),type:'incident',title:'Still rendering',receivedAt:at(1),reportState:'rendering',instagramDescription:'Not reviewable yet'}];
+ const c=client({respond:()=>({status:200,body:{tips:[],reports}})});await c.ready;
+ assert.equal(c.elements.get('reviewStartCount').textContent,2);assert.equal(c.elements.get('reviewStart').hidden,false);
+ const title=()=>c.elements.get('reviewStory').children[0].children[0].children[0].children[1].textContent;
+ c.elements.get('reviewStart').handlers.click();
+ assert.equal(c.elements.get('reviewMode').hidden,false);assert.equal(c.elements.get('reviewProgress').textContent,'Story 1 of 2');assert.equal(title(),'Newest draft');
+ assert.equal(c.elements.get('reviewStory').children[0].children.filter(e=>e.className==='report-copy'&&e.open===true).length,2);
+ c.elements.get('reviewDone').handlers.click();
+ assert.equal(c.elements.get('reviewProgress').textContent,'Story 2 of 2');assert.equal(title(),'Older draft');assert.equal(c.elements.get('reviewStartCount').textContent,1);
+ c.elements.get('reviewPrev').handlers.click();assert.equal(title(),'Newest draft');assert.equal(c.elements.get('reviewDone').textContent,'Undo done');
+ c.elements.get('reviewNext').handlers.click();c.elements.get('reviewDone').handlers.click();
+ assert.equal(c.elements.get('reviewProgress').textContent,'Review complete');assert.equal(c.elements.get('reviewDone').hidden,true);
+ c.elements.get('reviewClose').handlers.click();assert.equal(c.elements.get('reviewMode').hidden,true);assert.equal(c.elements.get('reviewStory').children.length,0);
+ assert.equal(c.elements.get('reviewStart').hidden,true);
+});
+
+test('revoking the device closes review mode and clears its private content',async()=>{
+ const report={id:'a'.repeat(64),type:'incident',title:'Private draft',receivedAt:new Date().toISOString(),reportState:'ready',draftDelivered:true,instagramDescription:'Private caption'};
+ const c=client({respond:()=>({status:200,body:{tips:[],reports:[report]}})});await c.ready;
+ c.elements.get('reviewStart').handlers.click();assert.equal(c.elements.get('reviewStory').children.length,1);
+ c.run('clearSession()');
+ assert.equal(c.elements.get('reviewMode').hidden,true);assert.equal(c.elements.get('reviewStory').children.length,0);
+});

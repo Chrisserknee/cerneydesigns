@@ -7,6 +7,10 @@ const thumbnails = new TipThumbnails(api);
 let inboxSnapshot = {tips:[],reports:[]};
 let savedStories = new Set();
 try { savedStories = new Set(JSON.parse(localStorage.getItem('cerney-saved-stories') || '[]').filter(x=>/^[a-f0-9]{64}$/.test(x)).slice(0,200)); } catch {}
+// Stories Chris has finished with. Opaque IDs only, kept on this device.
+let doneStories = new Set();
+try { doneStories = new Set(JSON.parse(localStorage.getItem('cerney-done-stories') || '[]').filter(x=>/^[a-f0-9]{64}$/.test(x)).slice(0,400)); } catch {}
+let reviewQueue=null, reviewIndex=0;
 const reportStates={queued:'Queued',analyzing:'Analyzing media',awaiting_editor:'Preparing report',editing:'Editing',rendering:'Rendering',qc_pending:'Checking draft',ready:'Draft ready',approved:'Approved',needs_review:'Needs review',held:'Held for review',declined:'Tip saved',paused:'Paused',failed:'Processing stopped'};
 function workflow(tip) {
     if(['needs_review','held','failed','paused'].includes(tip.reportState) || tip.status==='review') return 'attention';
@@ -21,15 +25,24 @@ function sourceURL(value) {
 }
 function videoURL(value){try{const u=new URL(value);return u.protocol==='https:'&&u.hostname==='drive.google.com'&&!u.username&&!u.password&&!u.port&&/^\/file\/d\/[A-Za-z0-9_-]{10,200}\/view$/.test(u.pathname)?u.origin+u.pathname:null;}catch{return null;}}
 // Stories are grouped by what they need from Chris, most urgent first.
-const storyGroups=[['attention','Needs attention'],['ready','Draft ready'],['processing','In progress']];
-const statusChips=[['chipAll','all'],['chipAttention','attention'],['chipReady','ready'],['chipProcessing','processing'],['chipSaved','saved']];
+const storyGroups=[['attention','Needs attention'],['ready','Draft ready'],['processing','In progress'],['done','Done']];
+const statusChips=[['chipAll','all'],['chipAttention','attention'],['chipReady','ready'],['chipProcessing','processing'],['chipDone','done'],['chipSaved','saved']];
+const groupOf=tip=>doneStories.has(tip.id) ? 'done' : workflow(tip);
+// A story is reviewable when there is a draft, caption or script to check.
+const reviewable=tip=>!doneStories.has(tip.id) && ['attention','ready'].includes(workflow(tip)) && !!(videoURL(tip.videoUrl) || tip.instagramDescription || tip.voiceover);
 const GROUP_PAGE=10, groupLimits=new Map();
 let statusFilter='all';
 function matchesSearch(tip) {
     const q=String($('storySearch').value || '').trim().toLocaleLowerCase();
     return !q || [tip.title,tip.summary,tip.location,tip.agency,tip.county].join(' ').toLocaleLowerCase().includes(q);
 }
-function matchesFilter(tip,filter) { return filter==='all' || (filter==='saved' ? savedStories.has(tip.id) : workflow(tip)===filter); }
+function matchesFilter(tip,filter) { return filter==='all' || (filter==='saved' ? savedStories.has(tip.id) : groupOf(tip)===filter); }
+function toggleDone(tip) {
+    if(!/^[a-f0-9]{64}$/.test(tip.id))return;
+    if(doneStories.has(tip.id))doneStories.delete(tip.id);else doneStories.add(tip.id);
+    try{localStorage.setItem('cerney-done-stories',JSON.stringify([...doneStories].slice(-400)));}catch{}
+    renderInbox();
+}
 function paragraph(parent,text,className='') {const p=document.createElement('p');p.textContent=text;p.className=className;parent.append(p);return p;}
 function reportDetails(tip,parent) {
     const url=sourceURL(tip.sourceUrl);
@@ -69,7 +82,7 @@ function message(text='', error=false) { $('message').textContent=text; $('messa
 function clearSession() {
     try { localStorage.removeItem('cerney-open-tip'); } catch {}
     thumbnails.reset();
-    state = null; renderedTips=null; inboxSnapshot={tips:[],reports:[]}; sessionVersion++; message(); resetPull();
+    state = null; renderedTips=null; inboxSnapshot={tips:[],reports:[]}; sessionVersion++; message(); resetPull(); closeReview();
     $('inboxStatus').textContent = '';
     clearTimeout(retryTimer); clearTimeout(inboxTimer);
     for (const id of ['tips','reports','devices','selected']) $(id).replaceChildren();
@@ -233,15 +246,16 @@ async function fetchTips(quiet) {
 }
 function renderInbox() {
     const {tips,reports}=inboxSnapshot, all=[...reports,...tips];
-    $('readyCount').textContent=all.filter(t=>workflow(t)==='ready').length;
-    $('attentionCount').textContent=all.filter(t=>workflow(t)==='attention').length;
+    $('readyCount').textContent=all.filter(t=>groupOf(t)==='ready').length;
+    $('attentionCount').textContent=all.filter(t=>groupOf(t)==='attention').length;
+    const queued=all.filter(reviewable).length;$('reviewStartCount').textContent=queued;show('reviewStart',queued>0);
     $('totalCount').textContent=all.length;$('foundCount').textContent=reports.length;$('communityCount').textContent=tips.length;
     const searched=all.filter(matchesSearch);
     for(const [id,filter] of statusChips) {
         $(id+'Count').textContent=searched.filter(t=>matchesFilter(t,filter)).length;
         $(id).setAttribute('aria-pressed',String(statusFilter===filter));$(id).classList.toggle('active',statusFilter===filter);
     }
-    const signature=JSON.stringify({tips,reports,q:$('storySearch').value,status:statusFilter,sort:$('storySort').value,saved:[...savedStories],limits:[...groupLimits]});
+    const signature=JSON.stringify({tips,reports,q:$('storySearch').value,status:statusFilter,sort:$('storySort').value,saved:[...savedStories],done:[...doneStories],limits:[...groupLimits]});
     if(signature===renderedTips)return;
     thumbnails.reset();$('tips').replaceChildren();$('reports').replaceChildren();
     let shown=0;
@@ -249,12 +263,13 @@ function renderInbox() {
         const filtered=records.filter(t=>matchesSearch(t) && matchesFilter(t,statusFilter));
         show(id==='reports'?'reportsEmpty':'tipsEmpty',!filtered.length);shown+=filtered.length;
         for(const [key,label] of storyGroups) {
-            const members=filtered.filter(t=>workflow(t)===key).sort((a,b)=>($('storySort').value==='oldest'?1:-1)*(Date.parse(a.receivedAt)-Date.parse(b.receivedAt)));
+            const members=filtered.filter(t=>groupOf(t)===key).sort((a,b)=>($('storySort').value==='oldest'?1:-1)*(Date.parse(a.receivedAt)-Date.parse(b.receivedAt)));
             if(members.length) $(id).append(storyGroup(id+':'+key,label,members));
         }
     }
     $('filterStatus').textContent=shown===all.length?'Showing all '+shown+' recent stories':shown+' of '+all.length+' stories match';
     renderedTips=signature;
+    paintReview();
 }
 function storyGroup(key,label,members) {
     const limit=groupLimits.get(key) || GROUP_PAGE;
@@ -295,10 +310,48 @@ function storyCard(tip) {
     if(videoURL(tip.videoUrl)){const v=document.createElement('a');v.className='folder watch-video';v.href=videoURL(tip.videoUrl);v.target='_blank';v.rel='noopener noreferrer';v.textContent='Watch draft'+(tip.durationSeconds?' · '+Math.round(tip.durationSeconds)+'s':'');actions.append(v);}
     if(folderURL(tip.driveUrl)) actions.append(folderLink(tip)); else paragraph(actions,tip.status==='review'?'Files need review':'Files processing','state');
     const save=document.createElement('button');save.type='button';save.className='save-story';save.textContent=savedStories.has(tip.id)?'Saved ✓':'Save';save.setAttribute('aria-label',(savedStories.has(tip.id)?'Unsave ':'Save ')+(tip.title || 'story'));save.setAttribute('aria-pressed',String(savedStories.has(tip.id)));
-    save.addEventListener('click',()=>{if(savedStories.has(tip.id))savedStories.delete(tip.id);else if(/^[a-f0-9]{64}$/.test(tip.id))savedStories.add(tip.id);try{localStorage.setItem('cerney-saved-stories',JSON.stringify([...savedStories].slice(-200)));}catch{}renderInbox();});actions.append(save);info.append(actions);
+    save.addEventListener('click',()=>{if(savedStories.has(tip.id))savedStories.delete(tip.id);else if(/^[a-f0-9]{64}$/.test(tip.id))savedStories.add(tip.id);try{localStorage.setItem('cerney-saved-stories',JSON.stringify([...savedStories].slice(-200)));}catch{}renderInbox();});
+    const finished=doneStories.has(tip.id);const done=document.createElement('button');done.type='button';done.className='mark-done';done.textContent=finished?'Undo done':'Done';done.setAttribute('aria-pressed',String(finished));done.setAttribute('aria-label',(finished?'Mark not done: ':'Mark done: ')+(tip.title || 'story'));
+    done.addEventListener('click',()=>toggleDone(tip));actions.append(done,save);info.append(actions);
     body.append(info);row.append(body);reportDetails(tip,row);CerneyReportCopy.appendReportCopy(tip,row);thumbnails.add(tip,row);
     return row;
 }
+const storyById=id=>[...inboxSnapshot.reports,...inboxSnapshot.tips].find(t=>t.id===id);
+// Review mode walks the drafts that need Chris one at a time. The queue is a
+// list of opaque IDs frozen when it opens; each story is read fresh from the inbox.
+function openReview() {
+    const ids=[...inboxSnapshot.reports,...inboxSnapshot.tips].filter(reviewable).sort((a,b)=>Date.parse(b.receivedAt)-Date.parse(a.receivedAt)).map(t=>t.id);
+    if(!ids.length)return;
+    reviewQueue=ids;reviewIndex=0;document.documentElement.classList.toggle('review-open',true);show('reviewMode',true);paintReview();$('reviewClose').focus();
+}
+function closeReview() {
+    reviewQueue=null;document.documentElement.classList.toggle('review-open',false);
+    show('reviewMode',false);$('reviewStory').replaceChildren();
+}
+function paintReview() {
+    if(!reviewQueue)return;
+    while(reviewIndex<reviewQueue.length && !storyById(reviewQueue[reviewIndex]))reviewIndex++;
+    const body=$('reviewStory'),finished=reviewIndex>=reviewQueue.length;
+    $('reviewProgress').textContent=finished?'Review complete':`Story ${reviewIndex+1} of ${reviewQueue.length}`;
+    show('reviewPrev',reviewIndex>0);show('reviewNext',!finished);show('reviewDone',!finished);
+    body.replaceChildren();body.scrollTop=0;
+    if(finished) { paragraph(body,'You have been through every draft in this queue. New drafts will appear on the story desk when they arrive.','review-finished'); return; }
+    const tip=storyById(reviewQueue[reviewIndex]);
+    $('reviewDone').textContent=doneStories.has(tip.id)?'Undo done':'Done & next';
+    const card=storyCard(tip);
+    for(const part of [...card.children]) if(part.className==='story-details' || part.className==='report-copy') part.open=true;
+    body.append(card);
+}
+$('reviewStart').addEventListener('click',openReview);$('reviewClose').addEventListener('click',()=>{closeReview();$('reviewStart').focus();});
+$('reviewPrev').addEventListener('click',()=>{reviewIndex=Math.max(0,reviewIndex-1);paintReview();});
+$('reviewNext').addEventListener('click',()=>{reviewIndex++;paintReview();});
+$('reviewDone').addEventListener('click',()=>{
+    const tip=storyById(reviewQueue?.[reviewIndex]);if(!tip)return;
+    // Advance first so the repaint triggered by the change shows the next story.
+    if(!doneStories.has(tip.id))reviewIndex++;
+    toggleDone(tip);
+});
+document.addEventListener('keydown',event=>{if(event.key==='Escape' && reviewQueue)closeReview();});
 $('storySearch').addEventListener('input',renderInbox);$('storySort').addEventListener('change',renderInbox);
 for(const [id,filter] of statusChips) $(id).addEventListener('click',()=>{statusFilter=filter;renderInbox();});
 $('refreshButton').addEventListener('click',async()=>{const b=$('refreshButton');b.disabled=true;try{await refreshInbox();}finally{b.disabled=false;}});
@@ -403,7 +456,7 @@ function refreshInbox() {
 if(standalone) {
     document.addEventListener('touchstart',event=>{
         resetPull();
-        if (!state || refreshRequest || window.scrollY>0 || event.touches.length!==1
+        if (!state || refreshRequest || reviewQueue || window.scrollY>0 || event.touches.length!==1
             || (window.visualViewport && window.visualViewport.scale!==1)
             || event.target.closest('button,input,textarea,select,summary')) return;
         pullStart={x:event.touches[0].clientX,y:event.touches[0].clientY};

@@ -77,3 +77,15 @@ main{max-width:1000px;padding-top:max(22px,env(safe-area-inset-top))}header{padd
 .desk-stats{padding:12px 4px}.desk-stats strong{font-size:22px}.monitor-health{margin:10px 0 12px}
 }
 @media(max-width:430px){.desk-tools{margin:0 -16px;padding:8px 16px 6px}.status-chips{margin:8px -16px 0;padding:0 16px 2px}.desk-heading{padding:16px 0 12px}.desk-heading .muted{display:none}}
+
+/* Done state and Review mode: finish stories one at a time. */
+.review-start{display:flex;width:100%;justify-content:space-between;align-items:center;margin:12px 0 0;min-height:52px;background:#23634f;font-size:15px}.review-start span+span{background:#ffffff2e;border-radius:20px;padding:2px 11px;font-size:13px}
+.mark-done{background:#fff;color:#496575;border:1px solid #d8e0e3;min-height:44px;padding:10px 14px;font-size:12px}.mark-done[aria-pressed=true]{background:#edf5ef;color:#28674f;border-color:#c9e0cd}
+@media(max-width:540px){.mark-done{flex:0 0 auto}}
+html.review-open,html.review-open body{overflow:hidden}
+.review-mode{position:fixed;inset:0;z-index:20;display:flex;flex-direction:column;background:#f3f5f4;overscroll-behavior:contain}
+.review-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:max(12px,env(safe-area-inset-top)) 16px 10px;background:#fff;border-bottom:1px solid #dde4e4}.review-bar strong{font-size:15px}.review-bar button{min-height:40px}
+.review-story{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;width:100%;max-width:760px;margin:0 auto;padding:14px 16px}.review-story .tip.tip-card{margin:0}
+.review-finished{padding:28px 8px;text-align:center;color:#506574;font-size:14px;line-height:1.6}
+.review-actions{display:flex;gap:10px;padding:10px 16px max(12px,env(safe-area-inset-bottom));background:#fff;border-top:1px solid #dde4e4}.review-actions button{flex:1}.review-actions #reviewDone{flex:2;background:#23634f}
+#reviewStory .mark-done{display:none}
