@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const { createModeration } = require('./moderation');
 const { profileHash } = require('./providers');
 const { buildEmail } = require('./emails');
-const PROFILE = { businessName: 'Sandbox Coffee', category: 'Food & drink', city: 'Monterey', description: 'A synthetic test business.', website: 'https://example.com/', phone: '', logoUrl: '' };
+const PROFILE = { businessName: 'Sandbox Coffee', category: 'Food & Restaurants', city: 'Monterey', description: 'A synthetic test business.', website: 'https://example.com/', phone: '', logoUrl: '' };
 function fixture() {
     let time = 1800000000000;
     const data = new Map(); const calls = { inspect: 0, hold: 0, approve: 0, cancel: 0, refund: 0, sends: [] };

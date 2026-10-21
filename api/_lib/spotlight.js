@@ -10,7 +10,18 @@ const API_VERSION = '2026-08-26.dahlia';
 const COOKIE_NAME = '__Host-cc_spotlight';
 const COOKIE_SECONDS = 180 * 24 * 60 * 60;
 const PRICE = Object.freeze({ amount: 10000, currency: 'usd', interval: 'month' });
-const CATEGORIES = Object.freeze(['Food & drink', 'Shopping', 'Home & auto', 'Health & wellness', 'Professional services', 'Arts & experiences', 'Other']);
+const CATEGORIES = Object.freeze([
+    'Food & Restaurants',
+    'Drinks & Nightlife',
+    'Home & Property',
+    'Shopping & Local Makers',
+    'Health & Wellness',
+    'Family & Community',
+    'Experiences & Entertainment',
+    'Professional Services',
+    'Auto & Transportation',
+    'Farms, Outdoors & Local Living',
+]);
 const PUBLIC_FIELDS = ['businessName', 'category', 'city', 'description', 'website', 'phone', 'logoUrl'];
 const META_FIELDS = { businessName: 'business_name', category: 'category', city: 'city', description: 'description', website: 'website', phone: 'phone', logoUrl: 'logo_url' };
 const WEBHOOK_EVENTS = new Set(['checkout.session.completed', 'checkout.session.async_payment_succeeded', 'invoice.paid', 'invoice.payment_failed', 'customer.subscription.updated', 'customer.subscription.deleted', 'refund.created', 'refund.updated', 'refund.failed']);

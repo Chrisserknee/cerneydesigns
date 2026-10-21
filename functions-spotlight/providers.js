@@ -4,7 +4,18 @@ const crypto = require('node:crypto');
 const MARKER = 'local_spotlight_v1';
 const FIELDS = ['businessName', 'category', 'city', 'description', 'website', 'phone', 'logoUrl'];
 const METADATA = ['business_name', 'category', 'city', 'description', 'website', 'phone', 'logo_url'];
-const CATEGORIES = ['Food & drink', 'Shopping', 'Home & auto', 'Health & wellness', 'Professional services', 'Arts & experiences', 'Other'];
+const CATEGORIES = [
+    'Food & Restaurants',
+    'Drinks & Nightlife',
+    'Home & Property',
+    'Shopping & Local Makers',
+    'Health & Wellness',
+    'Family & Community',
+    'Experiences & Entertainment',
+    'Professional Services',
+    'Auto & Transportation',
+    'Farms, Outdoors & Local Living',
+];
 const ADDRESS = /^[^\s<>@,;]+@[^\s<>@,;]+\.[^\s<>@,;]+$/;
 const id = (value) => typeof value === 'string' ? value : value?.id || '';
 function error(message, status = 503, code = 'RETRY_LATER') { return Object.assign(new Error(message), { status, code }); }

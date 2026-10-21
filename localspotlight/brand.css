@@ -193,6 +193,7 @@ body.cerneyselects-site {
     .cerneyselects-site.directory-page .spotlight-owner-invitation p { font-size: .84rem; }
     .cerneyselects-site.directory-page .selects-about { margin-top: 40px; padding-top: 30px; }
     .cerneyselects-site .signup-main, .cerneyselects-site .policy-main { padding-top: 30px; padding-bottom: 40px; }
+    .cerneyselects-site .field-row.category-row { grid-template-columns: minmax(0, 1fr); }
     .cerneyselects-site .button { font-size: .75rem; padding-inline: 18px; }
     .cerneyselects-site .policy-nav a { font-size: .7rem; }
     .cerneyselects-site .site-footer { padding: 26px 0; }

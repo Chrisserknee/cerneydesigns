@@ -14,7 +14,7 @@ const settings = {
     priceId: 'price_spotlight', webhookSecret: 'whsec_local_spotlight_test', portalConfigurationId: 'bpc_spotlight',
     siteUrl: 'https://www.chriscerney.org', portalLoginUrl: 'https://billing.stripe.com/p/login/test', enabled: true, live: false,
 };
-const profile = { businessName: 'Coast Coffee', category: 'Food & drink', city: 'Monterey', description: 'Coffee and pastries by the coast.', website: 'https://example.com/', logoUrl: '', phone: '+1 (831) 555-0100', email: 'owner@example.com' };
+const profile = { businessName: 'Coast Coffee', category: 'Food & Restaurants', city: 'Monterey', description: 'Coffee and pastries by the coast.', website: 'https://example.com/', logoUrl: '', phone: '+1 (831) 555-0100', email: 'owner@example.com' };
 function price() { return { id: settings.priceId, active: true, currency: 'usd', unit_amount: 10000, type: 'recurring', billing_scheme: 'per_unit', recurring: { interval: 'month', interval_count: 1, usage_type: 'licensed' }, livemode: false }; }
 function subscription(invoiceId = 'in_current') {
     const start = Math.floor(Date.now() / 1000) - 3600;
@@ -461,7 +461,7 @@ test('paid invoice alone never publishes: approval must match every reviewed pub
     assert.equal((await service.directory()).listings.length, 1);
     for (const key of ['business_name', 'category', 'city', 'description', 'website', 'phone', 'logo_url']) {
         const original = state.subscription.metadata[key];
-        state.subscription.metadata[key] = key === 'website' ? 'https://changed.example/' : key === 'logo_url' ? 'https://changed.example/logo.png' : key === 'category' ? 'Other' : key === 'phone' ? '8315550999' : 'Changed';
+        state.subscription.metadata[key] = key === 'website' ? 'https://changed.example/' : key === 'logo_url' ? 'https://changed.example/logo.png' : key === 'category' ? 'Professional Services' : key === 'phone' ? '8315550999' : 'Changed';
         assert.equal((await service.directory()).listings.length, 0, key);
         state.subscription.metadata[key] = original;
     }

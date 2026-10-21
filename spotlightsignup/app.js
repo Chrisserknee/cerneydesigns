@@ -5,7 +5,18 @@
     const DRAFT_KEY = 'cc_spotlight_draft_v1';
     const REQUEST_KEY = 'cc_spotlight_request_v1';
     const PUBLIC_FIELDS = ['businessName', 'category', 'city', 'description', 'website', 'phone', 'logoUrl'];
-    const categories = ['Food & drink', 'Shopping', 'Home & auto', 'Health & wellness', 'Professional services', 'Arts & experiences', 'Other'];
+    const categories = [
+        'Food & Restaurants',
+        'Drinks & Nightlife',
+        'Home & Property',
+        'Shopping & Local Makers',
+        'Health & Wellness',
+        'Family & Community',
+        'Experiences & Entertainment',
+        'Professional Services',
+        'Auto & Transportation',
+        'Farms, Outdoors & Local Living',
+    ];
     const byId = (id) => document.getElementById(id);
     const signupForm = byId('signupForm');
     const manageForm = byId('manageForm');
