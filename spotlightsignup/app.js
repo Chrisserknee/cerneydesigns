@@ -331,6 +331,7 @@
 
     function renderOwner(data, updateFields = true) {
         ownerState = data;
+        window.dispatchEvent(new CustomEvent('selects:member', { detail: data }));
         const active = data.status === 'active';
         const published = data.published === true;
         const hidden = data.hidden === true;
@@ -431,6 +432,7 @@
             }
         } catch {
             if (forgetting) return;
+            window.dispatchEvent(new CustomEvent('selects:member', { detail: {} }));
             byId('manageStatus').textContent = 'Unavailable';
             byId('manageMessage').textContent = 'We couldn’t check your subscription. Try refreshing your status, or contact Chris if you need help.';
             if (checkoutReturn === 'success') {

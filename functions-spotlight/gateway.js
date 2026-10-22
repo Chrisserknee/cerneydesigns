@@ -11,7 +11,7 @@ function gatewayAuthenticated(request, secret, now = Date.now()) {
     return timingSafeEqual(expected, Buffer.from(signature, 'hex'));
 }
 
-function createGateway({ getSecret, makeModeration, now = Date.now }) {
+function createGateway({ getSecret, makeModeration, makeMemberExtras, now = Date.now }) {
     return async (request, response) => {
         response.set('Cache-Control', 'private, no-store');
         response.set('X-Content-Type-Options', 'nosniff');
@@ -22,8 +22,14 @@ function createGateway({ getSecret, makeModeration, now = Date.now }) {
         let body;
         try { body = JSON.parse(request.rawBody.toString('utf8')); }
         catch { return response.status(400).json({ error: 'Invalid JSON.' }); }
-        if (!body || Array.isArray(body) || !['ingest', 'review', 'decide', 'retry'].includes(body.op)) return response.status(400).json({ error: 'Unknown moderation operation.' });
+        if (!body || Array.isArray(body) || !['ingest', 'review', 'decide', 'retry', 'member-status', 'member-request'].includes(body.op)) return response.status(400).json({ error: 'Unknown moderation operation.' });
         try {
+            if (body.op.startsWith('member-')) {
+                if (!makeMemberExtras) return response.status(503).json({ error: 'Member options are not available yet.' });
+                const extras = makeMemberExtras();
+                const result = body.op === 'member-status' ? await extras.status(body) : await extras.request(body);
+                return response.status(200).json(result);
+            }
             const moderation = makeModeration();
             let result;
             if (body.op === 'ingest') result = await moderation.ingest({ subscriptionId: body.subscriptionId });
@@ -34,7 +40,9 @@ function createGateway({ getSecret, makeModeration, now = Date.now }) {
         } catch (error) {
             const status = [400, 403, 404, 409, 503].includes(error.status) ? error.status : 503;
             const code = /^[A-Z_]{1,40}$/.test(error.code || '') ? error.code : 'RETRY_LATER';
-            const messages = { 400: 'Check the submitted review details.', 403: 'This review link is invalid or expired.', 404: 'This application was not found.', 409: 'This application was already reviewed or changed. Refresh before continuing.', 503: 'The review service is temporarily unavailable. Please try again.' };
+            const messages = body.op.startsWith('member-')
+                ? { 400: 'Check the request details and confirm your request.', 403: 'Paid membership is required.', 404: 'Member record not found.', 409: 'A request for this option already exists. Reply to your confirmation email to change it.', 503: 'Member options are temporarily unavailable. Please try again.' }
+                : { 400: 'Check the submitted review details.', 403: 'This review link is invalid or expired.', 404: 'This application was not found.', 409: 'This application was already reviewed or changed. Refresh before continuing.', 503: 'The review service is temporarily unavailable. Please try again.' };
             // Never return raw provider errors, credentials, tokens or email bodies.
             console.error('Spotlight moderation request failed', { status, code });
             return response.status(status).json({ error: messages[status], code });

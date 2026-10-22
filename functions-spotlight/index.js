@@ -20,20 +20,30 @@ const emailEnabled = defineBoolean('SPOTLIGHT_EMAIL_ENABLED', { default: false }
 const options = { region: 'us-west1', memory: '256MiB', timeoutSeconds: 120, maxInstances: 3, concurrency: 8 };
 const secrets = [reviewSecret, stripeKey, resendKey];
 
-function moderation() {
+function sandboxSettings() {
     // These functions are sandbox-only. Provision separate live resources later.
     const key = stripeKey.value();
     if (!/^(?:rk|sk)_test_/.test(key || '')) throw new Error('Sandbox Stripe configuration required.');
-    const settings = { stripeKey: key, priceId: priceId.value(), siteUrl: siteUrl.value(), reviewSecret: reviewSecret.value(), resendKey: resendKey.value(), emailEnabled: emailEnabled.value(), ownerEmail: 'cerneymedia@gmail.com' };
+    return { stripeKey: key, priceId: priceId.value(), siteUrl: siteUrl.value(), reviewSecret: reviewSecret.value(), resendKey: resendKey.value(), emailEnabled: emailEnabled.value(), ownerEmail: 'cerneymedia@gmail.com' };
+}
+function moderation() {
+    const settings = sandboxSettings();
     const store = createStore({ bucket: getStorage().bucket('tip-line-8c2d7.firebasestorage.app'), prefix: '_spotlight/v1/sandbox/applications/' });
     const { createModeration } = require('./moderation');
     const { createProviders } = require('./providers');
     return createModeration({ store, settings, providers: createProviders({ settings }) });
 }
+function memberExtras() {
+    const settings = sandboxSettings();
+    const { createMemberExtras } = require('./member-extras');
+    const { createProviders } = require('./providers');
+    const store = createStore({ bucket: getStorage().bucket('tip-line-8c2d7.firebasestorage.app'), prefix: '_spotlight/v1/sandbox/member-extras/' });
+    return createMemberExtras({ store, settings, providers: createProviders({ settings }) });
+}
 
-exports.spotlightModerationApi = onRequest({ ...options, secrets: [proxySecret, ...secrets] }, createGateway({ getSecret: () => proxySecret.value(), makeModeration: moderation }));
+exports.spotlightModerationApi = onRequest({ ...options, secrets: [proxySecret, ...secrets] }, createGateway({ getSecret: () => proxySecret.value(), makeModeration: moderation, makeMemberExtras: memberExtras }));
 exports.retrySpotlightModeration = onSchedule({ ...options, schedule: 'every 5 minutes', secrets, retryCount: 0 }, async () => {
-    try { await moderation().retry(); }
+    try { await moderation().retry(); await memberExtras().retry(); }
     catch { console.error('Spotlight moderation retry needs attention.'); throw new Error('Moderation retry failed.'); }
 });
 exports.spotlightLogoApi = onRequest({

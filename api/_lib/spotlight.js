@@ -49,7 +49,8 @@ function config() {
     const portalLoginUrl = safeStripeUrl(process.env.SPOTLIGHT_PORTAL_LOGIN_URL, 'billing.stripe.com');
     const moderationReady = moderationConfig().ready;
     const enabled = moderationReady && process.env.SPOTLIGHT_ENABLED === 'true' && Boolean(secret && signingSecret.length >= 32 && /^price_[A-Za-z0-9]+$/.test(priceId) && webhookSecret && /^bpc_[A-Za-z0-9]+$/.test(portalConfigurationId) && siteUrl);
-    return { secret, signingSecret, priceId, webhookSecret, portalConfigurationId, siteUrl, portalLoginUrl, enabled, moderationReady, live: /^(?:sk|rk)_live_/.test(secret) };
+    const memberExtrasEnabled = moderationReady && process.env.SPOTLIGHT_MEMBER_EXTRAS_ENABLED === 'true';
+    return { secret, signingSecret, priceId, webhookSecret, portalConfigurationId, siteUrl, portalLoginUrl, enabled, moderationReady, memberExtrasEnabled, live: /^(?:sk|rk)_live_/.test(secret) };
 }
 
 function safeStripeUrl(value, hostname) {
@@ -226,7 +227,41 @@ function createService(stripe, settings = config(), moderation = callModeration)
         const status = ['canceled', 'incomplete_expired'].includes(subscription.status) ? 'canceled'
             : ['past_due', 'unpaid', 'paused'].includes(subscription.status) ? 'past_due'
                 : subscription.status === 'active' ? 'active' : 'pending';
-        return { status, paymentConfirmed: session.payment_status === 'paid', reviewStatus: subscription.metadata.spotlight_review_status || 'pending', declineReason: subscription.metadata.spotlight_decline_reason || '', refundStatus: subscription.metadata.spotlight_refund_status || 'not_requested', canEdit: false, hidden: subscription.metadata.spotlight_hidden === 'true', profile: readProfile(subscription.metadata), canManage: Boolean(id(subscription.customer) && settings.portalConfigurationId), published: await isPublished(subscription), cancelAtPeriodEnd: Boolean(subscription.cancel_at_period_end || subscription.cancel_at), currentPeriodEnd: subscription.items?.data?.[0]?.current_period_end || null };
+        const isPublic = await isPublished(subscription);
+        const extrasEligible = settings.memberExtrasEnabled === true && (isPublic || await paidMember(record));
+        return { status, paymentConfirmed: session.payment_status === 'paid', reviewStatus: subscription.metadata.spotlight_review_status || 'pending', declineReason: subscription.metadata.spotlight_decline_reason || '', refundStatus: subscription.metadata.spotlight_refund_status || 'not_requested', canEdit: false, hidden: subscription.metadata.spotlight_hidden === 'true', profile: readProfile(subscription.metadata), canManage: Boolean(id(subscription.customer) && settings.portalConfigurationId), published: isPublic, extrasEligible, cancelAtPeriodEnd: Boolean(subscription.cancel_at_period_end || subscription.cancel_at), currentPeriodEnd: subscription.items?.data?.[0]?.current_period_end || null };
+    }
+
+    async function paidMember(record) {
+        const sub = record?.subscription;
+        if (!sub || record.session.payment_status !== 'paid' || !['pending', 'approving', 'approved'].includes(sub.metadata?.spotlight_review_status)) return false;
+        // The initial $100 is paid before moderation temporarily holds renewals.
+        // Only that specific review hold is ignored for access to the offers.
+        const reviewHold = ['pending', 'approving'].includes(sub.metadata.spotlight_review_status) && sub.pause_collection?.behavior === 'void';
+        const candidate = reviewHold ? { ...sub, pause_collection: null } : sub;
+        return validPaidSubscription(candidate, settings) && await currentPaymentIsValid(stripe, sub, settings);
+    }
+
+    async function memberExtras(request, body = {}) {
+        if (!settings.memberExtrasEnabled) throw new SpotlightError('Member options are not available yet.', 503, 'EXTRAS_DISABLED');
+        const record = await owner(request);
+        if (!await paidMember(record)) throw new SpotlightError('A current, paid $100 membership is required to view member options.', 403, 'PAID_MEMBER_REQUIRED');
+        const sub = record.subscription;
+        const canRequest = await isPublished(sub) && !sub.cancel_at_period_end && !sub.cancel_at;
+        const payload = { subscriptionId: sub.id };
+        const operation = body.op === 'member-request' ? 'member-request' : 'member-status';
+        if (operation === 'member-request') {
+            if (!canRequest) throw new SpotlightError('Requests open after your listing is approved, while your membership is continuing.', 409, 'MEMBER_REVIEW_REQUIRED');
+            const customer = await stripe.customers.retrieve(id(sub.customer));
+            if (customer.deleted || customer.livemode !== settings.live || !customer.email) throw new SpotlightError('Contact Chris to confirm your billing email.', 409, 'BILLING_EMAIL_REQUIRED');
+            Object.assign(payload, { requestId: body.requestId, offer: body.offer, specialty: body.specialty, area: body.area, notes: body.notes, consent: body.consent === true, businessName: readProfile(sub.metadata)?.businessName, email: customer.email });
+        }
+        try {
+            return { ...await moderation(operation, payload), canRequest };
+        } catch (error) {
+            if ([400, 403, 404, 409, 503].includes(error.status)) throw new SpotlightError(error.message, error.status, error.code);
+            throw error;
+        }
     }
 
     async function listSubscriptions(status = 'active') {
@@ -365,7 +400,7 @@ function createService(stripe, settings = config(), moderation = callModeration)
         }
     }
 
-    return { directory, checkout, status, portal, update, adminList, adminUpdate, webhook };
+    return { directory, checkout, status, portal, update, memberExtras, adminList, adminUpdate, webhook };
 }
 
 module.exports = { API_VERSION, CATEGORIES, COOKIE_NAME, MARKER, PRICE, SpotlightError, WEBHOOK_EVENTS, config, createService, createStripe, ownerSessionId, profileMetadata, publicProfileHash, published, readProfile, safeStripeUrl, sameOrigin, setOwnerCookie, validPaidSubscription, validateProfile };

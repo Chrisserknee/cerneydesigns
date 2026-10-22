@@ -21,22 +21,32 @@ const livePrice = defineString('CERNEYSELECTS_PRICE_ID', { default: '' });
 const liveEmail = defineBoolean('CERNEYSELECTS_EMAIL_ENABLED', { default: false });
 const liveSecrets = [liveReview, liveStripe, resendKey];
 
-function liveModeration() {
-    const settings = {
+function liveSettings() {
+    return {
         live: true, stripeKey: liveStripe.value(), priceId: livePrice.value(),
         siteUrl: 'https://cerneyselects.com', reviewSecret: liveReview.value(),
         resendKey: resendKey.value(), emailEnabled: liveEmail.value(),
         ownerEmail: 'cerneymedia@gmail.com',
     };
+}
+function liveModeration() {
+    const settings = liveSettings();
     const store = createStore({ bucket: getStorage().bucket('tip-line-8c2d7.firebasestorage.app'), prefix: '_spotlight/v1/live/applications/' });
     const { createModeration } = require('./_shared/moderation');
     const { createProviders } = require('./_shared/providers');
     return createModeration({ store, settings, providers: createProviders({ settings }) });
 }
+function liveMemberExtras() {
+    const settings = liveSettings();
+    const { createMemberExtras } = require('./_shared/member-extras');
+    const { createProviders } = require('./_shared/providers');
+    const store = createStore({ bucket: getStorage().bucket('tip-line-8c2d7.firebasestorage.app'), prefix: '_spotlight/v1/live/member-extras/' });
+    return createMemberExtras({ store, settings, providers: createProviders({ settings }) });
+}
 
-exports.cerneySelectsModerationApi = onRequest({ ...options, secrets: [liveProxy, ...liveSecrets] }, createGateway({ getSecret: () => liveProxy.value(), makeModeration: liveModeration }));
+exports.cerneySelectsModerationApi = onRequest({ ...options, secrets: [liveProxy, ...liveSecrets] }, createGateway({ getSecret: () => liveProxy.value(), makeModeration: liveModeration, makeMemberExtras: liveMemberExtras }));
 exports.retryCerneySelectsModeration = onSchedule({ ...options, schedule: 'every 5 minutes', secrets: liveSecrets, retryCount: 0 }, async () => {
-    try { await liveModeration().retry(); }
+    try { await liveModeration().retry(); await liveMemberExtras().retry(); }
     catch { console.error('Cerney Selects moderation retry needs attention.'); throw new Error('Moderation retry failed.'); }
 });
 exports.cerneySelectsLogoApi = onRequest({

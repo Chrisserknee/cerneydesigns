@@ -5,7 +5,7 @@ const MAX_RECORD_BYTES = 128 * 1024;
 
 function createStore({ bucket, prefix = '_spotlight/v1/sandbox/applications/' }) {
     if (!bucket || typeof bucket.file !== 'function' || typeof bucket.getFiles !== 'function') throw new Error('Moderation storage is unavailable.');
-    if (!/^_spotlight\/v1\/(sandbox|live)\/applications\/$/.test(prefix)) throw new Error('Invalid moderation storage prefix.');
+    if (!/^_spotlight\/v1\/(sandbox|live)\/(applications|member-extras)\/$/.test(prefix)) throw new Error('Invalid moderation storage prefix.');
 
     function path(id) {
         if (!APPLICATION_ID.test(id || '')) throw new Error('Invalid application identifier.');

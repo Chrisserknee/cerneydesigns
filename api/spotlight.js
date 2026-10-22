@@ -35,6 +35,7 @@ function createHandler({ makeStripe = createStripe, getConfig = config, authenti
             else if (body.op === 'status') result = await service.status(request, response);
             else if (body.op === 'portal') result = await service.portal(request);
             else if (body.op === 'update') result = await service.update(request, body);
+            else if (['member-options', 'member-request'].includes(body.op)) result = await service.memberExtras(request, body);
             else if (body.op === 'admin-list') result = await service.adminList();
             else if (body.op === 'admin-update') result = await service.adminUpdate(body);
             else return sendJson(response, 400, { error: 'Unknown Spotlight operation.' });

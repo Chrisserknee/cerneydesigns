@@ -43,6 +43,7 @@ function mockStripe(initialSubscription = subscription()) {
     const state = { subscription: initialSubscription, session: session(), updates: [], checkouts: [], portals: [], expirations: [], price: price(), listingPages: null, chargeChanges: {}, refundHistory: [] };
     const real = new Stripe(settings.secret);
     const stripe = {
+        customers: { retrieve: async () => ({ id: 'cus_owner', livemode: false, email: 'billing@example.com' }) },
         webhooks: real.webhooks,
         prices: { retrieve: async () => structuredClone(state.price) },
         invoicePayments: { list: async params => ({ has_more: false, data: [{ status: 'paid', livemode: false, amount_paid: 10000, currency: 'usd', invoice: params.invoice, payment: { type: 'payment_intent', payment_intent: { id: 'pi_current', status: 'succeeded', livemode: false, amount: 10000, amount_received: 10000, currency: 'usd', customer: 'cus_owner', latest_charge: 'ch_current' } } }] }) },
@@ -62,6 +63,72 @@ function mockStripe(initialSubscription = subscription()) {
     };
     return { stripe, state };
 }
+
+test('member offers require canonical payment, authenticated ownership and correct environment', async () => {
+    const denied = [
+        ['unpaid checkout', s => { s.session.payment_status = 'unpaid'; }],
+        ['wrong owner', s => { s.session.metadata.owner_key = 'someone_else'; }],
+        ['wrong environment', s => { s.session.livemode = true; }],
+        ['canceled', s => { s.subscription.status = 'canceled'; }],
+        ['past due', s => { s.subscription.status = 'past_due'; }],
+        ['refunded', s => { s.chargeChanges.amount_refunded = 10000; }],
+        ['disputed', s => { s.chargeChanges.disputed = true; }],
+        ['pending refund', s => { s.refundHistory.push({ payment_intent: 'pi_current', currency: 'usd', amount: 10000, status: 'pending' }); }],
+        ['wrong price', s => { s.subscription.items.data[0].price.unit_amount = 15000; }],
+        ['declined', s => { s.subscription.metadata.spotlight_review_status = 'declined'; }],
+    ];
+    for (const [name, mutate] of denied) {
+        const { stripe, state } = mockStripe(); mutate(state);
+        let calls = 0;
+        const service = createService(stripe, { ...settings, memberExtrasEnabled: true }, async () => { calls++; });
+        await assert.rejects(service.memberExtras(request({}, cookie())), e => e.code === 'PAID_MEMBER_REQUIRED', name);
+        assert.equal(calls, 0, name);
+    }
+    const { stripe } = mockStripe();
+    const service = createService(stripe, { ...settings, memberExtrasEnabled: true });
+    await assert.rejects(service.memberExtras(request()), e => e.code === 'PAID_MEMBER_REQUIRED');
+    await assert.rejects(createService(stripe, settings).memberExtras(request({}, cookie())), e => e.code === 'EXTRAS_DISABLED');
+});
+
+test('paid members awaiting approval may see offers but cannot request an upgrade', async () => {
+    const { stripe, state } = mockStripe();
+    state.subscription.metadata.spotlight_review_status = 'pending';
+    state.subscription.pause_collection = { behavior: 'void' };
+    const calls = [];
+    const service = createService(stripe, { ...settings, memberExtrasEnabled: true }, async (op, body) => { calls.push({ op, body }); return { offers: [] }; });
+    assert.equal((await service.status(request({}, cookie()), recorder())).extrasEligible, true);
+    assert.equal((await service.memberExtras(request({}, cookie()))).canRequest, false);
+    await assert.rejects(service.memberExtras(request({}, cookie()), { op: 'member-request' }), e => e.code === 'MEMBER_REVIEW_REQUIRED');
+    assert.equal(calls.length, 1);
+});
+
+test('member requests use canonical billing identity and never modify billing', async () => {
+    const { stripe, state } = mockStripe();
+    state.subscription.metadata.spotlight_paid_invoice = 'in_current';
+    const calls = [];
+    const service = createService(stripe, { ...settings, memberExtrasEnabled: true }, async (op, body) => { calls.push({ op, body }); return { requests: [] }; });
+    const result = await service.memberExtras(request({}, cookie()), { op: 'member-request', offer: 'mustache', requestId: crypto.randomUUID(), specialty: 'Plumber', area: 'Monterey', notes: '', consent: true, email: 'attacker@example.com', subscriptionId: 'sub_someoneElse', amount: 1 });
+    assert.equal(result.canRequest, true);
+    assert.equal(calls[0].body.subscriptionId, 'sub_business');
+    assert.equal(calls[0].body.email, 'billing@example.com');
+    assert.equal(calls[0].body.businessName, profile.businessName);
+    assert.equal(calls[0].body.amount, undefined);
+    assert.deepEqual(state.checkouts, []); assert.deepEqual(state.updates, []);
+    state.subscription.cancel_at_period_end = true;
+    await assert.rejects(service.memberExtras(request({}, cookie()), { op: 'member-request' }), e => e.code === 'MEMBER_REVIEW_REQUIRED');
+});
+
+test('public directory and signup API never expose the private offer catalog', async () => {
+    const { stripe } = mockStripe();
+    const directory = await createService(stripe, { ...settings, memberExtrasEnabled: true }).directory();
+    assert.equal(directory.offers, undefined);
+    const noCookie = await post(stripe, { op: 'member-options' }, '', { memberExtrasEnabled: true });
+    assert.equal(noCookie.statusCode, 403);
+    const crossSite = recorder();
+    const req = request({ op: 'member-request' }, cookie()); req.headers.origin = 'https://example.org';
+    await handler(stripe, { memberExtrasEnabled: true })(req, crossSite);
+    assert.equal(crossSite.statusCode, 403);
+});
 function handler(stripe, overrides = {}) { return createHandler({ makeStripe: () => stripe, getConfig: () => ({ ...settings, ...overrides }) }); }
 function event(type = 'invoice.paid', invoiceId = 'in_current') { return { id: 'evt_delivery', object: 'event', type, livemode: false, data: { object: type.startsWith('checkout') ? { id: 'cs_test_owner' } : type.startsWith('customer') ? { id: 'sub_business' } : { id: invoiceId, parent: { subscription_details: { subscription: 'sub_business' } } } } }; }
 
