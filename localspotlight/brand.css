@@ -78,17 +78,17 @@ body.cerneyselects-site {
 .cerneyselects-site.directory-page .spotlight-hero-copy {
     flex: 1;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, .82fr);
-    grid-template-areas: "kicker kicker" "title art" "intro art";
+    grid-template-columns: max-content minmax(0, 1fr);
+    grid-template-areas: "kicker kicker" "title art" "intro intro";
     align-items: center;
-    gap: 24px 32px;
+    gap: 24px 12px;
 }
 .cerneyselects-site.directory-page .spotlight-hero-copy h1 { grid-area: title; }
 .cerneyselects-site.directory-page .spotlight-hero-sticker {
     grid-area: art;
     display: block;
     width: 100%;
-    max-width: 300px;
+    max-width: 240px;
     height: auto;
 }
 .cerneyselects-site.directory-page .spotlight-hero-kicker { grid-area: kicker; margin: 0; }
@@ -187,9 +187,6 @@ body.cerneyselects-site {
 .cerneyselects-site .policy-main h2 { font: 700 1.9rem/1.1 var(--display); text-transform: uppercase; }
 .cerneyselects-site .policy-date { color: var(--accent); font-size: .72rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; }
 
-@media(max-width:1100px) {
-    .cerneyselects-site.directory-page .spotlight-hero-copy { grid-template-columns: max-content minmax(0, 1fr); grid-template-areas: "kicker kicker" "title art" "intro intro"; gap: 24px; }
-}
 @media(max-width:1000px) {
     .cerneyselects-site .nav-links { gap: 16px; }
     .cerneyselects-site .nav-links a { font-size: .7rem; }
@@ -206,8 +203,8 @@ body.cerneyselects-site {
     .cerneyselects-site.directory-page .directory-main { padding-top: 38px; padding-bottom: 40px; }
     .cerneyselects-site.directory-page .directory-heading { gap: 28px; padding-bottom: 30px; margin-bottom: 28px; }
     .cerneyselects-site.directory-page .directory-heading h1 { font-size: clamp(2.75rem, 14vw, 4rem); }
-    .cerneyselects-site.directory-page .spotlight-hero-copy { grid-template-columns: minmax(0, 1fr) 42%; gap: 24px 8px; }
-    .cerneyselects-site.directory-page .spotlight-hero-sticker { max-width: 180px; }
+    .cerneyselects-site.directory-page .spotlight-hero-copy { column-gap: 8px; }
+    .cerneyselects-site.directory-page .spotlight-hero-sticker { max-width: 150px; }
     .cerneyselects-site.directory-page .directory-heading p:not(.directory-eyebrow) { font-size: .9rem; }
     .cerneyselects-site.directory-page .directory-eyebrow { font-size: .65rem; letter-spacing: .15em; }
     .cerneyselects-site.directory-page .spotlight-owner-invitation { padding: 20px; }
