@@ -126,14 +126,17 @@
             links.append(node('span', 'card-link-preview', 'Visit website ↗'));
         }
         if (safe.phone) {
-            const telephone = safe.phone.replace(/[^+\d]/g, '');
-            if (/^[+\d().\-\s]+$/.test(safe.phone) && /^\+?\d{7,15}$/.test(telephone) && !preview) {
-                const phone = node('a', 'card-phone', safe.phone);
-                phone.href = `tel:${telephone}`;
-                links.append(phone);
-            } else {
-                links.append(node('span', 'card-phone', safe.phone));
+            const contact = window.CerneySelectsPhone(safe.phone);
+            const phone = node(contact.href && !preview ? 'a' : 'span', 'card-phone');
+            if (contact.href) {
+                if (!preview) {
+                    phone.href = contact.href;
+                    phone.setAttribute('aria-label', `Call ${name} at ${contact.display}`);
+                }
+                phone.append(node('span', 'contact-phone-label', 'Call'));
             }
+            phone.append(node('span', 'contact-phone-number', contact.display));
+            links.append(phone);
         }
         card.append(links);
         return card;

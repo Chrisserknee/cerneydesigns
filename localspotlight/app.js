@@ -161,13 +161,15 @@
         const href = websiteUrl(profile.website);
         if (href) bottom.append(link('Visit website ↗', href, 'directory-site-link', profile.businessName));
         if (profile.phone) {
-            const telephone = profile.phone.replace(/[^+\d]/g, '');
-            const phone = node('span', 'directory-phone', profile.phone);
-            if (/^[+\d().\-\s]+$/.test(profile.phone) && /^\+?\d{7,15}$/.test(telephone)) {
-                const phoneLink = node('a', 'directory-phone', profile.phone);
-                phoneLink.href = `tel:${telephone}`;
-                bottom.append(phoneLink);
-            } else bottom.append(phone);
+            const contact = window.CerneySelectsPhone(profile.phone);
+            const phone = node(contact.href ? 'a' : 'span', 'directory-phone');
+            if (contact.href) {
+                phone.href = contact.href;
+                phone.setAttribute('aria-label', `Call ${profile.businessName} at ${contact.display}`);
+                phone.append(node('span', 'contact-phone-label', 'Call'));
+            }
+            phone.append(node('span', 'contact-phone-number', contact.display));
+            bottom.append(phone);
         }
         if (bottom.childElementCount) body.append(bottom);
         if (featured) body.append(node('p', 'weekly-note', 'A new local business in the spotlight each week.'));
