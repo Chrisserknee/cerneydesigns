@@ -4,7 +4,7 @@
     const API = '/api/spotlight';
     const DRAFT_KEY = 'cc_spotlight_draft_v1';
     const REQUEST_KEY = 'cc_spotlight_request_v1';
-    const PUBLIC_FIELDS = ['businessName', 'category', 'city', 'description', 'website', 'phone', 'logoUrl'];
+    const PUBLIC_FIELDS = ['businessName', 'category', 'city', 'description', 'website', 'phone', 'logoUrl', ...window.CerneySelectsSocials.platforms.map(item => item.field)];
     const categories = [
         'Food & Restaurants',
         'Drinks & Nightlife',
@@ -89,7 +89,7 @@
 
     function publicProfile(profile) {
         const source = profile && typeof profile === 'object' ? profile : {};
-        return Object.fromEntries(PUBLIC_FIELDS.map((field) => [field, string(source[field], field === 'description' ? 400 : field === 'logoUrl' ? 500 : field === 'website' ? 300 : field === 'phone' ? 40 : field === 'city' ? 80 : 100)]));
+        return Object.fromEntries(PUBLIC_FIELDS.map((field) => [field, string(source[field], field === 'description' ? 400 : field === 'logoUrl' ? 500 : (field === 'website' || field.endsWith('Url')) ? 300 : field === 'phone' ? 40 : field === 'city' ? 80 : 100)]));
     }
 
     function businessCard(profile, preview = false, localLogoPreview = '') {
@@ -138,6 +138,8 @@
             phone.append(node('span', 'contact-phone-number', contact.display));
             links.append(phone);
         }
+        const socials = window.CerneySelectsSocialLinks(safe, { preview });
+        if (socials) links.append(socials);
         card.append(links);
         return card;
     }
@@ -474,11 +476,16 @@
         logo.setCustomValidity(!logo.value.trim() || websiteUrl(logo.value) ? '' : 'Enter a direct HTTPS image link.');
         const category = form.elements.namedItem('category');
         category.setCustomValidity(categories.includes(category.value) ? '' : 'Choose a category.');
+        for (const { field, name } of window.CerneySelectsSocials.platforms) {
+            const input = form.elements.namedItem(field);
+            try { window.CerneySelectsSocials.normalize(field, input.value); input.setCustomValidity(''); }
+            catch { input.setCustomValidity(`Enter a valid ${name} profile link or @username, or leave it blank.`); }
+        }
         return form.reportValidity();
     }
 
     signupForm.addEventListener('input', (event) => {
-        if (['website', 'logoUrl'].includes(event.target.name)) event.target.setCustomValidity('');
+        if (['website', 'logoUrl', ...window.CerneySelectsSocials.platforms.map(item => item.field)].includes(event.target.name)) event.target.setCustomValidity('');
         if (event.target.name === 'logoUrl') resetLogoUpload({ text: event.target.value.trim() ? 'Image link selected. Check the listing preview before continuing.' : '' });
         else updatePreview();
     });
@@ -517,7 +524,7 @@
         byId('manage-descriptionCount').textContent = `${manageForm.elements.namedItem('description').value.trim().length} / 400`;
     }
     manageForm.addEventListener('input', (event) => {
-        if (['website', 'logoUrl'].includes(event.target.name)) event.target.setCustomValidity('');
+        if (['website', 'logoUrl', ...window.CerneySelectsSocials.platforms.map(item => item.field)].includes(event.target.name)) event.target.setCustomValidity('');
         updateManageCount();
     });
     manageForm.addEventListener('submit', async (event) => {

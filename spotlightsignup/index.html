@@ -23,6 +23,9 @@
     <link rel="stylesheet" href="/spotlightsignup/member-extras.css">
     <link rel="stylesheet" href="/localspotlight/contact.css">
     <script src="/localspotlight/contact.js" defer></script>
+    <link rel="stylesheet" href="/localspotlight/social-links.css">
+    <script src="/localspotlight/social-links.js" defer></script>
+    <script src="/localspotlight/social-ui.js" defer></script>
     <script src="/spotlightsignup/app.js" defer></script>
     <script src="/spotlightsignup/member-extras.js" defer></script>
 </head>
@@ -45,7 +48,7 @@
         <header class="page-heading signup-heading" id="signupHeading">
             <a class="back-link" href="/">← Cerney Selects</a>
             <h1>Feature your business.</h1>
-            <p><strong>$100 per month.</strong> Your business profile, optional logo, website link, and phone in Cerney Selects.</p>
+            <p><strong>$100 per month.</strong> Your business profile, optional logo, website link, phone, and social links in Cerney Selects.</p>
             <p class="offer-detail">Paid listing only; news coverage is not included. Cancel future renewals any time.</p>
         </header>
         <aside class="review-policy" id="reviewPolicy" aria-labelledby="reviewPolicyTitle"><h2 id="reviewPolicyTitle">Pay, then we review</h2><p>You pay <strong>$100 today</strong>. We review your business within <strong>2 days</strong>. Your listing appears only if approved, and we email you the decision.</p><p>If declined, we cancel future billing, refund the full $100, and email you the reason.</p><details class="review-terms"><summary>Renewals &amp; refund timing <span aria-hidden="true">+</span></summary><p>If approved, your subscription renews at $100 per month until canceled. No further monthly payment is collected while your application awaits review. Your bank may take additional time to show a refund.</p></details></aside>
@@ -86,6 +89,12 @@
                                 <div class="field logo-link-field"><label for="logoUrl">Or paste a logo image link <span class="optional">Optional</span></label><input id="logoUrl" name="logoUrl" type="url" maxlength="500" inputmode="url" placeholder="https://yourbusiness.com/logo.png" pattern="https://.+" aria-describedby="logoHelp"><p class="field-help" id="logoHelp">Use a direct HTTPS image link instead of uploading. Pasting a link replaces your uploaded logo.</p></div>
                                 <div class="field"><label for="phone">Business phone <span class="optional">Optional</span></label><input id="phone" name="phone" type="tel" maxlength="40" autocomplete="tel" placeholder="(831) 555-0123"><p class="field-help">If provided, this number appears on your public listing.</p></div>
                                 </div></details>
+                                <fieldset class="social-fields"><legend>Social media <span class="optional">Optional</span></legend>
+                                    <p class="field-help" id="socialsHelp">Add profile links or @usernames. These appear on the right of your listing after approval.</p>
+                                    <div class="field"><label for="instagramUrl">Instagram</label><input id="instagramUrl" name="instagramUrl" type="text" maxlength="300" autocapitalize="none" spellcheck="false" autocomplete="off" aria-describedby="socialsHelp" placeholder="@yourbusiness or https://www.instagram.com/yourbusiness"></div>
+                                    <div class="field"><label for="facebookUrl">Facebook</label><input id="facebookUrl" name="facebookUrl" type="text" maxlength="300" autocapitalize="none" spellcheck="false" autocomplete="off" aria-describedby="socialsHelp" placeholder="@yourbusiness or https://www.facebook.com/yourbusiness"></div>
+                                    <div class="field"><label for="tiktokUrl">TikTok</label><input id="tiktokUrl" name="tiktokUrl" type="text" maxlength="300" autocapitalize="none" spellcheck="false" autocomplete="off" aria-describedby="socialsHelp" placeholder="@yourbusiness or https://www.tiktok.com/@yourbusiness"></div>
+                                </fieldset>
                             </div>
                             <div class="private-fields"><div class="field"><label for="email">Billing email <span class="private-label">Private</span></label><input id="email" name="email" type="email" required maxlength="254" autocomplete="email" placeholder="you@yourbusiness.com"><p class="field-help">For your review decision, receipts, and billing. Never shown in the directory.</p></div></div>
                             <label class="consent-label" for="consent"><input id="consent" name="consent" type="checkbox" required><span>I agree to <strong>pay $100 now</strong> and wait up to <strong>2 days for approval</strong> before my listing appears. If approved, it renews at <strong>$100 per month</strong> until canceled. If declined, my subscription is canceled and the full initial payment is refunded, with the reason emailed to me. I am authorized to publish this business’s information and logo.</span></label>

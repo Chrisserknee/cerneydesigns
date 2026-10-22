@@ -632,3 +632,15 @@ test('owner payment confirmation comes from canonical Checkout status, not subsc
  const r=await post(stripe,{op:'status'},cookie());assert.equal(r.statusCode,200);assert.equal(r.body.paymentConfirmed,false);assert.equal(r.body.published,false);
  state.session.payment_status='paid';const confirmed=await post(stripe,{op:'status'},cookie());assert.equal(confirmed.body.paymentConfirmed,true);assert.equal(confirmed.body.published,false);
 });
+
+
+test('signup checkout saves normalized optional socials in both checkout and subscription metadata', async () => {
+ const {stripe,state}=mockStripe();
+ const body={op:'checkout',profile:{...profile,instagramUrl:'@examplecoffee',facebookUrl:'https://facebook.com/ExampleCoffee?ref=share',tiktokUrl:'@examplecoffee'},requestId:crypto.randomUUID(),consent:true};
+ const result=await post(stripe,body);assert.equal(result.statusCode,200);
+ const {params}=state.checkouts[0];
+ const expected={instagram_url:'https://www.instagram.com/examplecoffee/',facebook_url:'https://www.facebook.com/ExampleCoffee/',tiktok_url:'https://www.tiktok.com/@examplecoffee'};
+ for(const [key,value] of Object.entries(expected)){assert.equal(params.metadata[key],value);assert.equal(params.subscription_data.metadata[key],value);}
+ const invalid=await post(stripe,{...body,requestId:crypto.randomUUID(),profile:{...profile,instagramUrl:'https://evil.example/'}});
+ assert.equal(invalid.statusCode,400);assert.equal(state.checkouts.length,1);
+});

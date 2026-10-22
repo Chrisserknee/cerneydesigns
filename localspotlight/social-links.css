@@ -1,0 +1,37 @@
+.business-socials {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+}
+.business-socials .business-social-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    gap: 8px;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 10px;
+    border: 1px solid #42617e;
+    border-radius: 3px;
+    background: #203244;
+    color: #deebf7;
+    font-size: .84rem;
+    line-height: 1;
+    text-decoration: none;
+}
+.business-social-link svg { display: block; width: 22px; height: 22px; }
+.business-socials a.business-social-link:hover { background: #2a4259; border-color: #8db7dc; color: #fff; }
+.business-socials a.business-social-link:focus-visible { outline: 2px solid #b4cce2; outline-offset: 3px; }
+.social-fields { border: 0; padding: 0; margin: 24px 0 0; min-width: 0; }
+.social-fields legend { font-size: 1rem; font-weight: 600; padding: 0; }
+.social-fields > .field-help { margin: 8px 0 16px; }
+#businessSocials .business-socials { justify-content: flex-start; margin-left: 0; }
+@media (max-width: 600px) {
+    .directory-card-bottom > .business-socials,
+    .card-links > .business-socials { flex-basis: 100%; }
+    .business-socials .business-social-link { min-width: 46px; min-height: 46px; }
+}

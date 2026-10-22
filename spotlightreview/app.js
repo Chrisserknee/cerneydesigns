@@ -43,6 +43,9 @@
         $('businessDescription').textContent = text(profile.description);
         $('customerEmail').textContent = text(data.customerEmail);
         $('businessPhone').textContent = text(profile.phone); $('phoneRow').hidden = !profile.phone;
+        const socials = window.CerneySelectsSocialLinks(profile, { labels: true });
+        $('businessSocials').replaceChildren(...(socials ? [socials] : []));
+        $('socialsRow').hidden = !socials;
         const url = link(profile.website); $('businessWebsite').textContent = url || 'No valid website';
         if (url) $('businessWebsite').href = url; else $('businessWebsite').removeAttribute('href');
         const initials = text(profile.businessName).split(/\s+/).slice(0,2).map(w => Array.from(w)[0] || '').join('').toUpperCase();

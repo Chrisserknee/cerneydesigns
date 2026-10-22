@@ -5,7 +5,10 @@
 <meta name="robots" content="noindex, nofollow, noarchive"><meta name="referrer" content="no-referrer">
 <title>Review a business — Cerney Selects</title>
 <link rel="icon" href="/localspotlight/favicon.svg"><link rel="stylesheet" href="/spotlightreview/style.css">
-<script src="/spotlightreview/app.js" defer></script>
+<link rel="stylesheet" href="/localspotlight/social-links.css">
+    <script src="/localspotlight/social-links.js" defer></script>
+    <script src="/localspotlight/social-ui.js" defer></script>
+    <script src="/spotlightreview/app.js" defer></script>
 </head>
 <body><main class="review-shell">
 <header><a class="wordmark" href="/">Cerney <strong>Selects</strong></a><p class="eyebrow">CERNEY SELECTS · PRIVATE REVIEW</p><h1>Review a business listing.</h1><p>Review this paid application before it joins the directory.</p></header>
@@ -20,7 +23,7 @@
 <label id="bannerChoice" class="confirmation" hidden><input id="useBanner" type="checkbox" checked><span>Include this banner when I approve the listing. Uncheck to use the standard background.</span></label>
 </section>
 <p id="businessDescription" class="description"></p>
-<dl><div><dt>Website</dt><dd><a id="businessWebsite" target="_blank" rel="noopener noreferrer"></a></dd></div><div id="phoneRow"><dt>Business phone</dt><dd id="businessPhone"></dd></div><div><dt>Applicant email · private</dt><dd id="customerEmail"></dd></div><div><dt>Initial payment</dt><dd id="paidAmount"></dd></div></dl>
+<dl><div><dt>Website</dt><dd><a id="businessWebsite" target="_blank" rel="noopener noreferrer"></a></dd></div><div id="phoneRow"><dt>Business phone</dt><dd id="businessPhone"></dd></div><div id="socialsRow" hidden><dt>Social media</dt><dd id="businessSocials"></dd></div><div><dt>Applicant email · private</dt><dd id="customerEmail"></dd></div><div><dt>Initial payment</dt><dd id="paidAmount"></dd></div></dl>
 <p id="decisionSummary" class="decision-summary" hidden></p>
 <form id="decisionForm" hidden>
 <fieldset><legend>Your decision</legend><label class="choice"><input type="radio" name="decision" value="approve" required><span><strong>Approve &amp; publish</strong><small>Add this profile to Cerney Selects and allow its $100 monthly subscription to continue. The applicant receives an approval email.</small></span></label><label class="choice"><input type="radio" name="decision" value="decline" required><span><strong>Decline &amp; refund</strong><small>Keep the listing private, cancel future billing, and refund the initial $100 payment. The applicant receives your explanation.</small></span></label></fieldset>

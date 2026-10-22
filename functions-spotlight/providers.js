@@ -1,6 +1,7 @@
 'use strict';
 
 const crypto = require('node:crypto');
+const socials = require('./social-links');
 const { bannerUrl } = require('./banner-url');
 const MARKER = 'local_spotlight_v1';
 const FIELDS = ['businessName', 'category', 'city', 'description', 'website', 'phone', 'logoUrl'];
@@ -20,7 +21,7 @@ const CATEGORIES = [
 const ADDRESS = /^[^\s<>@,;]+@[^\s<>@,;]+\.[^\s<>@,;]+$/;
 const id = (value) => typeof value === 'string' ? value : value?.id || '';
 function error(message, status = 503, code = 'RETRY_LATER') { return Object.assign(new Error(message), { status, code }); }
-function profileHash(profile) { return crypto.createHash('sha256').update(JSON.stringify(FIELDS.map((key) => [key, profile[key] || '']))).digest('hex'); }
+function profileHash(profile) { return crypto.createHash('sha256').update(JSON.stringify(socials.hashEntries(profile, FIELDS))).digest('hex'); }
 function profileFrom(metadata) {
     const profile = Object.fromEntries(FIELDS.map((key, index) => [key, String(metadata?.[METADATA[index]] || '').trim()]));
     const maximums = [100, 50, 80, 400, 300, 40, 500];
@@ -34,6 +35,8 @@ function profileFrom(metadata) {
         if (url.protocol !== 'https:' || url.username || url.password || url.port || !url.hostname.includes('.') || /^[\d.]+$/.test(url.hostname) || url.hostname.endsWith('.local')) throw error('Business URL needs review.', 409, 'PROFILE_CHANGED');
         profile[key] = url.href;
     }
+    try { Object.assign(profile, socials.read(Object.fromEntries(socials.platforms.map(({ field, metadata: key }) => [field, metadata?.[key]])))); }
+    catch { throw error('Business social links need review.', 409, 'PROFILE_CHANGED'); }
     return profile;
 }
 

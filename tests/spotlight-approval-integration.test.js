@@ -7,9 +7,9 @@ const { createProviders } = require('../functions-spotlight/providers');
 
 // These tests compose the production website, moderation and provider modules.
 // Only Stripe, Resend and storage I/O are replaced with deterministic services.
-function application() {
+function application(socialLinks = {}) {
  const now=Math.floor(Date.now()/1000),end=now+30*86400;
- const profile={businessName:'Integration Test Coffee',category:'Food & Restaurants',city:'Monterey',description:'Synthetic integration test only.',website:'https://example.com/',phone:'',logoUrl:''};
+ const profile={businessName:'Integration Test Coffee',category:'Food & Restaurants',city:'Monterey',description:'Synthetic integration test only.',website:'https://example.com/',phone:'',logoUrl:'',...socialLinks};
  const price={id:'price_integration',active:true,currency:'usd',unit_amount:10000,type:'recurring',billing_scheme:'per_unit',recurring:{interval:'month',interval_count:1,usage_type:'licensed'}};
  const invoice={id:'in_integration',livemode:false,billing_reason:'subscription_create',status:'paid',currency:'usd',amount_paid:10000,amount_due:10000,total:10000,amount_remaining:0,customer:'cus_integration',created:now,status_transitions:{paid_at:now},parent:{subscription_details:{subscription:'sub_integration'}},lines:{has_more:false,data:[{amount:10000,currency:'usd',quantity:1,period:{start:now,end},pricing:{price_details:{price:price.id}},parent:{subscription_item_details:{subscription:'sub_integration',subscription_item:'si_integration',proration:false}}}]}};
  const subscription={id:'sub_integration',customer:'cus_integration',livemode:false,status:'active',cancel_at_period_end:true,metadata:{spotlight:MARKER,spotlight_review_status:'pending',...profileMetadata(profile)},items:{has_more:false,data:[{id:'si_integration',quantity:1,current_period_start:now,current_period_end:end,price}]},latest_invoice:invoice,pause_collection:null};
@@ -62,4 +62,30 @@ test('decline hides permanently, cancels first, refunds pinned $100 once, then e
  await f.service.webhook({type:'refund.updated',livemode:false,data:{object:f.history[0]}});
  assert.equal(f.history.length,1);assert.equal(f.emails.length,3);assert.equal((await f.service.directory()).listings.length,0);
  await assert.rejects(f.core.decide({token,decision:'approve',confirmed:true}),{code:'DECISION_CONFLICT'});
+});
+
+
+test('social links stay private until reviewed, then publish; later social edits require a fresh review', async () => {
+ const links={instagramUrl:'https://www.instagram.com/examplecoffee/',facebookUrl:'https://www.facebook.com/ExampleCoffee/',tiktokUrl:'https://www.tiktok.com/@examplecoffee'};
+ const f=application(links); await f.service.webhook(f.event); const token=f.token();
+ assert.equal((await f.service.directory()).listings.length,0);
+ const review=await f.core.review({token});
+ for(const [key,value] of Object.entries(links)) assert.equal(review.business[key],value);
+ for(const value of Object.values(links)) assert.ok(f.emails[0].body.text.includes(value));
+ await f.core.decide({token,decision:'approve',confirmed:true});
+ const listing=(await f.service.directory()).listings[0];
+ for(const [key,value] of Object.entries(links)) assert.equal(listing[key],value);
+ for(const key of ['instagram_url','facebook_url','tiktok_url']) {
+   const original=f.subscription.metadata[key];
+   f.subscription.metadata[key]=''; assert.equal((await f.service.directory()).listings.length,0);
+   f.subscription.metadata[key]='https://evil.example/'; assert.equal((await f.service.directory()).listings.length,0);
+   f.subscription.metadata[key]=original; assert.equal((await f.service.directory()).listings.length,1);
+ }
+});
+
+test('adding social links to an already approved legacy listing cannot bypass review', async () => {
+ const f=application();await f.service.webhook(f.event);await f.core.decide({token:f.token(),decision:'approve',confirmed:true});
+ assert.equal((await f.service.directory()).listings.length,1);
+ f.subscription.metadata.instagram_url='https://www.instagram.com/examplecoffee/';
+ assert.equal((await f.service.directory()).listings.length,0);
 });

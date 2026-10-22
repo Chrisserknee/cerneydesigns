@@ -76,6 +76,7 @@
             businessName: string(source.businessName, 100), category: string(source.category, 100),
             city: string(source.city, 80), description: string(source.description, 400),
             website: string(source.website, 300), phone: string(source.phone, 40), logoUrl: string(source.logoUrl, 500), bannerUrl: string(source.bannerUrl, 500),
+            ...Object.fromEntries(window.CerneySelectsSocials.platforms.map(({ field }) => [field, string(source[field], 300)])),
             logoBackdrop: isPreview && source.logoBackdrop === 'dark' ? 'dark' : '',
             textWordmark: isPreview && source.textWordmark === true,
             featuredSpecialty: source.featured?.area === 'Monterey County' ? string(source.featured.specialty, 80) : '',
@@ -141,7 +142,7 @@
             content.append(businessName(profile), node('p', 'directory-text-meta', [profile.city, profile.category].filter(Boolean).join(' · ')));
             const arrow = node('span', 'directory-text-arrow', '↗');
             arrow.setAttribute('aria-hidden', 'true');
-            row.append(content, arrow);
+            row.append(content, window.CerneySelectsSocialLinks(profile) || arrow);
             return row;
         }
         const showMark = mode !== 'cards';
@@ -183,6 +184,8 @@
             phone.append(node('span', 'contact-phone-number', contact.display));
             bottom.append(phone);
         }
+        const socials = window.CerneySelectsSocialLinks(profile);
+        if (socials) bottom.append(socials);
         if (bottom.childElementCount) body.append(bottom);
         if (featured) body.append(node('p', 'weekly-note', 'A new local business in the spotlight each week.'));
         card.append(body);

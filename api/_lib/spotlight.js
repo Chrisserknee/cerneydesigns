@@ -2,6 +2,7 @@
 
 const crypto = require('node:crypto');
 const Stripe = require('stripe');
+const socials = require('../../localspotlight/social-links');
 const { bannerUrl } = require('./spotlight-banner-url');
 const { moderationConfig, callModeration } = require('./spotlight-moderation');
 const { currentPaymentIsValid } = require('./spotlight-payment');
@@ -23,8 +24,9 @@ const CATEGORIES = Object.freeze([
     'Auto & Transportation',
     'Farms, Outdoors & Local Living',
 ]);
-const PUBLIC_FIELDS = ['businessName', 'category', 'city', 'description', 'website', 'phone', 'logoUrl'];
-const META_FIELDS = { businessName: 'business_name', category: 'category', city: 'city', description: 'description', website: 'website', phone: 'phone', logoUrl: 'logo_url' };
+const BASE_PUBLIC_FIELDS = ['businessName', 'category', 'city', 'description', 'website', 'phone', 'logoUrl'];
+const PUBLIC_FIELDS = [...BASE_PUBLIC_FIELDS, ...socials.platforms.map(item => item.field)];
+const META_FIELDS = { businessName: 'business_name', category: 'category', city: 'city', description: 'description', website: 'website', phone: 'phone', logoUrl: 'logo_url', ...Object.fromEntries(socials.platforms.map(item => [item.field, item.metadata])) };
 const WEBHOOK_EVENTS = new Set(['checkout.session.completed', 'checkout.session.async_payment_succeeded', 'invoice.paid', 'invoice.payment_failed', 'customer.subscription.updated', 'customer.subscription.deleted', 'refund.created', 'refund.updated', 'refund.failed']);
 
 class SpotlightError extends Error {
@@ -92,6 +94,7 @@ function validateProfile(input, requireEmail = false) {
             if (profile.logoUrl.length > 500) throw new Error('Logo URL too long');
         } catch { throw new SpotlightError('Use a complete HTTPS link for your logo, or leave it blank.'); }
     }
+    try { Object.assign(profile, socials.read(input)); } catch (error) { throw new SpotlightError(error.message); }
     if (requireEmail) {
         const email = typeof input.email === 'string' ? input.email.trim().toLowerCase() : '';
         if (email.length > 254 || !/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(email)) throw new SpotlightError('Enter a valid billing email.');
@@ -161,7 +164,7 @@ function validPaidSubscription(subscription, settings, now = Math.floor(Date.now
 }
 
 function publicProfileHash(profile) {
-    return crypto.createHash('sha256').update(JSON.stringify(PUBLIC_FIELDS.map(key => [key, profile?.[key] || '']))).digest('hex');
+    return crypto.createHash('sha256').update(JSON.stringify(socials.hashEntries(profile, BASE_PUBLIC_FIELDS))).digest('hex');
 }
 
 function published(subscription, settings) {
