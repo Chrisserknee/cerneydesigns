@@ -114,8 +114,13 @@ async function bannerImage(bytes, type) {
         }
         fail();
     }
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(type)) fail();
-    if (bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) {
+    const expected = { 'image/jpeg': 'jpeg', 'image/png': 'png', 'image/webp': 'webp' }[type];
+    const format = bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])) ? 'png'
+        : bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255 ? 'jpeg'
+            : bytes.toString('ascii', 0, 4) === 'RIFF' && bytes.toString('ascii', 8, 12) === 'WEBP' ? 'webp' : '';
+    // Reject format spoofing before the decoder can select SVG or another loader.
+    if (!expected || format !== expected) fail();
+    if (format === 'png') {
         // libpng reports only the first APNG frame, so inspect animation chunks.
         for (let offset = 8; offset + 12 <= bytes.length;) {
             const length = bytes.readUInt32BE(offset);
@@ -128,7 +133,7 @@ async function bannerImage(bytes, type) {
     }
     const image = sharp(bytes, { failOn: 'warning', limitInputPixels: 16000000, sequentialRead: true });
     const meta = await image.metadata();
-    if (!['jpeg', 'png', 'webp'].includes(meta.format) || (meta.pages || 1) !== 1 || meta.width < 640 || meta.height < 240 || meta.width > 8192 || meta.height > 8192 || meta.width / meta.height < 1.45 || meta.width / meta.height > 5) fail();
+    if (meta.format !== expected || (meta.pages || 1) !== 1 || meta.width < 640 || meta.height < 240 || meta.width > 8192 || meta.height > 8192 || meta.width / meta.height < 1.45 || meta.width / meta.height > 5) fail();
     // Decode/re-encode: no website scripts, SVG, EXIF, or trailing active content.
     const output = await image.rotate().resize({ width: 1200, height: 600, fit: 'cover', withoutEnlargement: true }).webp({ quality: 78, effort: 3 }).timeout({ seconds: 5 }).toBuffer({ resolveWithObject: true });
     if (!output.data.length || output.data.length > 300 * 1024) fail();

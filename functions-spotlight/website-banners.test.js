@@ -63,6 +63,8 @@ test('decodes wide raster images, strips metadata and rejects unsuitable or anim
     assert.equal(m.format, 'webp'); assert.equal(m.width, 1200); assert.equal(m.height, 600); assert.equal(m.exif, undefined); assert.ok(output.bytes.length < 300 * 1024);
     for (const [bytes, type] of [[await raster(600, 600), 'image/png'], [Buffer.from('<svg/>'), 'image/svg+xml'], [Buffer.from('not an image'), 'image/jpeg']]) await assert.rejects(bannerImage(bytes, type));
     const png = await raster(); const animation = Buffer.alloc(20); animation.writeUInt32BE(8); animation.write('acTL', 4);
+    await assert.rejects(bannerImage(png, 'image/jpeg'));
+    await assert.rejects(bannerImage(Buffer.from('<svg><image href="file:///etc/passwd"/></svg>'), 'image/jpeg'));
     await assert.rejects(bannerImage(Buffer.concat([png.subarray(0, 33), animation, png.subarray(33)]), 'image/png'));
 });
 test('SVG wrappers yield only embedded raster photos without rendering SVG or resolving references', async () => {
