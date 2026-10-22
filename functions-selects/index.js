@@ -19,6 +19,10 @@ const liveReview = defineSecret('CERNEYSELECTS_REVIEW_SECRET');
 const liveStripe = defineSecret('CERNEYSELECTS_STRIPE_SECRET_KEY');
 const livePrice = defineString('CERNEYSELECTS_PRICE_ID', { default: '' });
 const liveEmail = defineBoolean('CERNEYSELECTS_EMAIL_ENABLED', { default: false });
+const liveBilling = defineBoolean('CERNEYSELECTS_MEMBER_BILLING_ENABLED', { default: false });
+const featuredPrice = defineString('CERNEYSELECTS_FEATURED_PRICE_ID', { default: '' });
+const mustachePrice = defineString('CERNEYSELECTS_MUSTACHE_PRICE_ID', { default: '' });
+const setupPrice = defineString('CERNEYSELECTS_SETUP_PRICE_ID', { default: '' });
 const liveSecrets = [liveReview, liveStripe, resendKey];
 
 function liveSettings() {
@@ -26,7 +30,7 @@ function liveSettings() {
         live: true, stripeKey: liveStripe.value(), priceId: livePrice.value(),
         siteUrl: 'https://cerneyselects.com', reviewSecret: liveReview.value(),
         resendKey: resendKey.value(), emailEnabled: liveEmail.value(),
-        ownerEmail: 'cerneymedia@gmail.com',
+        ownerEmail: 'cerneymedia@gmail.com', billingEnabled: liveBilling.value(),
     };
 }
 function liveModeration() {
@@ -37,11 +41,15 @@ function liveModeration() {
     return createModeration({ store, settings, providers: createProviders({ settings }) });
 }
 function liveMemberExtras() {
-    const settings = liveSettings();
+    const settings = { ...liveSettings(), featuredPriceId: featuredPrice.value(), mustachePriceId: mustachePrice.value(), setupPriceId: setupPrice.value() };
     const { createMemberExtras } = require('./_shared/member-extras');
     const { createProviders } = require('./_shared/providers');
     const store = createStore({ bucket: getStorage().bucket('tip-line-8c2d7.firebasestorage.app'), prefix: '_spotlight/v1/live/member-extras/' });
-    return createMemberExtras({ store, settings, providers: createProviders({ settings }) });
+    const { createMemberBilling } = require('./_shared/member-billing');
+    const { createBillingProvider } = require('./_shared/member-billing-provider');
+    const slots = createStore({ bucket: getStorage().bucket('tip-line-8c2d7.firebasestorage.app'), prefix: '_spotlight/v1/live/member-slots/' });
+    const billing = createMemberBilling({ store, slots, settings, payments: createBillingProvider({ settings }) });
+    return createMemberExtras({ store, settings, billing, providers: createProviders({ settings }) });
 }
 
 exports.cerneySelectsModerationApi = onRequest({ ...options, secrets: [liveProxy, ...liveSecrets] }, createGateway({ getSecret: () => liveProxy.value(), makeModeration: liveModeration, makeMemberExtras: liveMemberExtras }));

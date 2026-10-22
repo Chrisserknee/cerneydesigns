@@ -15,6 +15,36 @@ const settings = {
     siteUrl: 'https://www.chriscerney.org', portalLoginUrl: 'https://billing.stripe.com/p/login/test', enabled: true, live: false,
 };
 const profile = { businessName: 'Coast Coffee', category: 'Food & Restaurants', city: 'Monterey', description: 'Coffee and pastries by the coast.', website: 'https://example.com/', logoUrl: '', phone: '+1 (831) 555-0100', email: 'owner@example.com' };
+
+test('member checkout forwards only the owned base membership and approved quote reference', async () => {
+    const { stripe, state } = mockStripe(); state.subscription.metadata.spotlight_paid_invoice = state.subscription.latest_invoice.id;
+    const calls = [];
+    const service = createService(stripe, { ...settings, memberExtrasEnabled: true, memberBillingEnabled: true }, async (op, body) => { calls.push({ op, body }); return { url: 'https://checkout.stripe.com/c/pay/test' }; });
+    const requestId = crypto.randomUUID(), version = crypto.randomUUID();
+    const result = await service.memberExtras(request({}, cookie()), { op: 'member-checkout', requestId, version, consent: true, subscriptionId: 'sub_attacker', customer: 'cus_attacker', amount: 1 });
+    assert.ok(result.url); assert.deepEqual(calls, [{ op: 'member-checkout', body: { subscriptionId: 'sub_business', requestId, version, consent: true } }]);
+    await assert.rejects(service.memberExtras(request({}), { op: 'member-checkout', requestId, version, consent: true }), e => e.code === 'PAID_MEMBER_REQUIRED');
+    state.refundHistory = [{ payment_intent: 'pi_current', amount: 10000, currency: 'usd', status: 'succeeded' }];
+    await assert.rejects(service.memberExtras(request({}, cookie()), { op: 'member-checkout', requestId, version, consent: true }), e => e.code === 'PAID_MEMBER_REQUIRED');
+});
+
+test('existing add-on cancellation remains owned and accessible after base payment fails', async () => {
+    const { stripe, state } = mockStripe(); state.subscription.status = 'past_due';
+    const calls = [];
+    const service = createService(stripe, { ...settings, memberExtrasEnabled: true }, async (op, body) => { calls.push({ op, body }); return { orders: [] }; });
+    const requestId = crypto.randomUUID();
+    await service.memberExtras(request({}, cookie()), { op: 'member-cancel', subscriptionId: 'sub_attacker', requestId, confirmed: true });
+    assert.deepEqual(calls[0], { op: 'member-cancel', body: { subscriptionId: 'sub_business', requestId, confirmed: true } });
+    await assert.rejects(service.memberExtras(request({}), { op: 'member-orders' }), e => e.code === 'PAID_MEMBER_REQUIRED');
+});
+
+test('authenticated add-on webhook routes canonical reconciliation instead of base approval', async () => {
+    const { stripe } = mockStripe(); const calls = [];
+    const service = createService(stripe, { ...settings, memberBillingEnabled: true }, async (op, body) => calls.push({ op, body }));
+    const requestId = crypto.randomUUID();
+    await service.webhook({ type: 'invoice.paid', livemode: false, data: { object: { parent: { subscription_details: { metadata: { selects_extra: 'cerney_selects_extra_v1', selects_base: 'sub_business', selects_request: requestId } } } } } });
+    assert.deepEqual(calls, [{ op: 'member-reconcile', body: { subscriptionId: 'sub_business', requestId } }]);
+});
 function price() { return { id: settings.priceId, active: true, currency: 'usd', unit_amount: 10000, type: 'recurring', billing_scheme: 'per_unit', recurring: { interval: 'month', interval_count: 1, usage_type: 'licensed' }, livemode: false }; }
 function subscription(invoiceId = 'in_current') {
     const start = Math.floor(Date.now() / 1000) - 3600;

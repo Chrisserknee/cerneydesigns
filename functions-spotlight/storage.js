@@ -5,7 +5,7 @@ const MAX_RECORD_BYTES = 128 * 1024;
 
 function createStore({ bucket, prefix = '_spotlight/v1/sandbox/applications/' }) {
     if (!bucket || typeof bucket.file !== 'function' || typeof bucket.getFiles !== 'function') throw new Error('Moderation storage is unavailable.');
-    if (!/^_spotlight\/v1\/(sandbox|live)\/(applications|member-extras)\/$/.test(prefix)) throw new Error('Invalid moderation storage prefix.');
+    if (!/^_spotlight\/v1\/(sandbox|live)\/(applications|member-extras|member-slots)\/$/.test(prefix)) throw new Error('Invalid moderation storage prefix.');
 
     function path(id) {
         if (!APPLICATION_ID.test(id || '')) throw new Error('Invalid application identifier.');
@@ -56,6 +56,22 @@ function createStore({ bucket, prefix = '_spotlight/v1/sandbox/applications/' })
     }
 
     return {
+        async listAll({ limit = 500 } = {}) {
+            const records = [];
+            let pageToken;
+            do {
+                const [files, next] = await bucket.getFiles({ prefix, autoPaginate: false, maxResults: 100, ...(pageToken ? { pageToken } : {}) });
+                for (const file of files) {
+                    const id = file.name.slice(prefix.length).replace(/\.json$/, '');
+                    if (!APPLICATION_ID.test(id) || file.name !== path(id)) continue;
+                    if (records.length >= limit) throw new Error('Member record scan requires pagination.');
+                    const record = await this.read(id);
+                    if (record) records.push(record);
+                }
+                pageToken = next?.pageToken;
+            } while (pageToken);
+            return records;
+        },
         async read(id) { return (await version(id))?.record || null; },
         async create(id, record) { return save(id, record, 0); },
         async compareAndSwap(id, expectedRevision, nextRecord) {

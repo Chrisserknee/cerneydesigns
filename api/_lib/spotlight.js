@@ -50,7 +50,8 @@ function config() {
     const moderationReady = moderationConfig().ready;
     const enabled = moderationReady && process.env.SPOTLIGHT_ENABLED === 'true' && Boolean(secret && signingSecret.length >= 32 && /^price_[A-Za-z0-9]+$/.test(priceId) && webhookSecret && /^bpc_[A-Za-z0-9]+$/.test(portalConfigurationId) && siteUrl);
     const memberExtrasEnabled = moderationReady && process.env.SPOTLIGHT_MEMBER_EXTRAS_ENABLED === 'true';
-    return { secret, signingSecret, priceId, webhookSecret, portalConfigurationId, siteUrl, portalLoginUrl, enabled, moderationReady, memberExtrasEnabled, live: /^(?:sk|rk)_live_/.test(secret) };
+    const memberBillingEnabled = memberExtrasEnabled && process.env.SPOTLIGHT_MEMBER_BILLING_ENABLED === 'true';
+    return { secret, signingSecret, priceId, webhookSecret, portalConfigurationId, siteUrl, portalLoginUrl, enabled, moderationReady, memberExtrasEnabled, memberBillingEnabled, live: /^(?:sk|rk)_live_/.test(secret) };
 }
 
 function safeStripeUrl(value, hostname) {
@@ -229,7 +230,7 @@ function createService(stripe, settings = config(), moderation = callModeration)
                 : subscription.status === 'active' ? 'active' : 'pending';
         const isPublic = await isPublished(subscription);
         const extrasEligible = settings.memberExtrasEnabled === true && (isPublic || await paidMember(record));
-        return { status, paymentConfirmed: session.payment_status === 'paid', reviewStatus: subscription.metadata.spotlight_review_status || 'pending', declineReason: subscription.metadata.spotlight_decline_reason || '', refundStatus: subscription.metadata.spotlight_refund_status || 'not_requested', canEdit: false, hidden: subscription.metadata.spotlight_hidden === 'true', profile: readProfile(subscription.metadata), canManage: Boolean(id(subscription.customer) && settings.portalConfigurationId), published: isPublic, extrasEligible, cancelAtPeriodEnd: Boolean(subscription.cancel_at_period_end || subscription.cancel_at), currentPeriodEnd: subscription.items?.data?.[0]?.current_period_end || null };
+        return { status, paymentConfirmed: session.payment_status === 'paid', reviewStatus: subscription.metadata.spotlight_review_status || 'pending', declineReason: subscription.metadata.spotlight_decline_reason || '', refundStatus: subscription.metadata.spotlight_refund_status || 'not_requested', canEdit: false, hidden: subscription.metadata.spotlight_hidden === 'true', profile: readProfile(subscription.metadata), canManage: Boolean(id(subscription.customer) && settings.portalConfigurationId), published: isPublic, extrasEligible, extrasManageAvailable: settings.memberBillingEnabled === true && session.payment_status === 'paid', cancelAtPeriodEnd: Boolean(subscription.cancel_at_period_end || subscription.cancel_at), currentPeriodEnd: subscription.items?.data?.[0]?.current_period_end || null };
     }
 
     async function paidMember(record) {
@@ -245,11 +246,22 @@ function createService(stripe, settings = config(), moderation = callModeration)
     async function memberExtras(request, body = {}) {
         if (!settings.memberExtrasEnabled) throw new SpotlightError('Member options are not available yet.', 503, 'EXTRAS_DISABLED');
         const record = await owner(request);
+        if (['member-orders', 'member-cancel'].includes(body.op)) {
+            // A lapsed or refunded member must retain access to cancel an
+            // existing add-on. This endpoint never reveals new offers.
+            if (!record?.subscription || record.session.payment_status !== 'paid') throw new SpotlightError('Membership login required.', 403, 'PAID_MEMBER_REQUIRED');
+            return moderation(body.op, { subscriptionId: record.subscription.id, ...(body.op === 'member-cancel' ? { requestId: body.requestId, confirmed: body.confirmed === true } : {}) });
+        }
         if (!await paidMember(record)) throw new SpotlightError('A current, paid $100 membership is required to view member options.', 403, 'PAID_MEMBER_REQUIRED');
         const sub = record.subscription;
         const canRequest = await isPublished(sub) && !sub.cancel_at_period_end && !sub.cancel_at;
         const payload = { subscriptionId: sub.id };
-        const operation = body.op === 'member-request' ? 'member-request' : 'member-status';
+        const operation = ['member-request', 'member-checkout'].includes(body.op) ? body.op : 'member-status';
+        if (operation === 'member-checkout') {
+            if (!settings.memberBillingEnabled) throw new SpotlightError('Member checkout is being prepared. No payment has been taken.', 503, 'BILLING_DISABLED');
+            if (!canRequest) throw new SpotlightError('An approved, continuing membership is required.', 409, 'MEMBER_REVIEW_REQUIRED');
+            Object.assign(payload, { requestId: body.requestId, version: body.version, consent: body.consent === true });
+        }
         if (operation === 'member-request') {
             if (!canRequest) throw new SpotlightError('Requests open after your listing is approved, while your membership is continuing.', 409, 'MEMBER_REVIEW_REQUIRED');
             const customer = await stripe.customers.retrieve(id(sub.customer));
@@ -257,7 +269,8 @@ function createService(stripe, settings = config(), moderation = callModeration)
             Object.assign(payload, { requestId: body.requestId, offer: body.offer, specialty: body.specialty, area: body.area, notes: body.notes, consent: body.consent === true, businessName: readProfile(sub.metadata)?.businessName, email: customer.email });
         }
         try {
-            return { ...await moderation(operation, payload), canRequest };
+            const result = await moderation(operation, payload);
+            return { ...result, canRequest, purchasesEnabled: settings.memberBillingEnabled === true && result.purchasesEnabled === true };
         } catch (error) {
             if ([400, 403, 404, 409, 503].includes(error.status)) throw new SpotlightError(error.message, error.status, error.code);
             throw error;
@@ -281,7 +294,15 @@ function createService(stripe, settings = config(), moderation = callModeration)
     async function directory() {
         const subscriptions = settings.secret && settings.priceId ? await listSubscriptions() : [];
         const states = await publicationStates(subscriptions);
-        return { listings: subscriptions.filter((_, index) => states[index]).map(publicListing).sort((a, b) => a.businessName.localeCompare(b.businessName)), checkoutEnabled: settings.enabled, price: PRICE, portalLoginUrl: settings.portalLoginUrl };
+        const members = subscriptions.filter((_, index) => states[index]);
+        const listings = members.map(publicListing);
+        if (settings.memberBillingEnabled) {
+            for (let start = 0; start < members.length; start += 4) await Promise.all(members.slice(start, start + 4).map(async (sub, offset) => {
+                const featured = await moderation('member-entitlement', { subscriptionId: sub.id });
+                if (featured?.specialty && featured.area === 'Monterey County') listings[start + offset].featured = { specialty: featured.specialty, area: featured.area };
+            }));
+        }
+        return { listings: listings.sort((a, b) => Number(!!b.featured) - Number(!!a.featured) || a.businessName.localeCompare(b.businessName)), checkoutEnabled: settings.enabled, price: PRICE, portalLoginUrl: settings.portalLoginUrl };
     }
 
     async function checkout(request, response, body) {
@@ -384,6 +405,17 @@ function createService(stripe, settings = config(), moderation = callModeration)
     async function webhook(event) {
         if (!WEBHOOK_EVENTS.has(event.type) || event.livemode !== settings.live) return;
         const object = event.data?.object;
+        if (settings.memberBillingEnabled) {
+            const meta = object?.metadata?.selects_extra ? object.metadata : object?.parent?.subscription_details?.metadata;
+            if (meta?.selects_extra === 'cerney_selects_extra_v1' && /^sub_[A-Za-z0-9]+$/.test(meta.selects_base || '') && /^[0-9a-f-]{36}$/.test(meta.selects_request || '')) {
+                await moderation('member-reconcile', { subscriptionId: meta.selects_base, requestId: meta.selects_request });
+                return;
+            }
+            if (event.type.startsWith('customer.subscription.') && object?.metadata?.spotlight === MARKER) {
+                const result = await moderation('member-orders', { subscriptionId: object.id });
+                for (const order of result.orders || []) if (order.billing) await moderation('member-reconcile', { subscriptionId: object.id, requestId: order.id });
+            }
+        }
         if (event.type.startsWith('checkout.session.')) {
             // Fetch the current session. The signed event can be delayed or superseded.
             const session = await stripe.checkout.sessions.retrieve(object.id);

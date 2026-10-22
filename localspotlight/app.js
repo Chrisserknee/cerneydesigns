@@ -78,6 +78,7 @@
             website: string(source.website, 300), phone: string(source.phone, 40), logoUrl: string(source.logoUrl, 500),
             logoBackdrop: isPreview && source.logoBackdrop === 'dark' ? 'dark' : '',
             textWordmark: isPreview && source.textWordmark === true,
+            featuredSpecialty: source.featured?.area === 'Monterey County' ? string(source.featured.specialty, 80) : '',
         };
     }
 
@@ -136,6 +137,7 @@
             const row = node('article', 'directory-text-row');
             const content = node('div');
             if (featured) content.append(node('p', 'weekly-badge', '✦ Featured this week'));
+            if (profile.featuredSpecialty) content.append(node('p', 'weekly-badge', `Featured ${profile.featuredSpecialty} · Monterey County`));
             content.append(businessName(profile), node('p', 'directory-text-meta', [profile.city, profile.category].filter(Boolean).join(' · ')));
             const arrow = node('span', 'directory-text-arrow', '↗');
             arrow.setAttribute('aria-hidden', 'true');
@@ -155,6 +157,7 @@
         }
         const body = node('div', 'directory-card-body');
         if (featured) body.append(node('p', 'weekly-badge', '✦ Featured this week'));
+        if (profile.featuredSpecialty) body.append(node('p', 'weekly-badge', `Featured ${profile.featuredSpecialty} · Monterey County`));
         body.append(node('p', 'directory-card-category', profile.category || 'Local business'), businessName(profile), node('p', 'directory-city', profile.city));
         if (profile.description) body.append(node('p', 'directory-description', profile.description));
         const bottom = node('div', 'directory-card-bottom');
@@ -229,7 +232,8 @@
             const searchable = `${listing.businessName} ${listing.city} ${listing.category} ${listing.description}`.toLocaleLowerCase();
             return matchesCategory(listing, category) && (!city || listing.city === city) && (!search || searchable.includes(search));
         });
-        const featured = weeklyBusiness(listings);
+        filtered.sort((a, b) => Number(!!b.featuredSpecialty) - Number(!!a.featuredSpecialty));
+        const featured = listings.some(listing => listing.featuredSpecialty) ? null : weeklyBusiness(listings);
         const featuredIndex = filtered.indexOf(featured);
         if (featuredIndex > 0) filtered.unshift(...filtered.splice(featuredIndex, 1));
         filteredCount = filtered.length;

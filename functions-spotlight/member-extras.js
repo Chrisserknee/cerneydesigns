@@ -6,8 +6,8 @@ const { APPLICATION_ID } = require('./storage');
 // This is an enquiry workflow. A request never authorizes a charge, promises
 // availability, reserves a specialty, or changes the member's subscription.
 const OFFERS = Object.freeze([
-    { id: 'mustache', name: 'The Mustache Stamp', price: '$250/month total + $500 one-time setup', detail: 'Your $100 listing continues, with an additional $150/month. Includes a one-minute video with Chris Cerney, monthly analytics, and one agreed exclusive featured specialty.', terms: 'Three-month minimum. Specialty and coverage area must be agreed and available.', action: 'Request availability', specialty: true },
-    { id: 'featured', name: 'Featured specialty', price: 'Add $150/month · $250/month total', detail: 'An exclusive featured position in one agreed business specialty, without a video or video setup fee. Other businesses can still join the directory.', terms: 'Subject to availability. Coverage area and minimum term will be confirmed in your quote.', action: 'Request availability', specialty: true },
+    { id: 'mustache', name: 'The Mustache Stamp', price: '$250/month total + $500 one-time setup', detail: 'Your $100 listing continues, with an additional $150/month. Includes a one-minute video with Chris Cerney, monthly analytics, and one agreed exclusive featured specialty across Monterey County.', terms: 'Three-month minimum. The agreed specialty must be available. Other businesses in the specialty can still join the directory.', action: 'Request availability', specialty: true },
+    { id: 'featured', name: 'Featured specialty', price: 'Add $150/month · $250/month total', detail: 'An exclusive featured position in one agreed business specialty across Monterey County, without a video or setup fee. Other businesses can still join the directory.', terms: 'Month to month. Cancel future renewals before your next billing date. Subject to specialty availability.', action: 'Request availability', specialty: true },
     { id: 'spotlight', name: 'The Cerney Spotlight', price: 'Starting at $1,000 per feature', detail: 'A creative two-minute social video with Chris, an Instagram collaboration, and social distribution.', terms: 'A separate one-time project. We agree the scope and final price before you pay.', action: 'Request a quote', specialty: false },
 ]);
 const fail = (message, status = 400, code = 'INVALID_REQUEST') => { throw Object.assign(new Error(message), { status, code }); };
@@ -16,7 +16,7 @@ const text = (value, max, required = false) => {
     return value.trim();
 };
 
-function createMemberExtras({ store, providers, settings, now = Date.now }) {
+function createMemberExtras({ store, providers, settings, billing, now = Date.now }) {
     async function change(id, edit) {
         for (let attempt = 0; attempt < 12; attempt++) {
             const current = await store.read(id);
@@ -31,17 +31,21 @@ function createMemberExtras({ store, providers, settings, now = Date.now }) {
     }
 
     function response(record) {
-        return { offers: OFFERS, requests: Object.values(record?.requests || {}).map(r => ({ id: r.id, offer: r.offer, specialty: r.specialty, area: r.area, notes: r.notes, createdAt: r.createdAt, status: 'requested', emailStatus: record.emails?.[`${r.id}:member`]?.state === 'sent' ? 'sent' : 'queued' })) };
+        return { offers: OFFERS, purchasesEnabled: settings.billingEnabled === true, requests: Object.values(record?.requests || {}).map(r => ({ id: r.id, offer: r.offer, specialty: r.specialty, area: r.area, notes: r.notes, createdAt: r.createdAt, status: 'requested', ...(billing ? billing.publicOrder(r) : {}), emailStatus: record.emails?.[`${r.id}:member`]?.state === 'sent' ? 'sent' : 'queued' })) };
     }
 
     async function status({ subscriptionId }) {
         if (!APPLICATION_ID.test(subscriptionId || '')) fail('Valid membership required.');
+        if (billing) {
+            const current = await store.read(subscriptionId);
+            for (const request of Object.values(current?.requests || {})) if (request.billing?.sessionId && !['canceled', 'expired'].includes(request.billing.state)) await billing.reconcile(subscriptionId, request.id);
+        }
         return response(await store.read(subscriptionId));
     }
 
     function emailPayload(request, snapshot, type) {
         const offer = OFFERS.find(o => o.id === request.offer);
-        const details = `${offer.name}\n${offer.price}\n${offer.terms}\n\nBusiness: ${snapshot.businessName}\nRequested specialty: ${request.specialty || 'Not applicable'}\nRequested coverage area: ${request.area || 'Not applicable'}\nNotes: ${request.notes || 'None'}\nReference: ${request.id}`;
+        const details = `${offer.name}\n${offer.price}\n${offer.terms}\n\nBusiness: ${snapshot.businessName}\nRequested specialty: ${request.specialty || 'Not applicable'}\nCoverage area: ${request.area || 'Not applicable'}\nNotes: ${request.notes || 'None'}\nReference: ${request.id}${type === 'owner' && request.reviewUrl ? `\n\nReview this request and approve a quote:\n${request.reviewUrl}` : ''}`;
         return {
             from: 'Cerney Selects <sponsorships@bookings.chriscerney.org>',
             to: type === 'owner' ? settings.ownerEmail || 'cerneymedia@gmail.com' : snapshot.email,
@@ -58,9 +62,10 @@ function createMemberExtras({ store, providers, settings, now = Date.now }) {
         const offer = OFFERS.find(o => o.id === input.offer);
         if (!offer || input.consent !== true || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(input.requestId || '')) fail('Choose an option and confirm your request.');
         const notes = typeof input.notes === 'string' ? input.notes.replace(/\r\n?|\n/g, ' ') : input.notes;
-        const request = { id: input.requestId.toLowerCase(), offer: offer.id, specialty: text(input.specialty || '', 100, offer.specialty), area: text(input.area || '', 100, offer.specialty), notes: text(notes || '', 800), createdAt: now() };
+        const request = { id: input.requestId.toLowerCase(), offer: offer.id, specialty: text(input.specialty || '', 100, offer.specialty), area: offer.specialty ? 'Monterey County' : '', notes: text(notes || '', 800), createdAt: now() };
         const snapshot = { businessName: text(input.businessName, 100, true), email: text(input.email, 254, true) };
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(snapshot.email)) fail('A verified billing email is required.');
+        if (billing) request.reviewUrl = billing.prepare(input.subscriptionId, request, snapshot);
         await store.create(input.subscriptionId, { id: input.subscriptionId, revision: 0, requests: {}, emails: {}, createdAt: now(), updatedAt: now(), work: { state: 'idle', leaseUntil: 0, nextAttemptAt: 0 } });
         await change(input.subscriptionId, record => {
             const duplicate = Object.values(record.requests).find(r => r.offer === offer.id || (offer.specialty && ['mustache', 'featured'].includes(r.offer)));
@@ -115,11 +120,12 @@ function createMemberExtras({ store, providers, settings, now = Date.now }) {
     }
 
     async function retry() {
+        if (billing) await billing.retry();
         const due = await store.listDue({ now: now(), limit: 20 });
         for (const record of due) await run(record.id);
         return { processed: due.length };
     }
-    return { status, request, retry };
+    return { status, request, retry, ...(billing ? { billing } : {}) };
 }
 
 module.exports = { createMemberExtras, OFFERS };

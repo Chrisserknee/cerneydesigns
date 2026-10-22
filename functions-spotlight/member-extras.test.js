@@ -47,7 +47,8 @@ test('concurrent duplicate submits send one pair of emails; conflicting upgrades
     assert.equal(f.sent.size, 2);
     assert.equal(Object.keys(f.records.get('sub_member').requests).length, 1);
     await assert.rejects(f.service.request({ ...f.input, requestId: randomUUID(), offer: 'featured' }), e => e.code === 'EXISTING_REQUEST');
-    await assert.rejects(f.service.request({ ...f.input, area: 'Salinas' }), e => e.code === 'EXISTING_REQUEST');
+    const retried = await f.service.request({ ...f.input, area: 'Salinas' });
+    assert.equal(retried.requests[0].area, 'Monterey County');
 });
 
 test('ambiguous email failure retries the same payload and idempotency key', async () => {
@@ -76,7 +77,7 @@ test('disabled email retains jobs and an uncertain delivery past the dedupe wind
 });
 
 test('invalid consent, request details, unknown offers and untrusted email strings create no records', async () => {
-    for (const mutation of [{ consent: 'true' }, { offer: 'fake' }, { requestId: '../bad' }, { specialty: '' }, { area: '' }, { notes: '<script>' }, { notes: 'x'.repeat(801) }, { email: 'someone@example.com\nBcc: other@example.com' }]) {
+    for (const mutation of [{ consent: 'true' }, { offer: 'fake' }, { requestId: '../bad' }, { specialty: '' }, { notes: '<script>' }, { notes: 'x'.repeat(801) }, { email: 'someone@example.com\nBcc: other@example.com' }]) {
         const f = fixture(); await assert.rejects(f.service.request({ ...f.input, ...mutation }));
         assert.equal(f.records.size, 0); assert.equal(f.sent.size, 0);
     }

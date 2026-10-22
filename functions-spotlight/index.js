@@ -17,6 +17,10 @@ const resendKey = defineSecret('SPONSORSHIP_RESEND_API_KEY');
 const priceId = defineString('SPOTLIGHT_PRICE_ID', { default: '' });
 const siteUrl = defineString('SPOTLIGHT_SITE_URL', { default: 'https://cerneydesigns-git-codex-local-spotlight-chris-projects-1637f7b0.vercel.app' });
 const emailEnabled = defineBoolean('SPOTLIGHT_EMAIL_ENABLED', { default: false });
+const billingEnabled = defineBoolean('SPOTLIGHT_MEMBER_BILLING_ENABLED', { default: false });
+const featuredPrice = defineString('SPOTLIGHT_FEATURED_PRICE_ID', { default: '' });
+const mustachePrice = defineString('SPOTLIGHT_MUSTACHE_PRICE_ID', { default: '' });
+const setupPrice = defineString('SPOTLIGHT_SETUP_PRICE_ID', { default: '' });
 const options = { region: 'us-west1', memory: '256MiB', timeoutSeconds: 120, maxInstances: 3, concurrency: 8 };
 const secrets = [reviewSecret, stripeKey, resendKey];
 
@@ -24,7 +28,7 @@ function sandboxSettings() {
     // These functions are sandbox-only. Provision separate live resources later.
     const key = stripeKey.value();
     if (!/^(?:rk|sk)_test_/.test(key || '')) throw new Error('Sandbox Stripe configuration required.');
-    return { stripeKey: key, priceId: priceId.value(), siteUrl: siteUrl.value(), reviewSecret: reviewSecret.value(), resendKey: resendKey.value(), emailEnabled: emailEnabled.value(), ownerEmail: 'cerneymedia@gmail.com' };
+    return { stripeKey: key, priceId: priceId.value(), siteUrl: siteUrl.value(), reviewSecret: reviewSecret.value(), resendKey: resendKey.value(), emailEnabled: emailEnabled.value(), ownerEmail: 'cerneymedia@gmail.com', billingEnabled: billingEnabled.value() };
 }
 function moderation() {
     const settings = sandboxSettings();
@@ -34,11 +38,15 @@ function moderation() {
     return createModeration({ store, settings, providers: createProviders({ settings }) });
 }
 function memberExtras() {
-    const settings = sandboxSettings();
+    const settings = { ...sandboxSettings(), featuredPriceId: featuredPrice.value(), mustachePriceId: mustachePrice.value(), setupPriceId: setupPrice.value() };
     const { createMemberExtras } = require('./member-extras');
     const { createProviders } = require('./providers');
     const store = createStore({ bucket: getStorage().bucket('tip-line-8c2d7.firebasestorage.app'), prefix: '_spotlight/v1/sandbox/member-extras/' });
-    return createMemberExtras({ store, settings, providers: createProviders({ settings }) });
+    const { createMemberBilling } = require('./member-billing');
+    const { createBillingProvider } = require('./member-billing-provider');
+    const slots = createStore({ bucket: getStorage().bucket('tip-line-8c2d7.firebasestorage.app'), prefix: '_spotlight/v1/sandbox/member-slots/' });
+    const billing = createMemberBilling({ store, slots, settings, payments: createBillingProvider({ settings }) });
+    return createMemberExtras({ store, settings, billing, providers: createProviders({ settings }) });
 }
 
 exports.spotlightModerationApi = onRequest({ ...options, secrets: [proxySecret, ...secrets] }, createGateway({ getSecret: () => proxySecret.value(), makeModeration: moderation, makeMemberExtras: memberExtras }));

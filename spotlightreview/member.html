@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <title>Member request review · Cerney Selects</title>
+  <link rel="stylesheet" href="/localspotlight/style.css">
+  <link rel="stylesheet" href="/spotlightsignup/member-extras.css">
+  <link rel="stylesheet" href="/spotlightreview/member.css">
+  <script src="/spotlightreview/member.js" defer></script>
+</head>
+<body>
+  <main class="member-review-page">
+    <a href="/">Cerney Selects</a>
+    <p class="eyebrow">PRIVATE OWNER REVIEW</p>
+    <h1>Review a member request</h1>
+    <p id="reviewMessage" role="status">Checking your secure review link…</p>
+    <section id="requestDetails" hidden></section>
+    <form id="quoteForm" class="member-extra-form" hidden>
+      <label class="member-extra-field" id="specialtyField">Agreed business specialty
+        <input name="specialty" maxlength="80" list="specialties" autocomplete="off">
+        <datalist id="specialties"></datalist>
+      </label>
+      <p id="specialtyHelp">Use one consistent specialty name, such as “Plumber.” Coverage is all Monterey County. Check occupied specialties below, including synonymous names.</p>
+      <label class="member-extra-field" id="amountField">Final video quote (USD)
+        <input name="amount" type="number" min="1000" max="10000" step="0.01">
+      </label>
+      <label class="member-extra-field">Agreed scope / production details
+        <textarea name="scope" maxlength="800" rows="4"></textarea>
+      </label>
+      <label class="member-extra-consent"><input name="confirmed" type="checkbox" required><span>I have agreed these details with the member and checked availability. Sending this quote does not charge the member; they must separately consent and pay.</span></label>
+      <div class="manage-actions"><button type="submit" class="button button-primary">Approve and email quote</button><button type="button" id="declineQuote" class="button button-outline">Decline request</button></div>
+    </form>
+    <section id="occupiedSpecialties" hidden></section>
+  </main>
+</body>
+</html>

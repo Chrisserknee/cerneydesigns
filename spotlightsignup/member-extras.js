@@ -43,7 +43,7 @@
         form.append(title);
         if (offer.specialty) {
             field(form, 'Business specialty (for example, plumber)', 'specialty', 100, true);
-            field(form, 'Requested coverage area (city or county)', 'area', 100, true);
+            form.append(node('p', 'member-extra-terms', 'Featured coverage: all Monterey County. Chris confirms the exact specialty and availability before payment.'));
         }
         field(form, offer.specialty ? 'Anything else Chris should know? (optional)' : 'Tell Chris about the video you have in mind', 'notes', 800, false);
         const label = node('label', 'member-extra-consent');
@@ -98,7 +98,8 @@
             card.append(node('h4', '', offer.name), node('p', 'member-extra-price', offer.price), node('p', '', offer.detail), node('p', 'member-extra-terms', offer.terms));
             const requested = (data.requests || []).find(r => r.offer === offer.id || (offer.specialty && ['mustache', 'featured'].includes(r.offer)));
             if (requested) {
-                card.append(node('p', 'member-extra-received', requested.offer === offer.id ? 'Request received · Chris will contact you' : 'Featured upgrade request already received'));
+                if (requested.offer === offer.id && requested.quote) orderControls(card, requested, data);
+                else card.append(node('p', 'member-extra-received', requested.offer === offer.id ? 'Request received · Chris will contact you' : 'Featured upgrade request already received'));
             } else {
                 const button = node('button', 'button button-outline', offer.action);
                 button.type = 'button'; button.disabled = !data.canRequest; button.dataset.request = offer.id; button.setAttribute('aria-expanded', 'false');
@@ -112,9 +113,63 @@
         section.hidden = false;
     }
 
+    function quoteTerms(order) {
+        const q = order.quote;
+        if (order.offer === 'spotlight') return `$${(q.amount / 100).toFixed(2)} once. Agreed scope: ${q.scope}`;
+        return `$150/month extra, making $250/month total with your separate $100 listing. Featured specialty: ${q.specialty}, throughout Monterey County. ${order.offer === 'mustache' ? '$500 one-time setup. Three-month add-on minimum ($450), then monthly. Includes a one-minute video with Chris and monthly analytics. The minimum remains payable if you cancel the base listing.' : 'No setup fee. Month to month; cancel future renewals before the next billing date.'} An active base listing is required to display the feature. The two subscriptions can have different renewal dates.`;
+    }
+    function date(value) { return value ? new Date(value * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : ''; }
+    function orderControls(card, order, data) {
+        if (order.quote?.status === 'declined') { card.append(node('p', '', 'Chris cannot offer this request right now. Reply to your email to discuss alternatives.')); return; }
+        card.append(node('p', 'member-extra-terms', quoteTerms(order)));
+        const billing = order.billing;
+        if (billing && ['active', 'paid', 'payment_review', 'canceled', 'processing'].includes(billing.state)) {
+            const labels = { active: 'Payment confirmed · service active', paid: 'Payment confirmed · Chris will coordinate your video', payment_review: 'Payment needs attention · contact Chris', canceled: 'Service canceled', processing: 'Payment is processing · do not pay again' };
+            card.append(node('p', 'member-extra-received', labels[billing.state]));
+            if (billing.minimumEnd) card.append(node('p', '', `Minimum term ends ${date(billing.minimumEnd)}.`));
+            if (billing.cancelAt) card.append(node('p', '', `Renewals stop ${date(billing.cancelAt)}.`));
+            else if (billing.cancellationRequested) card.append(node('p', '', 'Cancellation recorded. Stripe is confirming the end date.'));
+            else if (billing.periodEnd) card.append(node('p', '', `Current add-on period ends ${date(billing.periodEnd)}.`));
+            if (order.offer !== 'spotlight' && ['active', 'payment_review'].includes(billing.state) && !billing.cancellationRequested && !billing.cancelAt) {
+                const form = node('form', 'member-extra-form');
+                const label = node('label', 'member-extra-consent'), consent = node('input'); consent.type = 'checkbox'; consent.required = true;
+                label.append(consent, node('span', '', 'Stop this add-on’s future renewals at the end of my paid period or applicable minimum term. My base listing stays separate.'));
+                const button = node('button', 'button button-outline', 'Cancel add-on renewal'); button.type = 'submit';
+                const message = node('p', 'form-message'); message.setAttribute('role', 'status'); form.append(label, button, message); card.append(form);
+                form.addEventListener('submit', async event => { event.preventDefault(); if (!consent.checked || button.disabled) return; button.disabled = true; const sequence = generation;
+                    try { const updated = await api({ op: 'member-cancel', requestId: order.id, confirmed: true }); if (sequence !== generation) return; card.replaceChildren(node('h4', '', 'Member service')); orderControls(card, updated, data); }
+                    catch (error) { if (sequence !== generation) return; message.textContent = error.message; button.disabled = false; }
+                });
+            }
+            return;
+        }
+        if (order.quote.expiresAt <= Date.now() || billing?.state === 'expired') { card.append(node('p', '', 'This quote or checkout expired. Reply to your quote email for a fresh offer.')); return; }
+        if (!data.purchasesEnabled || !data.canRequest) { card.append(node('p', '', 'Your quote is saved. Checkout will be available once your membership and the payment setup are ready.')); return; }
+        const form = node('form', 'member-extra-form'), label = node('label', 'member-extra-consent'), consent = node('input'); consent.type = 'checkbox'; consent.required = true;
+        label.append(consent, node('span', '', 'I agree to this quote, the displayed charges, renewal and cancellation terms, and the agreed service scope.'));
+        const pay = node('button', 'button button-primary', billing ? 'Continue secure checkout' : 'Review and pay with Stripe'); pay.type = 'submit';
+        const message = node('p', 'form-message'); message.setAttribute('role', 'status'); form.append(label, pay, message); card.append(form);
+        form.addEventListener('submit', async event => { event.preventDefault(); if (!consent.checked || pay.disabled) return; pay.disabled = true; message.textContent = 'Opening secure checkout…'; const sequence = generation;
+            api({ op: 'member-checkout', requestId: order.id, version: order.quote.version, consent: true }).then(result => {
+                if (sequence !== generation) return;
+                const url = new URL(result.url); if (url.protocol !== 'https:' || url.hostname !== 'checkout.stripe.com') throw new Error('Checkout needs review.'); window.location.assign(url.href);
+            }).catch(error => { if (sequence !== generation) return; message.textContent = error.message; pay.disabled = false; });
+        });
+    }
+
+    function renderOrders(data) {
+        section.replaceChildren(node('h3', '', 'Your member services'));
+        for (const order of data.orders || []) { const card = node('article', 'member-extra-card'); card.append(node('h4', '', order.offer === 'spotlight' ? 'The Cerney Spotlight' : order.offer === 'mustache' ? 'The Mustache Stamp' : 'Featured specialty')); orderControls(card, order, { canRequest: false, purchasesEnabled: false }); section.append(card); }
+        section.hidden = !(data.orders || []).length;
+    }
+
     window.addEventListener('selects:member', async event => {
         const sequence = ++loadVersion;
-        if (event.detail?.extrasEligible !== true) { generation++; sending = false; current = null; section.hidden = true; section.replaceChildren(); return; }
+        if (event.detail?.extrasEligible !== true) {
+            generation++; sending = false; current = null; section.hidden = true; section.replaceChildren();
+            if (event.detail?.extrasManageAvailable) try { const data = await api({ op: 'member-orders' }); if (sequence === loadVersion) renderOrders(data); } catch { /* No private offers or stale purchase state on failure. */ }
+            return;
+        }
         try {
             const data = await api({ op: 'member-options' });
             if (sequence !== loadVersion) return;

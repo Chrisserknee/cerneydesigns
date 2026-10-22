@@ -22,12 +22,19 @@ function createGateway({ getSecret, makeModeration, makeMemberExtras, now = Date
         let body;
         try { body = JSON.parse(request.rawBody.toString('utf8')); }
         catch { return response.status(400).json({ error: 'Invalid JSON.' }); }
-        if (!body || Array.isArray(body) || !['ingest', 'review', 'decide', 'retry', 'member-status', 'member-request'].includes(body.op)) return response.status(400).json({ error: 'Unknown moderation operation.' });
+        if (!body || Array.isArray(body) || !['ingest', 'review', 'decide', 'retry', 'member-status', 'member-request', 'member-review', 'member-quote', 'member-checkout', 'member-cancel', 'member-orders', 'member-reconcile', 'member-entitlement'].includes(body.op)) return response.status(400).json({ error: 'Unknown moderation operation.' });
         try {
             if (body.op.startsWith('member-')) {
                 if (!makeMemberExtras) return response.status(503).json({ error: 'Member options are not available yet.' });
                 const extras = makeMemberExtras();
-                const result = body.op === 'member-status' ? await extras.status(body) : await extras.request(body);
+                let result;
+                if (body.op === 'member-status') result = await extras.status(body);
+                else if (body.op === 'member-request') result = await extras.request(body);
+                else {
+                    const method = body.op.slice('member-'.length);
+                    if (!extras.billing || typeof extras.billing[method] !== 'function') return response.status(503).json({ error: 'Member checkout is not available yet.' });
+                    result = method === 'reconcile' ? await extras.billing.reconcile(body.subscriptionId, body.requestId) : await extras.billing[method](body);
+                }
                 return response.status(200).json(result);
             }
             const moderation = makeModeration();
@@ -45,7 +52,8 @@ function createGateway({ getSecret, makeModeration, makeMemberExtras, now = Date
                 : { 400: 'Check the submitted review details.', 403: 'This review link is invalid or expired.', 404: 'This application was not found.', 409: 'This application was already reviewed or changed. Refresh before continuing.', 503: 'The review service is temporarily unavailable. Please try again.' };
             // Never return raw provider errors, credentials, tokens or email bodies.
             console.error('Spotlight moderation request failed', { status, code });
-            return response.status(status).json({ error: messages[status], code });
+            const specific = { BILLING_DISABLED: 'Member checkout is being prepared. No payment has been taken.', SPECIALTY_UNAVAILABLE: 'This featured specialty is no longer available. Contact Chris for alternatives.', QUOTE_EXPIRED: 'The quote changed or expired. Ask Chris for a new quote.', INVALID_TOKEN: 'This review link is invalid or expired.', CHECKOUT_ATTENTION: 'This checkout needs review. Contact Chris before trying another payment.', ALREADY_STARTED: 'A payment or service already exists. Refresh your member page.' };
+            return response.status(status).json({ error: specific[code] || messages[status], code });
         }
     };
 }
