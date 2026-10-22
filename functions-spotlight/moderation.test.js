@@ -5,7 +5,7 @@ const { createModeration } = require('./moderation');
 const { profileHash } = require('./providers');
 const { buildEmail } = require('./emails');
 const PROFILE = { businessName: 'Sandbox Coffee', category: 'Food & Restaurants', city: 'Monterey', description: 'A synthetic test business.', website: 'https://example.com/', phone: '', logoUrl: '' };
-function fixture() {
+function fixture(extra = {}) {
     let time = 1800000000000;
     const data = new Map(); const calls = { inspect: 0, hold: 0, approve: 0, cancel: 0, refund: 0, sends: [] };
     const controls = { emailReady: true, refundStatus: 'succeeded', refundExtra: {}, errors: {}, beforeCas: null, beforeSend: null };
@@ -33,7 +33,7 @@ function fixture() {
         async sendEmail(payload, key) { calls.sends.push({ payload: structuredClone(payload), key }); if (!sent.has(key)) sent.set(key, { id: `mail_${sent.size}` }); if (controls.beforeSend) { const callback = controls.beforeSend; controls.beforeSend = null; await callback(); } maybeError('send'); return sent.get(key); },
     };
     const settings = { siteUrl: 'https://preview.vercel.app', reviewSecret: 'test-review-secret-with-at-least-32-characters', reviewWithinMs: 2 * 86400000, retryMs: 300000 };
-    const core = createModeration({ store, providers, settings, now: () => time });
+    const core = createModeration({ store, providers, settings, now: () => time, ...extra });
     const token = () => {
         const email = calls.sends.find((call) => call.key.endsWith(':owner-review'));
         const link = email.payload.text.match(/https:\/\/preview\.vercel\.app\/spotlightreview\/#[^\s]+/)[0];
@@ -42,6 +42,35 @@ function fixture() {
     return { core, data, calls, controls, store, providers, settings, snapshot, token, sent, advance: (ms) => { time += ms; }, now: () => time };
 }
 async function application(f) { await f.core.ingest({ subscriptionId: 'sub_test' }); return f.token(); }
+
+const BANNER = { status: 'ready', url: 'https://firebasestorage.googleapis.com/v0/b/tip-line-8c2d7.firebasestorage.app/o/_spotlight%2Fv1%2Fsandbox%2Fbanners%2F' + 'a'.repeat(64) + '.webp?alt=media&token=11111111-1111-4111-8111-111111111111', version: 'b'.repeat(64) };
+test('banner is retrieved once after payment verification and billing hold, then privately reviewed', async () => {
+    let downloads = 0;
+    const f = fixture({ banners: { discover: async snapshot => { downloads++; assert.equal(f.calls.inspect, 1); assert.equal(f.calls.hold, 1); assert.equal(f.calls.sends.length, 0); assert.equal(snapshot.profileHash, f.snapshot.profileHash); return BANNER; } } });
+    const token = await application(f); await f.core.ingest({ subscriptionId: 'sub_test' });
+    const preview = await f.core.review({ token }); assert.equal(downloads, 1); assert.deepEqual(preview.banner, BANNER); assert.equal(preview.bannerIncluded, false); assert.equal(f.calls.approve, 0);
+    await assert.rejects(f.core.decide({ token, decision: 'approve', confirmed: true }), { code: 'BANNER_CHANGED' });
+    await assert.rejects(f.core.decide({ token, decision: 'approve', confirmed: true, useBanner: true, bannerVersion: 'stale' }), { code: 'BANNER_CHANGED' });
+    const approved = []; f.providers.approve = async (_snapshot, banner) => approved.push(banner);
+    await f.core.decide({ token, decision: 'approve', confirmed: true, useBanner: true, bannerVersion: BANNER.version });
+    await f.core.decide({ token, decision: 'approve', confirmed: true, useBanner: true, bannerVersion: BANNER.version });
+    assert.deepEqual(approved, [BANNER.url]); assert.equal((await f.core.review({ token })).bannerIncluded, true);
+    await assert.rejects(f.core.decide({ token, decision: 'approve', confirmed: true, useBanner: false, bannerVersion: BANNER.version }), { code: 'DECISION_CONFLICT' });
+});
+test('owner may approve without the banner; website failures do not block review or approval', async () => {
+    for (const mode of ['ready', 'failed']) {
+        const f = fixture({ banners: { discover: async () => { if (mode === 'failed') throw new Error('website unavailable'); return BANNER; } } });
+        const token = await application(f); const approved = []; f.providers.approve = async (_snapshot, banner) => approved.push(banner);
+        await f.core.decide({ token, decision: 'approve', confirmed: true, useBanner: false, bannerVersion: BANNER.version });
+        assert.deepEqual(approved, ['']); assert.equal(f.sent.size, 3); assert.equal(f.data.get('sub_test').status, 'approved');
+    }
+});
+test('unverified payments never trigger website retrieval', async () => {
+    let downloads = 0;
+    const f = fixture({ banners: { discover: async () => { downloads++; return BANNER; } } });
+    f.providers.inspectInitial = async () => null;
+    await f.core.ingest({ subscriptionId: 'sub_test' }); assert.equal(downloads, 0); assert.equal(f.data.size, 0);
+});
 
 test('paid ingestion pins receipt/profile, holds billing, and creates durable owner/applicant mail once', async () => {
     const f = fixture(); const token = await application(f);

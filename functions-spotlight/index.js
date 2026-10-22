@@ -21,7 +21,7 @@ const billingEnabled = defineBoolean('SPOTLIGHT_MEMBER_BILLING_ENABLED', { defau
 const featuredPrice = defineString('SPOTLIGHT_FEATURED_PRICE_ID', { default: '' });
 const mustachePrice = defineString('SPOTLIGHT_MUSTACHE_PRICE_ID', { default: '' });
 const setupPrice = defineString('SPOTLIGHT_SETUP_PRICE_ID', { default: '' });
-const options = { region: 'us-west1', memory: '256MiB', timeoutSeconds: 120, maxInstances: 3, concurrency: 8 };
+const options = { region: 'us-west1', memory: '512MiB', timeoutSeconds: 120, maxInstances: 3, concurrency: 2 };
 const secrets = [reviewSecret, stripeKey, resendKey];
 
 function sandboxSettings() {
@@ -35,7 +35,9 @@ function moderation() {
     const store = createStore({ bucket: getStorage().bucket('tip-line-8c2d7.firebasestorage.app'), prefix: '_spotlight/v1/sandbox/applications/' });
     const { createModeration } = require('./moderation');
     const { createProviders } = require('./providers');
-    return createModeration({ store, settings, providers: createProviders({ settings }) });
+    const { createWebsiteBanners } = require('./website-banners');
+    const banners = createWebsiteBanners({ bucket: getStorage().bucket('tip-line-8c2d7.firebasestorage.app'), live: false });
+    return createModeration({ store, settings, banners, providers: createProviders({ settings }) });
 }
 function memberExtras() {
     const settings = { ...sandboxSettings(), featuredPriceId: featuredPrice.value(), mustachePriceId: mustachePrice.value(), setupPriceId: setupPrice.value() };

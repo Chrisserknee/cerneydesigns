@@ -49,6 +49,26 @@
         $('businessMark').textContent = initials;
         const logo = link(profile.logoUrl);
         if (logo) { const img = document.createElement('img'); img.alt = ''; img.referrerPolicy = 'no-referrer'; img.src = logo; img.addEventListener('error', () => { $('businessMark').textContent = initials; }, { once: true }); $('businessMark').replaceChildren(img); }
+        const banner = data.banner || {};
+        const bannerImage = link(banner.url);
+        const ready = banner.status === 'ready' && bannerImage;
+        $('bannerPreview').hidden = !ready;
+        $('bannerChoice').hidden = !ready || !data.decisionAllowed;
+        $('bannerStatus').textContent = ready ? 'Retrieved from the business website. Check that the image is appropriate before including it.' : 'No suitable website banner is available. The listing can use its standard logo background.';
+        $('bannerSource').hidden = !ready || !link(banner.sourceUrl);
+        if (ready) {
+            $('bannerImage').onerror = () => {
+                $('bannerPreview').hidden = true;
+                $('bannerChoice').hidden = true;
+                $('useBanner').checked = false;
+                $('bannerStatus').textContent = 'The banner preview could not load. You can approve the listing with its standard logo background.';
+            };
+            $('bannerImage').src = bannerImage;
+            $('bannerSource').href = link(banner.sourceUrl) || profile.website;
+            $('bannerLogo').replaceChildren($('businessMark').cloneNode(true));
+            $('bannerLogo').firstElementChild.removeAttribute('id');
+            $('useBanner').checked = data.decisionAllowed ? true : data.bannerIncluded === true;
+        } else $('bannerImage').removeAttribute('src');
         $('paidAmount').textContent = new Intl.NumberFormat('en-US', { style: 'currency', currency: data.currency || 'usd' }).format(Number(data.paidAmount || 0) / 100);
         const due = new Date(data.reviewDueAt);
         $('reviewDue').textContent = Number.isNaN(due.getTime()) ? '' : `Review by ${new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(due)}`;
@@ -79,7 +99,7 @@
         if (decision === 'decline' && (!reason || /[\u0000-\u001f\u007f<>]/.test(reason))) { notice('Enter a plain-text decline reason without line breaks or markup.', true); return; }
         busy = true; $('submitDecision').disabled = true; $('refresh').disabled = true;
         notice('Saving your decision. Please wait…');
-        try { render(await request({ op: 'decide', decision, reason: decision === 'decline' ? reason : '', confirmed: true })); }
+        try { render(await request({ op: 'decide', decision, reason: decision === 'decline' ? reason : '', confirmed: true, ...(state.banner?.status === 'ready' ? { useBanner: $('useBanner').checked, bannerVersion: state.banner.version } : {}) })); }
         catch (error) { decisionNeedsRefresh = true; $('confirmed').checked = false; notice(`${error.message} Your decision may already have been saved; refresh the status before trying again.`, true); }
         finally { busy = false; $('submitDecision').disabled = decisionNeedsRefresh; $('refresh').disabled = false; }
     });

@@ -19,7 +19,7 @@ function createHandler({ call = callModeration, getConfig = config } = {}) {
         if (body.op === 'decide' && (!['approve', 'decline'].includes(body.decision) || body.confirmed !== true)) return sendJson(response, 400, { error: 'Confirm your review decision.' });
         if (body.op === 'decide' && body.decision === 'decline' && (typeof body.reason !== 'string' || !body.reason.trim() || body.reason.trim().length > 500 || /[\u0000-\u001f\u007f<>]/.test(body.reason))) return sendJson(response, 400, { error: 'Enter a plain-text decline reason, up to 500 characters.' });
         try {
-            const payload = { token: body.token, ...(body.op === 'decide' ? { decision: body.decision, reason: body.decision === 'decline' ? body.reason.trim() : '', confirmed: true } : {}), ...(body.op === 'member-quote' ? { decision: body.decision, decisionId: body.decisionId, confirmed: body.confirmed === true, specialty: body.specialty, scope: body.scope, amount: body.amount } : {}) };
+            const payload = { token: body.token, ...(body.op === 'decide' ? { decision: body.decision, reason: body.decision === 'decline' ? body.reason.trim() : '', confirmed: true, ...(typeof body.useBanner === 'boolean' ? { useBanner: body.useBanner, bannerVersion: body.bannerVersion } : {}) } : {}), ...(body.op === 'member-quote' ? { decision: body.decision, decisionId: body.decisionId, confirmed: body.confirmed === true, specialty: body.specialty, scope: body.scope, amount: body.amount } : {}) };
             return sendJson(response, 200, await call(body.op, payload));
         } catch (error) {
             const status = [400, 401, 403, 404, 409, 410, 422, 429, 503].includes(error.status) ? error.status : 502;

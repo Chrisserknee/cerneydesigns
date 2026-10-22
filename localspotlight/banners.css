@@ -1,0 +1,4 @@
+.directory-page .directory-card-top.has-banner { position: relative; isolation: isolate; overflow: hidden; }
+.directory-page .directory-card-top.has-banner .directory-banner { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -2; }
+.directory-page .directory-card-top.has-banner::after { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(5, 20, 32, .12), rgba(5, 20, 32, .36)); z-index: -1; }
+.directory-page .directory-card-top.has-banner .directory-mark { position: relative; width: fit-content; height: auto; max-width: 80%; min-width: 72px; min-height: 72px; background: #fff; padding: 10px; box-shadow: 0 4px 24px rgba(0, 0, 0, .2); }

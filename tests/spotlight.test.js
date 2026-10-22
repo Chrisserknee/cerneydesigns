@@ -94,6 +94,23 @@ function mockStripe(initialSubscription = subscription()) {
     return { stripe, state };
 }
 
+test('directory only exposes approved banner copies bound to the unchanged profile and mode', async () => {
+    const { stripe, state } = mockStripe();
+    state.subscription.metadata.spotlight_paid_invoice = state.subscription.latest_invoice.id;
+    const url = 'https://firebasestorage.googleapis.com/v0/b/tip-line-8c2d7.firebasestorage.app/o/_spotlight%2Fv1%2Fsandbox%2Fbanners%2F' + 'a'.repeat(64) + '.webp?alt=media&token=11111111-1111-4111-8111-111111111111';
+    const metadata = state.subscription.metadata;
+    metadata.spotlight_banner_url = url; metadata.spotlight_banner_profile = publicProfileHash(profile);
+    assert.equal((await createService(stripe, settings).directory()).listings[0].bannerUrl, url);
+    for (const invalid of ['https://example.com/banner.jpg', url.replace('sandbox', 'live'), url + '&other=1']) {
+        metadata.spotlight_banner_url = invalid;
+        assert.equal((await createService(stripe, settings).directory()).listings[0].bannerUrl, undefined);
+    }
+    metadata.spotlight_banner_url = url; metadata.spotlight_banner_profile = 'stale';
+    assert.equal((await createService(stripe, settings).directory()).listings[0].bannerUrl, undefined);
+    metadata.spotlight_banner_profile = publicProfileHash(profile); metadata.spotlight_review_status = 'pending';
+    assert.equal((await createService(stripe, settings).directory()).listings.length, 0);
+});
+
 test('member offers require canonical payment, authenticated ownership and correct environment', async () => {
     const denied = [
         ['unpaid checkout', s => { s.session.payment_status = 'unpaid'; }],

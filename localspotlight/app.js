@@ -75,7 +75,7 @@
         return {
             businessName: string(source.businessName, 100), category: string(source.category, 100),
             city: string(source.city, 80), description: string(source.description, 400),
-            website: string(source.website, 300), phone: string(source.phone, 40), logoUrl: string(source.logoUrl, 500),
+            website: string(source.website, 300), phone: string(source.phone, 40), logoUrl: string(source.logoUrl, 500), bannerUrl: string(source.bannerUrl, 500),
             logoBackdrop: isPreview && source.logoBackdrop === 'dark' ? 'dark' : '',
             textWordmark: isPreview && source.textWordmark === true,
             featuredSpecialty: source.featured?.area === 'Monterey County' ? string(source.featured.specialty, 80) : '',
@@ -152,6 +152,15 @@
         if (showMark) {
             const top = node('div', 'directory-card-top');
             if (profile.logoBackdrop) top.classList.add('dark-logo-backdrop');
+            const bannerSrc = logoUrl(profile.bannerUrl);
+            if (bannerSrc) {
+                const banner = node('img', 'directory-banner');
+                banner.alt = ''; banner.loading = 'lazy'; banner.decoding = 'async'; banner.referrerPolicy = 'no-referrer';
+                banner.width = 1200; banner.height = 600; banner.src = bannerSrc;
+                top.classList.add('has-banner');
+                banner.addEventListener('error', () => { banner.remove(); top.classList.remove('has-banner'); }, { once: true });
+                top.append(banner);
+            }
             top.append(businessMark(profile, mode !== 'mixed' || index % 3 !== 1));
             card.append(top);
         }

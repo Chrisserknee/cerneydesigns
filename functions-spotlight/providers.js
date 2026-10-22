@@ -1,6 +1,7 @@
 'use strict';
 
 const crypto = require('node:crypto');
+const { bannerUrl } = require('./banner-url');
 const MARKER = 'local_spotlight_v1';
 const FIELDS = ['businessName', 'category', 'city', 'description', 'website', 'phone', 'logoUrl'];
 const METADATA = ['business_name', 'category', 'city', 'description', 'website', 'phone', 'logo_url'];
@@ -108,7 +109,8 @@ function createProviders({ stripe, settings, fetchImpl = globalThis.fetch }) {
         if (pause?.behavior === 'void' && subscription.metadata.spotlight_review_status === 'pending' && subscription.metadata.spotlight_review_hold === 'true') return;
         await stripe.subscriptions.update(subscription.id, { pause_collection: { behavior: 'void' }, metadata: { spotlight_review_status: 'pending', spotlight_review_hold: 'true', spotlight_approved_profile: '' } });
     }
-    async function approve(snapshot) {
+    async function approve(snapshot, banner = '') {
+        if (banner && bannerUrl(banner, live) !== banner) throw error('Banner needs review.', 409, 'INVALID_BANNER');
         const subscription = await checked(snapshot);
         if (subscription.status !== 'active') throw error('Subscription is no longer active.', 409, 'SUBSCRIPTION_CHANGED');
         if (profileHash(profileFrom(subscription.metadata)) !== snapshot.profileHash) throw error('The submitted profile changed. Approval was not published.', 409, 'PROFILE_CHANGED');
@@ -133,10 +135,10 @@ function createProviders({ stripe, settings, fetchImpl = globalThis.fetch }) {
             || charge.status !== 'succeeded' || charge.paid !== true || charge.captured !== true || charge.amount !== 10000 || charge.amount_captured !== 10000
             || charge.currency !== 'usd' || charge.amount_refunded !== 0 || charge.refunded !== false || charge.disputed !== false) throw error('Current charge was reversed or needs review.', 409, 'PAYMENT_REVERSED');
         if (intent.id !== snapshot.paymentIntentId && (await refunds(intent.id)).some(refund => !['failed', 'canceled'].includes(refund.status))) throw error('Current payment was refunded.', 409, 'PAYMENT_REFUNDED');
-        if (subscription.metadata.spotlight_review_status === 'approved' && subscription.metadata.spotlight_approved_profile === snapshot.profileHash && !subscription.pause_collection) return;
+        if (subscription.metadata.spotlight_review_status === 'approved' && subscription.metadata.spotlight_approved_profile === snapshot.profileHash && !subscription.pause_collection && (subscription.metadata.spotlight_banner_url || '') === banner) return;
         if (subscription.metadata.spotlight_review_hold !== 'true' || subscription.pause_collection?.behavior !== 'void' || subscription.pause_collection.resumes_at) throw error('The application billing hold changed.', 409, 'BILLING_CHANGED');
         // Preserve cancel_at_period_end: it may be the applicant's own choice.
-        await stripe.subscriptions.update(subscription.id, { pause_collection: '', metadata: { spotlight_review_status: 'approved', spotlight_review_hold: 'false', spotlight_approved_profile: snapshot.profileHash } });
+        await stripe.subscriptions.update(subscription.id, { pause_collection: '', metadata: { spotlight_review_status: 'approved', spotlight_review_hold: 'false', spotlight_approved_profile: snapshot.profileHash, spotlight_banner_url: banner, spotlight_banner_profile: banner ? snapshot.profileHash : '' } });
     }
     async function cancel(snapshot, reason) {
         const subscription = await checked(snapshot);

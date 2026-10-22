@@ -41,7 +41,7 @@ function createGateway({ getSecret, makeModeration, makeMemberExtras, now = Date
             let result;
             if (body.op === 'ingest') result = await moderation.ingest({ subscriptionId: body.subscriptionId });
             if (body.op === 'review') result = await moderation.review({ token: body.token });
-            if (body.op === 'decide') result = await moderation.decide({ token: body.token, decision: body.decision, reason: body.reason, confirmed: body.confirmed === true });
+            if (body.op === 'decide') result = await moderation.decide({ token: body.token, decision: body.decision, reason: body.reason, confirmed: body.confirmed === true, ...(typeof body.useBanner === 'boolean' ? { useBanner: body.useBanner, bannerVersion: body.bannerVersion } : {}) });
             if (body.op === 'retry') result = await moderation.retry();
             return response.status(200).json(result || { ok: true });
         } catch (error) {

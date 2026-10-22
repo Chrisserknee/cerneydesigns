@@ -3,6 +3,16 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { createProviders, profileHash, MARKER } = require('./providers');
 
+const BANNER = 'https://firebasestorage.googleapis.com/v0/b/tip-line-8c2d7.firebasestorage.app/o/_spotlight%2Fv1%2Fsandbox%2Fbanners%2F' + 'a'.repeat(64) + '.webp?alt=media&token=11111111-1111-4111-8111-111111111111';
+test('approval publishes only an owned image in the correct environment and remains idempotent', async () => {
+    const f = fixture(); await f.providers.hold(f.snapshot);
+    for (const url of ['https://example.com/photo.jpg', BANNER.replace('sandbox', 'live')]) await assert.rejects(f.providers.approve(f.snapshot, url), { code: 'INVALID_BANNER' });
+    assert.equal(f.subscription.metadata.spotlight_banner_url, undefined);
+    await f.providers.approve(f.snapshot, BANNER); const count = f.calls.updates.length;
+    assert.equal(f.subscription.metadata.spotlight_banner_url, BANNER); assert.equal(f.subscription.metadata.spotlight_banner_profile, f.snapshot.profileHash);
+    await f.providers.approve(f.snapshot, BANNER); assert.equal(f.calls.updates.length, count);
+});
+
 function fixture(live = false) {
     const start = Math.floor(Date.now() / 1000) - 60;
     const profile = { businessName: 'Sandbox Coffee', category: 'Food & Restaurants', city: 'Monterey', description: 'A synthetic test listing.', website: 'https://example.com/', phone: '', logoUrl: '' };

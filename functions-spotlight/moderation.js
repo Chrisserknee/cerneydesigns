@@ -8,7 +8,7 @@ function fail(message, status = 400, code = 'INVALID_REQUEST') { throw Object.as
 function attention(message, code = 'NEEDS_ATTENTION') { return Object.assign(new Error(message), { status: 409, code }); }
 function idValid(value) { return /^sub_[A-Za-z0-9]+$/.test(value || ''); }
 
-function createModeration({ store, providers, settings, now = Date.now }) {
+function createModeration({ store, providers, settings, banners, now = Date.now }) {
     const tokenSecret = String(settings.reviewSecret || '');
     if (tokenSecret.length < 32) fail('Review signing secret is not configured.', 503, 'RETRY_LATER');
     const leaseMs = Math.max(30000, Math.min(settings.leaseMs || 120000, 300000));
@@ -33,7 +33,7 @@ function createModeration({ store, providers, settings, now = Date.now }) {
         return record;
     }
     function response(record) {
-        return { applicationId: record.id, business: record.snapshot.profile, customerEmail: record.snapshot.customerEmail, paidAmount: record.snapshot.paidAmount, currency: record.snapshot.currency, status: record.status, reviewDueAt: record.reviewDueAt, reason: record.reason || '', refundStatus: record.refund?.status || 'not_requested', refundNeedsAttention: Boolean(record.refund?.requiresAction || record.refund?.manualRequired), decisionAllowed: !record.decision && record.status !== 'needs_attention', decision: record.decision?.value || null };
+        return { applicationId: record.id, business: record.snapshot.profile, banner: record.banner || { status: 'none' }, bannerIncluded: Boolean(record.decision?.bannerUrl), customerEmail: record.snapshot.customerEmail, paidAmount: record.snapshot.paidAmount, currency: record.snapshot.currency, status: record.status, reviewDueAt: record.reviewDueAt, reason: record.reason || '', refundStatus: record.refund?.status || 'not_requested', refundNeedsAttention: Boolean(record.refund?.requiresAction || record.refund?.manualRequired), decisionAllowed: !record.decision && record.status !== 'needs_attention', decision: record.decision?.value || null };
     }
     async function change(applicationId, fn) {
         for (let attempt = 0; attempt < 12; attempt += 1) {
@@ -106,6 +106,15 @@ function createModeration({ store, providers, settings, now = Date.now }) {
                 if (!await checkpoint((current) => { current.effects.held = true; })) return store.read(applicationId);
             }
             record = await owned(); if (!record) return store.read(applicationId);
+            if (!record.decision && !record.banner && banners) {
+                let banner;
+                try { banner = await banners.discover(record.snapshot); }
+                catch { banner = { status: 'unavailable', discoveredAt: now() }; }
+                // Banner discovery is optional: failures never stop approval,
+                // payment handling or review emails. A decision freezes its image.
+                if (!await checkpoint(current => { if (!current.decision) current.banner = banner; })) return store.read(applicationId);
+                record = await owned(); if (!record) return store.read(applicationId);
+            }
             if (!record.decision) {
                 if (now() >= record.tokenExpiresAt) {
                     if (record.tokenRenewals >= 1) throw attention('The renewed review link expired without a decision.', 'REVIEW_EXPIRED');
@@ -122,7 +131,7 @@ function createModeration({ store, providers, settings, now = Date.now }) {
                 if (!record.effects.held && !record.effects.approved) { await providers.hold(record.snapshot); if (!await checkpoint((current) => { current.effects.held = true; })) return store.read(applicationId); }
                 record = await owned(); if (!record) return store.read(applicationId);
                 if (!record.effects.approved) {
-                    await providers.approve(record.snapshot);
+                    await providers.approve(record.snapshot, record.decision.bannerUrl || '');
                     if (!await checkpoint((current) => { current.effects.approved = true; current.status = 'approved'; })) return store.read(applicationId);
                 }
                 if (!await send(applicationId, owner, 'applicant-approved')) return store.read(applicationId);
@@ -185,18 +194,19 @@ function createModeration({ store, providers, settings, now = Date.now }) {
         return response(await run(subscriptionId));
     }
     async function review({ token } = {}) { return response(await authenticate(token)); }
-    async function decide({ token, decision, reason, confirmed } = {}) {
+    async function decide({ token, decision, reason, confirmed, useBanner, bannerVersion } = {}) {
         if (confirmed !== true || !['approve', 'decline'].includes(decision)) fail('Confirm an approve or decline decision.');
         const cleanReason = decision === 'decline' && typeof reason === 'string' ? reason.replace(/\r\n|\r|\n/g, ' ').trim() : '';
         if (decision === 'decline' && (!cleanReason || cleanReason.length > 500 || /[\u0000-\u001f\u007f]/.test(cleanReason))) fail('Provide a decline reason of up to 500 characters.');
         const authenticated = await authenticate(token);
         const selected = await change(authenticated.id, (record) => {
             if (record.decision) {
-                if (record.decision.value !== decision || record.reason !== cleanReason) fail('This application already has a different decision.', 409, 'DECISION_CONFLICT');
+                if (record.decision.value !== decision || record.reason !== cleanReason || (decision === 'approve' && typeof useBanner === 'boolean' && Boolean(record.decision.bannerUrl) !== useBanner)) fail('This application already has a different decision.', 409, 'DECISION_CONFLICT');
                 return false;
             }
             if (record.status === 'needs_attention') fail('This application requires manual attention before a decision.', 409, 'NEEDS_ATTENTION');
-            record.decision = { value: decision, at: now() }; record.reason = cleanReason;
+            if (decision === 'approve' && record.banner?.status === 'ready' && (typeof useBanner !== 'boolean' || bannerVersion !== record.banner.version)) fail('The banner changed. Refresh and review the image before approving.', 409, 'BANNER_CHANGED');
+            record.decision = { value: decision, at: now(), bannerUrl: decision === 'approve' && useBanner === true && record.banner?.status === 'ready' ? record.banner.url : '' }; record.reason = cleanReason;
             record.status = decision === 'approve' ? 'approving' : 'declining';
             record.work.nextAttemptAt = now();
             if (record.work.state !== 'leased') record.work.state = 'queued';

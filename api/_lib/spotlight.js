@@ -2,6 +2,7 @@
 
 const crypto = require('node:crypto');
 const Stripe = require('stripe');
+const { bannerUrl } = require('./spotlight-banner-url');
 const { moderationConfig, callModeration } = require('./spotlight-moderation');
 const { currentPaymentIsValid } = require('./spotlight-payment');
 
@@ -171,7 +172,10 @@ function published(subscription, settings) {
 }
 
 function publicListing(subscription) {
-    return { id: crypto.createHash('sha256').update(`spotlight:${subscription.id}`).digest('hex').slice(0, 20), ...readProfile(subscription.metadata) };
+    const profile = readProfile(subscription.metadata);
+    const image = subscription.metadata.spotlight_banner_profile === publicProfileHash(profile)
+        ? bannerUrl(subscription.metadata.spotlight_banner_url, subscription.livemode) : '';
+    return { id: crypto.createHash('sha256').update(`spotlight:${subscription.id}`).digest('hex').slice(0, 20), ...profile, ...(image ? { bannerUrl: image } : {}) };
 }
 
 function createService(stripe, settings = config(), moderation = callModeration) {

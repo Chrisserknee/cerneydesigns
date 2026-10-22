@@ -10,7 +10,7 @@ const { createLogoGateway } = require('./_shared/logos-gateway');
 const { createLogoService } = require('./_shared/logos');
 if (!getApps().length) initializeApp();
 const resendKey = defineSecret('SPONSORSHIP_RESEND_API_KEY');
-const options = { region: 'us-west1', memory: '256MiB', timeoutSeconds: 120, maxInstances: 3, concurrency: 8 };
+const options = { region: 'us-west1', memory: '512MiB', timeoutSeconds: 120, maxInstances: 3, concurrency: 2 };
 
 // Production has its own credentials, signing keys and storage namespace. Keep
 // the existing sandbox endpoints and records isolated for release testing.
@@ -38,7 +38,9 @@ function liveModeration() {
     const store = createStore({ bucket: getStorage().bucket('tip-line-8c2d7.firebasestorage.app'), prefix: '_spotlight/v1/live/applications/' });
     const { createModeration } = require('./_shared/moderation');
     const { createProviders } = require('./_shared/providers');
-    return createModeration({ store, settings, providers: createProviders({ settings }) });
+    const { createWebsiteBanners } = require('./_shared/website-banners');
+    const banners = createWebsiteBanners({ bucket: getStorage().bucket('tip-line-8c2d7.firebasestorage.app'), live: true });
+    return createModeration({ store, settings, banners, providers: createProviders({ settings }) });
 }
 function liveMemberExtras() {
     const settings = { ...liveSettings(), featuredPriceId: featuredPrice.value(), mustachePriceId: mustachePrice.value(), setupPriceId: setupPrice.value() };
