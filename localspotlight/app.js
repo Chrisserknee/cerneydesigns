@@ -296,13 +296,46 @@
         } finally { byId('retryDirectory').disabled = false; }
     }
 
+    const categoryBrowser = byId('categoryBrowser');
+    const categoryChips = byId('categoryChips');
+    const categoryExpand = byId('categoryExpand');
+    const mobileCategories = window.matchMedia('(max-width: 600px)');
+
+    function revealSelectedCategory() {
+        if (!categoryChips || !mobileCategories.matches || categoryBrowser.classList.contains('categories-expanded')) return;
+        const selected = categoryChips.querySelector('[aria-pressed="true"]');
+        if (!selected) return;
+        // Move only this horizontal row, never the page or the business results.
+        categoryChips.scrollLeft += selected.getBoundingClientRect().left - categoryChips.getBoundingClientRect().left - 1;
+    }
+
+    function setCategoriesExpanded(expanded) {
+        if (!categoryBrowser || !categoryExpand) return;
+        categoryBrowser.classList.toggle('categories-expanded', expanded);
+        categoryExpand.setAttribute('aria-expanded', String(expanded));
+        byId('categoryExpandLabel').textContent = expanded ? 'Show less' : 'Show all';
+        categoryExpand.querySelector('.category-expand-icon').textContent = expanded ? '−' : '+';
+        if (!expanded) requestAnimationFrame(revealSelectedCategory);
+    }
+
+    if (categoryBrowser && categoryChips && categoryExpand) {
+        categoryBrowser.classList.add('is-enhanced');
+        categoryExpand.hidden = false;
+        categoryExpand.addEventListener('click', () => setCategoriesExpanded(categoryExpand.getAttribute('aria-expanded') !== 'true'));
+        mobileCategories.addEventListener('change', () => setCategoriesExpanded(false));
+    }
+
     function resetPage() { page = 1; renderDirectory(); }
     byId('businessSearch').addEventListener('input', resetPage);
     document.querySelectorAll('[data-category]').forEach(button => {
         button.addEventListener('click', () => {
-            if (byId('categoryFilter').value === button.dataset.category) return;
+            if (byId('categoryFilter').value === button.dataset.category) {
+                if (mobileCategories.matches) setCategoriesExpanded(false);
+                return;
+            }
             byId('categoryFilter').value = button.dataset.category;
             resetPage();
+            if (mobileCategories.matches) setCategoriesExpanded(false);
             animateCategoryResults();
         });
     });
@@ -310,6 +343,7 @@
     byId('clearFilters').addEventListener('click', () => {
         byId('businessSearch').value = ''; byId('categoryFilter').value = ''; byId('cityFilter').value = '';
         resetPage(); byId('businessSearch').focus();
+        revealSelectedCategory();
     });
     byId('retryDirectory').addEventListener('click', loadDirectory);
     for (const [id, direction] of [['previousPage', -1], ['nextPage', 1]]) {

@@ -22,6 +22,7 @@
     <link rel="stylesheet" href="/localspotlight/style.css">
     <link rel="stylesheet" href="/localspotlight/directory.css">
     <link rel="stylesheet" href="/localspotlight/contact.css">
+    <link rel="stylesheet" href="/localspotlight/categories.css">
     <script src="/localspotlight/contact.js" defer></script>
     <script src="/localspotlight/app.js" defer></script>
 </head>
@@ -72,8 +73,13 @@
             <label class="preview-page-option"><input id="previewShowAll" type="checkbox" checked> Show all selected businesses on one page</label>
         </section>
         <section aria-label="Featured local businesses" class="directory-browse">
-            <p class="browse-invitation"><span aria-hidden="true">✦</span> What are you in the mood for?</p>
-            <div class="category-chips" role="group" aria-label="Explore business categories"><button type="button" class="category-chip" data-category="" aria-pressed="true"><span aria-hidden="true">✦</span> All</button><button type="button" class="category-chip" data-category="Food &amp; drink" aria-pressed="false"><span aria-hidden="true">☕</span> Food</button><button type="button" class="category-chip" data-category="wine" aria-pressed="false"><span aria-hidden="true">♧</span> Wine</button><button type="button" class="category-chip" data-category="hotels" aria-pressed="false"><span aria-hidden="true">⌂</span> Hotels</button><button type="button" class="category-chip" data-category="Shopping" aria-pressed="false"><span aria-hidden="true">◈</span> Shopping</button><button type="button" class="category-chip" data-category="Arts &amp; experiences" aria-pressed="false"><span aria-hidden="true">☀</span> Things to do</button><button type="button" class="category-chip" data-category="Home &amp; auto" aria-pressed="false"><span aria-hidden="true">⚒</span> Home &amp; auto</button><button type="button" class="category-chip" data-category="Health &amp; wellness" aria-pressed="false"><span aria-hidden="true">♡</span> Health</button><button type="button" class="category-chip" data-category="Professional services" aria-pressed="false"><span aria-hidden="true">✧</span> Services</button></div><input type="hidden" id="categoryFilter" value="">
+            <div class="category-browser" id="categoryBrowser">
+                <div class="category-heading">
+                    <p class="browse-invitation"><span aria-hidden="true">✦</span> What are you in the mood for?</p>
+                    <button type="button" class="category-expand" id="categoryExpand" aria-expanded="false" aria-controls="categoryChips" hidden><span id="categoryExpandLabel">Show all</span><span class="category-expand-icon" aria-hidden="true">+</span></button>
+                </div>
+                <div class="category-chips" id="categoryChips" role="group" aria-label="Explore business categories"><button type="button" class="category-chip" data-category="" aria-pressed="true"><span aria-hidden="true">✦</span> All</button><button type="button" class="category-chip" data-category="Food &amp; drink" aria-pressed="false"><span aria-hidden="true">☕</span> Food</button><button type="button" class="category-chip" data-category="wine" aria-pressed="false"><span aria-hidden="true">♧</span> Wine</button><button type="button" class="category-chip" data-category="hotels" aria-pressed="false"><span aria-hidden="true">⌂</span> Hotels</button><button type="button" class="category-chip" data-category="Shopping" aria-pressed="false"><span aria-hidden="true">◈</span> Shopping</button><button type="button" class="category-chip" data-category="Arts &amp; experiences" aria-pressed="false"><span aria-hidden="true">☀</span> Things to do</button><button type="button" class="category-chip" data-category="Home &amp; auto" aria-pressed="false"><span aria-hidden="true">⚒</span> Home &amp; auto</button><button type="button" class="category-chip" data-category="Health &amp; wellness" aria-pressed="false"><span aria-hidden="true">♡</span> Health</button><button type="button" class="category-chip" data-category="Professional services" aria-pressed="false"><span aria-hidden="true">✧</span> Services</button></div>
+            </div><input type="hidden" id="categoryFilter" value="">
             <div class="directory-tools">
                 <div class="search-field"><label for="businessSearch" class="sr-only">Search by business name, description, or city</label><span aria-hidden="true">⌕</span><input id="businessSearch" type="search" placeholder="What are you looking for?" maxlength="100" autocomplete="off"></div>
                 <div class="city-field"><label for="cityFilter" class="sr-only">Filter by city</label><select id="cityFilter"><option value="">All cities</option></select></div>
