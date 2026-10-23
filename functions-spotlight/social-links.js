@@ -57,7 +57,8 @@
     function hashEntries(profile, baseFields) {
         // Preserve existing approval hashes when no socials were supplied.
         return [...baseFields.map(field => [field, profile?.[field] || '']),
-            ...platforms.filter(({ field }) => profile?.[field]).map(({ field }) => [field, profile[field]])];
+            ...platforms.filter(({ field }) => profile?.[field]).map(({ field }) => [field, profile[field]]),
+            ...(profile?.bannerSourceUrl ? [['bannerSourceUrl', profile.bannerSourceUrl]] : [])];
     }
     return Object.freeze({ platforms, normalize, read, hashEntries });
 }));

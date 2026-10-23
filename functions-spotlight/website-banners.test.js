@@ -97,3 +97,13 @@ test('unusable images return a safe fallback and candidate download count is bou
     assert.equal((await banners.discover(snapshot)).status, 'none'); assert.equal(requests, 6); assert.equal(s.writes(), 0);
     await assert.rejects(banners.discover({ ...snapshot, subscriptionId: '../bad' }));
 });
+
+test('chosen banner uses sanitized storage without substituting a website image', async () => {
+    const s = storage(); const calls = []; const png = await raster();
+    const selected = { ...snapshot, profile: { ...snapshot.profile, bannerSourceUrl: 'https://photos.example.com/chosen.png' } };
+    const service = createWebsiteBanners({ bucket: s.bucket, fetchPublic: async url => { calls.push(url); return { type: 'image/png', url, bytes: png }; } });
+    assert.equal((await service.discover(selected)).status, 'ready');
+    assert.deepEqual(calls, [selected.profile.bannerSourceUrl]);
+    const rejected = createWebsiteBanners({ bucket: storage().bucket, fetchPublic: async () => { throw new Error('Invalid selected image'); } });
+    assert.equal((await rejected.discover(selected)).status, 'none');
+});

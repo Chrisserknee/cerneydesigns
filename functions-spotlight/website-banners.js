@@ -71,7 +71,7 @@ function createPublicFetch({ lookup = dns.lookup, request = https.request } = {}
 function candidates(html, pageUrl) {
     const found = new Map(); let position = 0; const stack = [];
     const add = (value, score) => {
-        try { const url = publicUrl(value, pageUrl).href; if (/\b(?:favicon|logo|icon|badge|avatar)\b/i.test(new URL(url).pathname)) return; found.set(url, Math.max(found.get(url) || 0, score)); } catch { /* Ignore unusable website references. */ }
+        try { const url = publicUrl(value, pageUrl).href; if (/\b(?:favicon|logo|icon|badge|avatar|placeholder)\b/i.test(new URL(url).pathname)) return; found.set(url, Math.max(found.get(url) || 0, score)); } catch { /* Ignore unusable website references. */ }
     };
     const parser = new Parser({
         onopentag(name, a) {
@@ -154,9 +154,15 @@ function createWebsiteBanners({ bucket, live = false, fetchPublic = createPublic
         };
         try { return await saved(); } catch (e) { if (Number(e.code) !== 404) throw e; }
         const signal = AbortSignal.timeout(12000);
-        const page = await fetchPublic(snapshot.profile.website, { limit: HTML_LIMIT, signal });
-        if (!['text/html', 'application/xhtml+xml'].includes(page.type)) return { status: 'none' };
-        for (const url of candidates(page.bytes.toString('utf8'), page.url).slice(0, 5)) {
+        let choices;
+        if (snapshot.profile.bannerSourceUrl) {
+            choices = [snapshot.profile.bannerSourceUrl];
+        } else {
+            const page = await fetchPublic(snapshot.profile.website, { limit: HTML_LIMIT, signal });
+            if (!['text/html', 'application/xhtml+xml'].includes(page.type)) return { status: 'none' };
+            choices = candidates(page.bytes.toString('utf8'), page.url).slice(0, 5);
+        }
+        for (const url of choices) {
             let image, source;
             try {
                 signal.throwIfAborted(); source = await fetchPublic(url, { limit: IMAGE_LIMIT, signal }); image = await bannerImage(source.bytes, source.type);

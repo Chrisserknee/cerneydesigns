@@ -28,8 +28,13 @@ function profileFrom(metadata) {
     FIELDS.forEach((key, index) => {
         if ((!profile[key] && !['phone', 'logoUrl'].includes(key)) || profile[key].length > maximums[index] || /[\u0000-\u001f\u007f<>]/.test(profile[key])) throw error('Business profile needs review.', 409, 'PROFILE_CHANGED');
     });
+    const selectedBanner = metadata?.banner_source_url;
+    if (selectedBanner) {
+        if (typeof selectedBanner !== 'string' || selectedBanner.length > 500 || /[\u0000-\u001f\u007f<>]/.test(selectedBanner)) throw error('Banner needs review.', 409, 'PROFILE_CHANGED');
+        profile.bannerSourceUrl = selectedBanner.trim();
+    }
     if (!CATEGORIES.includes(profile.category)) throw error('Business category needs review.', 409, 'PROFILE_CHANGED');
-    for (const key of ['website', 'logoUrl']) {
+    for (const key of ['website', 'logoUrl', 'bannerSourceUrl']) {
         if (!profile[key]) continue;
         let url; try { url = new URL(profile[key]); } catch { throw error('Business URL needs review.', 409, 'PROFILE_CHANGED'); }
         if (url.protocol !== 'https:' || url.username || url.password || url.port || !url.hostname.includes('.') || /^[\d.]+$/.test(url.hostname) || url.hostname.endsWith('.local')) throw error('Business URL needs review.', 409, 'PROFILE_CHANGED');

@@ -57,7 +57,7 @@
         const ready = banner.status === 'ready' && bannerImage;
         $('bannerPreview').hidden = !ready;
         $('bannerChoice').hidden = !ready || !data.decisionAllowed;
-        $('bannerStatus').textContent = ready ? 'Retrieved from the business website. Check that the image is appropriate before including it.' : 'No suitable website banner is available. The listing can use its standard logo background.';
+        $('bannerStatus').textContent = ready ? 'Check that this banner image is appropriate before including it.' : 'No suitable website banner is available. The listing can use its standard logo background.';
         $('bannerSource').hidden = !ready || !link(banner.sourceUrl);
         if (ready) {
             $('bannerImage').onerror = () => {

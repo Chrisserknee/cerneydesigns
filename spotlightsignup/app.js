@@ -4,7 +4,7 @@
     const API = '/api/spotlight';
     const DRAFT_KEY = 'cc_spotlight_draft_v1';
     const REQUEST_KEY = 'cc_spotlight_request_v1';
-    const PUBLIC_FIELDS = ['businessName', 'category', 'city', 'description', 'website', 'phone', 'logoUrl', ...window.CerneySelectsSocials.platforms.map(item => item.field)];
+    const PUBLIC_FIELDS = ['businessName', 'category', 'city', 'description', 'website', 'phone', 'logoUrl', 'bannerSourceUrl', ...window.CerneySelectsSocials.platforms.map(item => item.field)];
     const categories = [
         'Food & Restaurants',
         'Drinks & Nightlife',
@@ -89,7 +89,7 @@
 
     function publicProfile(profile) {
         const source = profile && typeof profile === 'object' ? profile : {};
-        return Object.fromEntries(PUBLIC_FIELDS.map((field) => [field, string(source[field], field === 'description' ? 400 : field === 'logoUrl' ? 500 : (field === 'website' || field.endsWith('Url')) ? 300 : field === 'phone' ? 40 : field === 'city' ? 80 : 100)]));
+        return Object.fromEntries(PUBLIC_FIELDS.map((field) => [field, string(source[field], field === 'description' ? 400 : ['logoUrl', 'bannerSourceUrl'].includes(field) ? 500 : (field === 'website' || field.endsWith('Url')) ? 300 : field === 'phone' ? 40 : field === 'city' ? 80 : 100)]));
     }
 
     function businessCard(profile, preview = false, localLogoPreview = '') {
@@ -98,6 +98,14 @@
         const initials = name.split(/\s+/).slice(0, 2).map((word) => Array.from(word)[0] || '').join('').toUpperCase();
         const card = node('article', 'business-card');
         const top = node('div', 'card-top');
+        const chosenBanner = websiteUrl(safe.bannerSourceUrl);
+        if (chosenBanner) {
+            const image = node('img', 'signup-banner');
+            image.alt = ''; image.referrerPolicy = 'no-referrer'; image.src = chosenBanner;
+            top.classList.add('has-banner');
+            image.addEventListener('error', () => { image.remove(); top.classList.remove('has-banner'); }, { once: true });
+            top.append(image);
+        }
         const mark = node('span', 'business-mark', safe.businessName ? initials : 'CC');
         mark.setAttribute('aria-hidden', 'true');
         const logo = preview && localLogoPreview ? localLogoPreview : websiteUrl(safe.logoUrl);
@@ -146,7 +154,7 @@
 
     function readForm(form, includeEmail = false) {
         const data = new FormData(form);
-        const profile = Object.fromEntries(PUBLIC_FIELDS.map((field) => [field, string(data.get(field), field === 'description' ? 400 : field === 'logoUrl' ? 500 : 300)]));
+        const profile = Object.fromEntries(PUBLIC_FIELDS.map((field) => [field, string(data.get(field), field === 'description' ? 400 : ['logoUrl', 'bannerSourceUrl'].includes(field) ? 500 : 300)]));
         if (includeEmail) profile.email = string(data.get('email'), 254);
         return profile;
     }
@@ -472,6 +480,8 @@
     function validateProfile(form) {
         const website = form.elements.namedItem('website');
         website.setCustomValidity(websiteUrl(website.value) ? '' : 'Enter a valid website beginning with https://.');
+        const selectedBanner = form.elements.namedItem('bannerSourceUrl');
+        selectedBanner.setCustomValidity(!selectedBanner.value.trim() || websiteUrl(selectedBanner.value) ? '' : 'Enter a direct HTTPS image link.');
         const logo = form.elements.namedItem('logoUrl');
         logo.setCustomValidity(!logo.value.trim() || websiteUrl(logo.value) ? '' : 'Enter a direct HTTPS image link.');
         const category = form.elements.namedItem('category');
@@ -485,7 +495,7 @@
     }
 
     signupForm.addEventListener('input', (event) => {
-        if (['website', 'logoUrl', ...window.CerneySelectsSocials.platforms.map(item => item.field)].includes(event.target.name)) event.target.setCustomValidity('');
+        if (['website', 'logoUrl', 'bannerSourceUrl', ...window.CerneySelectsSocials.platforms.map(item => item.field)].includes(event.target.name)) event.target.setCustomValidity('');
         if (event.target.name === 'logoUrl') resetLogoUpload({ text: event.target.value.trim() ? 'Image link selected. Check the listing preview before continuing.' : '' });
         else updatePreview();
     });
@@ -524,7 +534,7 @@
         byId('manage-descriptionCount').textContent = `${manageForm.elements.namedItem('description').value.trim().length} / 400`;
     }
     manageForm.addEventListener('input', (event) => {
-        if (['website', 'logoUrl', ...window.CerneySelectsSocials.platforms.map(item => item.field)].includes(event.target.name)) event.target.setCustomValidity('');
+        if (['website', 'logoUrl', 'bannerSourceUrl', ...window.CerneySelectsSocials.platforms.map(item => item.field)].includes(event.target.name)) event.target.setCustomValidity('');
         updateManageCount();
     });
     manageForm.addEventListener('submit', async (event) => {
