@@ -54,7 +54,7 @@
   if(backgrounds){
    const settings=el('fieldset',null,'witness-appearance');settings.append(el('legend','Set the scene'));
    const placeLabel=el('label','Location background'),places=el('select');places.setAttribute('aria-label','Location background');
-   for(const place of [...backgrounds.catalog].sort((a,b)=>a.label.localeCompare(b.label))){const option=el('option',place.label);option.value=place.id;places.append(option);}placeLabel.append(places);
+   for(const place of [...backgrounds.catalog].sort((a,b)=>a.label.localeCompare(b.label))){const option=el('option',place.label+(place.kind==='fallback'?'':' · '+place.counties.join(' / '))); option.value=place.id;places.append(option);}placeLabel.append(places);
    const colorLabel=el('label','Urgency color'),colors=el('select');colors.setAttribute('aria-label','Urgency color');
    for(const style of backgrounds.styles){const option=el('option',style.label);option.value=style.id;colors.append(option);}colorLabel.append(colors);
    const policeLabel=el('label',null,'witness-police'),police=el('input');police.type='checkbox';police.setAttribute('aria-label','Blurred police lights');policeLabel.append(police,document.createTextNode(' Blurred police lights'));
