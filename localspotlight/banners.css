@@ -19,3 +19,11 @@
     .directory-page .directory-card { --listing-banner-height: 140px; }
     .directory-page .directory-card .directory-card-top { margin: -21px -21px 18px; padding: 18px 21px; }
 }
+
+/* Keep the Good Roots website headline outside its photo backdrop. */
+.directory-page .directory-card-top.has-banner .directory-banner[src$="/localspotlight/banners/good-roots-events.webp"] {
+    object-position: center bottom;
+    transform: scale(1.4);
+    transform-origin: center 75%;
+    filter: blur(3px);
+}
