@@ -1,4 +1,5 @@
 'use strict';
+const {storyRequest,storyMonitor}=require('./story-request-record');
 const {incidentRecord}=require('./incident-record');
 const {withDetails,monitorHealth}=require('./newsroom-details');
 const { randomBytes, randomUUID } = require('node:crypto');
@@ -295,10 +296,12 @@ async function handleApi(req, res) {
             const reports=await inboxDocuments('enrichment/');
             const detailRecords=new Map((await inboxDocuments('details/')).map(d=>[d.id,d]));
             const monitor=monitorHealth((await read('monitor/status.json'))?.data);
+            const storyRequests=(await inboxDocuments('story-requests/')).map(d=>storyRequest(d)).filter(Boolean).sort((a,b)=>Date.parse(b.createdAt)-Date.parse(a.createdAt)).slice(0,60);
+            const storyRequestMonitor=storyMonitor((await read('story-monitor/status.json'))?.data);
             if(incidentReports)incidentReports=incidentReports.map(t=>withDetails(t,detailRecords.get(t.id)));
             const byId=new Map(reports.map(r=>[r.id,r]));
             const deliveries=new Map((await inboxDocuments('deliveries/')).map(d=>[d.id,d]));
-            return res.json({authenticated:true,expiresAt:device.expiresAt,monitor,...(incidentReports ? {reports:incidentReports} : {}),tips:tips.map(t=>t.type==='incident'?withDetails(t,detailRecords.get(t.id)):displayContext(t,byId.get(t.id),deliveries.get(t.id))).map(({path,sourceGeneration,sourceTitle,sourceSummary,sourceLocation,contextReceivedAt,...t})=>t)});
+            return res.json({authenticated:true,expiresAt:device.expiresAt,monitor,storyRequests,storyRequestMonitor,...(incidentReports ? {reports:incidentReports} : {}),tips:tips.map(t=>t.type==='incident'?withDetails(t,detailRecords.get(t.id)):displayContext(t,byId.get(t.id),deliveries.get(t.id))).map(({path,sourceGeneration,sourceTitle,sourceSummary,sourceLocation,contextReceivedAt,...t})=>t)});
         }
         if (body.op === 'test') {
             if (!device.subscription) return res.status(409).json({error:'Enable notifications on this device first.'});

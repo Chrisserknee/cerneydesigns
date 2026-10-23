@@ -81,6 +81,7 @@ function message(text='', error=false) { $('message').textContent=text; $('messa
 function clearSession() {
     try { localStorage.removeItem('cerney-open-tip'); } catch {}
     thumbnails.reset();
+    globalThis.CerneyStoryRequests?.clear();
     state = null; renderedTips=null; inboxSnapshot={tips:[],reports:[]}; sessionVersion++; message(); resetPull(); closeReview();
     $('inboxStatus').textContent = '';
     clearTimeout(retryTimer); clearTimeout(inboxTimer);
@@ -238,6 +239,7 @@ async function fetchTips(quiet) {
     show('latestTipButton',!!latest);
     if(latest) $('latestTipButton').textContent='Latest community tip · '+shortDate(latest.receivedAt)+' · '+(latest.title || 'Tipline upload');
     paintMonitor(data.monitor);
+    globalThis.CerneyStoryRequests?.update(data.storyRequests || [],data.storyRequestMonitor);
     renderInbox();
     const updated=new Intl.DateTimeFormat('en-US',{hour:'numeric',minute:'2-digit'}).format(new Date());
     $('reportsStatus').textContent=`${reports.length} found video ${reports.length===1?'report':'reports'} · Updated ${updated}`;
@@ -500,6 +502,8 @@ if('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('messa
     if(event.data?.type!=='cerney-tip-open' || event.origin!==location.origin)return;
     let url;
     try { url=new URL(event.data.url); } catch { return; }
+    const story=url.searchParams.get('story');
+    if(url.origin===location.origin && url.pathname==='/tip-alerts/' && /^[a-f0-9]{64}$/.test(story || '')) {history.replaceState(null,'',url.pathname+url.search);loadTips().catch(e=>message(e.message,true));return;}
     const id=url.searchParams.get('tip');
     if(url.origin!==location.origin || url.pathname!=='/tip-alerts/' || !/^[a-f0-9]{64}$/.test(id || ''))return;
     tipId=id;openAttempts=0;clearTimeout(retryTimer);

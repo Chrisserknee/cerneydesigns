@@ -430,3 +430,6 @@ Object.assign(exports, require('./incident-alert-functions'));
 
 // Public reporting has its own private records and media; tip intake is separate.
 Object.assign(exports, require('./news'));
+
+// Private witness-callout drafts; never publish to Instagram.
+Object.assign(exports, require('./story-request-functions'));
