@@ -27,3 +27,9 @@
     transform-origin: center 75%;
     filter: blur(3px);
 }
+
+/* Soften the forest photo behind the Redwood & Reef logo. */
+.directory-page .directory-card-top.has-banner .directory-banner[src$="/localspotlight/banners/redwood-reef-wellness.webp"] {
+    transform: scale(1.4);
+    filter: blur(3px);
+}
