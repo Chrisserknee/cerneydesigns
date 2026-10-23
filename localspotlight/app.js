@@ -79,7 +79,6 @@
             ...Object.fromEntries(window.CerneySelectsSocials.platforms.map(({ field }) => [field, string(source[field], 300)])),
             logoBackdrop: isPreview && source.logoBackdrop === 'dark' ? 'dark' : '',
             textWordmark: isPreview && source.textWordmark === true,
-            featuredSpecialty: source.featured?.area === 'Monterey County' ? string(source.featured.specialty, 80) : '',
         };
     }
 
@@ -137,7 +136,6 @@
         if (mode === 'text') {
             const row = node('article', 'directory-text-row');
             const content = node('div');
-            if (profile.featuredSpecialty) content.append(node('p', 'featured-badge', `Featured ${profile.featuredSpecialty} · Monterey County`));
             content.append(businessName(profile), node('p', 'directory-text-meta', [profile.city, profile.category].filter(Boolean).join(' · ')));
             const arrow = node('span', 'directory-text-arrow', '↗');
             arrow.setAttribute('aria-hidden', 'true');
@@ -164,7 +162,6 @@
             card.append(top);
         }
         const body = node('div', 'directory-card-body');
-        if (profile.featuredSpecialty) body.append(node('p', 'featured-badge', `Featured ${profile.featuredSpecialty} · Monterey County`));
         body.append(node('p', 'directory-card-category', profile.category || 'Local business'), businessName(profile), node('p', 'directory-city', profile.city));
         if (profile.description) body.append(node('p', 'directory-description', profile.description));
         const bottom = node('div', 'directory-card-bottom');
@@ -226,10 +223,10 @@
             const searchable = `${listing.businessName} ${listing.city} ${listing.category} ${listing.description}`.toLocaleLowerCase();
             return matchesCategory(listing, category) && (!city || listing.city === city) && (!search || searchable.includes(search));
         });
-        // Only server-verified featured entitlements affect priority; every base listing uses the same card geometry.
+        // Featured placement is paused: every listing has the same presentation and alphabetical priority.
         const sortLabel = document.querySelector('.directory-sort');
-        if (sortLabel) sortLabel.textContent = listings.some(listing => listing.featuredSpecialty) ? 'Featured, then A–Z' : 'Businesses A–Z';
-        filtered.sort((a, b) => Number(!!b.featuredSpecialty) - Number(!!a.featuredSpecialty));
+        if (sortLabel) sortLabel.textContent = 'Businesses A–Z';
+        filtered.sort((a, b) => a.businessName.localeCompare(b.businessName));
         filteredCount = filtered.length;
         const pages = Math.max(1, Math.ceil(filtered.length / pageSize));
         page = Math.min(page, pages);

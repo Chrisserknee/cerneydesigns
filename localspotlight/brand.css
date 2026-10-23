@@ -153,7 +153,6 @@ body.cerneyselects-site {
 .cerneyselects-site.directory-page .directory-site-link,
 .cerneyselects-site.directory-page .directory-phone,
 .cerneyselects-site.directory-page .directory-text-arrow { color: var(--blue); }
-.cerneyselects-site.directory-page .featured-badge { border-radius: 0; background: #22374a; color: #c6dceb; border-color: #426b91; font-size: .65rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
 .cerneyselects-site.directory-page .directory-empty { background: var(--elev); border: 1px solid var(--border-strong); border-radius: 0; }
 .cerneyselects-site.directory-page .directory-empty-mark { color: var(--accent); background: transparent; border-radius: 0; }
 .cerneyselects-site.directory-page .directory-empty h2 { font-weight: 700; text-transform: uppercase; }

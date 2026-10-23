@@ -206,8 +206,6 @@ body.directory-page{color-scheme:light;--bg:#d4cfc4;--elev:#fffefa;--text:#24313
 .directory-page .directory-card-top.dark-logo-backdrop{background:#304651}
 .directory-page .dark-logo-backdrop .directory-mark img{mix-blend-mode:normal}
 .directory-page .directory-mark.text-wordmark{font-family:var(--display);font-size:2rem;line-height:1.2;text-align:center;letter-spacing:0}
-.directory-page .featured-badge{align-self:flex-start;display:inline-flex;align-items:center;gap:7px;background:#f1e3bc;color:#68481d;border:1px solid #dcc28b;border-radius:20px;padding:5px 11px;font-size:.7rem;line-height:1.5;font-weight:600;letter-spacing:.015em;margin-bottom:14px}
-.directory-page .directory-text-row .featured-badge{margin:0 0 8px}
 
 /* A little on-air personality, without adding weight to the directory. */
 .directory-page .spotlight-hero-kicker{display:flex;align-items:center;gap:15px;margin-bottom:17px}
