@@ -17,3 +17,13 @@ test('new tipster context takes priority over stale Claude output',()=>{
  assert.equal(displayContext(t,r).title,t.sourceTitle);
  assert.equal(displayContext(t,{...r,sourceContextAt:'2026-10-04T12:00:00Z'}).title,'Old');
 });
+
+test('original context preserves lines, bounds size, and excludes contact fields',()=>{
+ const result=sourceContext({whatHappened:'A first line\nA second line',timing:'Around 8 PM',senderContact:'NEVER EXPOSE',name:'NEVER EXPOSE'});
+ assert.equal(result.sourceDescription,'A first line\nA second line');
+ assert.equal(result.sourceTiming,'Around 8 PM');
+ assert.doesNotMatch(JSON.stringify(result),/NEVER EXPOSE/);
+ assert.equal(sourceContext({whatHappened:'x'.repeat(7000)}).sourceDescription.length,6000);
+ const legacy=displayContext({sourceSummary:'Old short account'},null);
+ assert.equal(legacy.submission.text,'Old short account');assert.equal(legacy.submission.complete,false);
+});

@@ -11,11 +11,15 @@ function sourceContext(initial={}, followup) {
     const source=followup || initial;
     const summary=text(source.whatHappened || source.description,360);
     return {sourceTitle:text(summary,100),sourceSummary:summary,sourceLocation:text(source.location,140),
+        sourceDescription:typeof (source.whatHappened || source.description)==='string' ? (source.whatHappened || source.description).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g,'').trim().slice(0,6000) : '',
+        sourceTiming:text(source.timing,500),
         contextReceivedAt:followup ? text(followup.receivedAt,40) : ''};
 }
 const states=new Set(['queued','analyzing','awaiting_editor','editing','rendering','qc_pending','ready','approved','needs_review','held','failed','declined','paused']);
 function displayContext(tip, report, delivery) {
-    const result={...tip,title:tip.sourceTitle || '',summary:tip.sourceSummary || '',location:tip.sourceLocation || '',contextSource:tip.sourceSummary?'tipster':'pending'};
+    // Capture the source text and original folder before any report enrichment.
+    const result={...tip,title:tip.sourceTitle || '',summary:tip.sourceSummary || '',location:tip.sourceLocation || '',contextSource:tip.sourceSummary?'tipster':'pending',reportComplete:false,
+        submission:{text:tip.sourceDescription ?? tip.sourceSummary ?? '',location:tip.sourceLocation || '',timing:tip.sourceTiming || '',driveUrl:tip.driveUrl || null,complete:typeof tip.sourceDescription==='string'}};
     if (!report || report.version!==1 || report.source!==tip.path || report.id!==tip.id
         || (tip.sourceGeneration && String(report.sourceGeneration)!==String(tip.sourceGeneration))) return result;
     // Follow-up evidence takes priority until Claude has incorporated that version.
@@ -30,7 +34,7 @@ function displayContext(tip, report, delivery) {
     const thumbnail=thumbnailDescriptor(tip,report);
     if(thumbnail)result.thumbnail=thumbnail;
     const finishedFolder=reportDelivery(tip,report,delivery);
-    if(finishedFolder){result.driveUrl=finishedFolder;Object.assign(result,reportCopy(delivery));}
+    if(finishedFolder){result.driveUrl=finishedFolder;result.reportComplete=true;Object.assign(result,reportCopy(delivery));}
     return result;
 }
 module.exports={text,sourceContext,displayContext};

@@ -1,5 +1,5 @@
 'use strict';
-// Worker/client release: 2026-10-22-story-backgrounds-2.
+// Worker/client release: 2026-10-23-simple-stories-1.
 self.addEventListener('install',event=>event.waitUntil(self.skipWaiting()));
 function inboxURL(value) {
     try {

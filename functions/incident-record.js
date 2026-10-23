@@ -15,6 +15,6 @@ function incidentRecord(data){
     return {id:data.id,receivedAt:data.receivedAt,type:'incident',status:data.state==='needs_review'?'review':'ready',
         title:clean(data.title,100),summary:clean(data.summary,420),location:clean(data.location,140),
         contextSource:'claude',reportState:data.state,reportRevision:data.revision,reportEdition:data.edition,
-        ...reportCopy(data),contextUpdatedAt:data.updatedAt,driveUrl:driveUrl(data.driveUrl),incomplete:false,draftDelivered:true};
+        ...reportCopy(data),contextUpdatedAt:data.updatedAt,driveUrl:driveUrl(data.driveUrl),incomplete:false,draftDelivered:true,reportComplete:true};
 }
 module.exports={incidentRecord};

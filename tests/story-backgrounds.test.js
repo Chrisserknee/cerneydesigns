@@ -6,7 +6,7 @@ test('all eighteen cities and every catalog image are packaged',()=>{
  assert.equal(backgrounds.catalog.filter(x=>x.kind==='city').length,18);
  assert.equal(new Set(backgrounds.catalog.map(x=>x.id)).size,backgrounds.catalog.length);
  const files=[...backgrounds.catalog.map(x=>x.id),...backgrounds.styles.map(x=>'style-'+x.id),'police-lights'];
- assert.equal(files.length,92);
+ assert.equal(files.length,93);
  for(const file of files){const bytes=fs.readFileSync(path.join(__dirname,'../tip-alerts/backgrounds/v1',file+'.jpg'));assert.deepEqual([...bytes.subarray(0,2)],[255,216]);assert(bytes.length>10000,file);}
 });
 test('precise community and road matching retains local specificity',()=>{
@@ -25,8 +25,8 @@ test('unverified language is not automatically promoted to critical',()=>{
 });
 test('image URLs are fixed same-origin allowlisted resources',()=>{
  const urls=backgrounds.paths({locationID:'../../private',urgency:'https://evil.example/image',policeLights:false});
- assert.deepEqual(urls,['/tip-alerts/backgrounds/v1/central-coast.jpg','/tip-alerts/backgrounds/v1/style-community.jpg']);
- assert.equal(backgrounds.paths({locationID:'monterey',urgency:'urgent',policeLights:true}).at(-1),'/tip-alerts/backgrounds/v1/police-lights.jpg');
+ assert.deepEqual(urls,['/tip-alerts/backgrounds/v1/central-coast.jpg?v=20261023-ref1','/tip-alerts/backgrounds/v1/style-community.jpg?v=20261023-ref1']);
+ assert.equal(backgrounds.paths({locationID:'monterey',urgency:'urgent',policeLights:true}).at(-1),'/tip-alerts/backgrounds/v1/police-lights.jpg?v=20261023-ref1');
 });
 test('images load only on request and repeat exports reuse public artwork',async()=>{
  let loads=0;
@@ -38,14 +38,38 @@ test('images load only on request and repeat exports reuse public artwork',async
  await backgrounds.load({...look,policeLights:true});assert.equal(loads,3);
  delete global.Image;
 });
-test('canvas exports include location artwork and an illustration disclosure',()=>{
- const calls=[],ctx={font:'',fillStyle:'',measureText:t=>({width:t.length*17}),fillRect(){},strokeRect(){},beginPath(){},moveTo(){},lineTo(){},stroke(){},save(){},restore(){},drawImage(...args){calls.push(['image',...args]);},createLinearGradient(){return {addColorStop(){}};},fillText(t){calls.push(['text',t]);}};
- const canvas={getContext:()=>ctx},look=backgrounds.validated({locationID:'monterey',urgency:'developing'}),image={naturalWidth:1080,naturalHeight:1920};
- storyImages.render(canvas,{headline:'Were you there?',question:'Did you see it?',context:'Example only',basis:'demo'},{...look,images:[image,image]});
+function recordingCanvas(){
+ const calls=[],ctx={font:'',fillStyle:'',measureText(t){return {width:t.length*(Number(this.font.match(/(\d+)px/)?.[1])||20)*.52};},fillRect(...args){calls.push(['rect',this.fillStyle,...args]);},strokeRect(){},beginPath(){},moveTo(){},lineTo(){},stroke(){},save(){},restore(){},drawImage(...args){calls.push(['image',...args]);},createLinearGradient(){return {addColorStop(){}};},fillText(t){calls.push(['text',t,this.fillStyle]);}};
+ return {canvas:{getContext:()=>ctx},calls};
+}
+test('real story exports contain only question, first-person CTA and upload URL',()=>{
+ const {canvas,calls}=recordingCanvas();
+ const look=backgrounds.validated({locationID:'monterey',urgency:'developing'}),image={naturalWidth:1080,naturalHeight:1920};
+ storyImages.render(canvas,{headline:'Were you on Laureles Grade?',question:'PRIVATE QUESTION',context:'PRIVATE SOURCE CONTEXT',basis:'reported'},{...look,images:[image,image]});
  assert.equal(canvas.width,1080);assert.equal(canvas.height,1920);
  assert.equal(calls.filter(x=>x[0]==='image').length,2);
- assert(calls.some(x=>x[1]==='MONTEREY / DOWNTOWN'));
- assert(calls.some(x=>String(x[1]).includes('AI-ILLUSTRATED BACKGROUND')));
+ assert.deepEqual(calls.filter(x=>x[0]==='text').map(x=>x[1]).join(' '),'Were you on Laureles Grade? Send photos or video to me. chriscerney.org/upload');
+});
+test('demo exports remain labeled, while private notes never enter the image',()=>{
+ const {canvas,calls}=recordingCanvas();
+ const look=backgrounds.validated({locationID:'monterey',urgency:'developing'}),image={naturalWidth:1080,naturalHeight:1920};
+ storyImages.render(canvas,{headline:'Were you there?',question:'Did you see it?',context:'Example only',basis:'demo'},{...look,images:[image,image]});
+ assert(calls.some(x=>x[1]==='DESIGN EXAMPLE · NO REAL INCIDENT'));
+ assert(!calls.some(x=>/Example only|CHRIS CERNEY REPORTS|AI-ILLUSTRATED|Community reporting/.test(x[1])));
+});
+test('every chosen urgency changes the exported accent even if artwork cannot load',()=>{
+ const exported=new Set();
+ for(const style of backgrounds.styles){const {canvas,calls}=recordingCanvas();storyImages.render(canvas,{headline:'Were you there?'},backgrounds.validated({locationID:'monterey',urgency:style.id}));
+  assert(calls.some(x=>x[0]==='text'&&x[1]==='chriscerney.org/upload'&&x[2]===style.color));
+  exported.add(JSON.stringify(calls));
+ }assert.equal(exported.size,5);
+});
+test('explicit reviewed urgency takes precedence over keyword suggestions',()=>{
+ assert.equal(backgrounds.suggested({headline:'Evacuation order',basis:'official',urgency:'update'}).urgency,'update');
+});
+test('an empty question cannot produce a shareable image',()=>{
+ const {canvas}=recordingCanvas();
+ assert.throws(()=>storyImages.render(canvas,{headline:'  '}),/Add a short question/);
 });
 
 test('tri-county locations and parent districts retain specificity',()=>{

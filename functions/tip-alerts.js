@@ -271,7 +271,7 @@ async function handleApi(req, res) {
             return res.json({authenticated:false});
         }
         if (body.op === 'list' || body.op === 'tip') {
-            const publicTip=({path,sourceGeneration,sourceTitle,sourceSummary,sourceLocation,contextReceivedAt,...tip})=>tip;
+            const publicTip=({path,sourceGeneration,sourceTitle,sourceSummary,sourceDescription,sourceTiming,sourceLocation,contextReceivedAt,...tip})=>tip;
             if (body.op === 'tip') {
                 if (!/^[a-f0-9]{64}$/.test(body.id || '')) return res.status(400).json({error:'Invalid tip.'});
                 const stored = await read(`tips/${body.id}.json`);
@@ -283,7 +283,7 @@ async function handleApi(req, res) {
                 // The selected card needs only its own report and delivery.
                 // Resolve the current source as before, without reloading the inbox.
                 const [tip,report,delivery]=await Promise.all([
-                    bucket().file(stored.data.path).getMetadata().then(([latest])=>syncTip(latest)),
+                    typeof stored.data.sourceDescription==='string' && body.refreshSource!==true ? Promise.resolve(stored.data) : bucket().file(stored.data.path).getMetadata().then(([latest])=>syncTip(latest)),
                     read(`enrichment/${body.id}.json`),read(`deliveries/${body.id}.json`),
                 ]);
                 return res.json({authenticated:true,expiresAt:device.expiresAt,tips:[publicTip(displayContext(tip,report?.data,delivery?.data))]});

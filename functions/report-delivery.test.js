@@ -16,3 +16,19 @@ test('unfinished report or missing delivery keeps the existing behavior',()=>{
  assert.equal(displayContext(tip,{...report,state:'rendering'},delivery).driveUrl,tip.driveUrl);
  assert.equal(displayContext(tip,report).driveUrl,tip.driveUrl);
 });
+
+test('raw submission and original folder survive completed report enrichment',()=>{
+ const raw={...tip,sourceSummary:'Original short account',sourceDescription:'Original full account\nwith a second line',sourceTiming:'Tonight',sourceLocation:'Monterey'};
+ const result=displayContext(raw,report,delivery);
+ assert.equal(result.reportComplete,true);
+ assert.equal(result.submission.text,raw.sourceDescription);
+ assert.equal(result.submission.driveUrl,tip.driveUrl);
+ assert.equal(result.submission.timing,'Tonight');
+ assert.equal(result.submission.complete,true);
+ assert.equal(result.driveUrl,delivery.driveUrl);
+ assert.equal(result.title,report.title);
+ for(const candidate of [undefined,{...delivery,revision:1},{...delivery,draftDelivered:false},{...delivery,sourceGeneration:'41'}]) {
+   assert.equal(displayContext(raw,report,candidate).reportComplete,false);
+ }
+ assert.equal(displayContext({...raw,contextReceivedAt:'2026-10-11T04:01:00Z'},report,delivery).reportComplete,false);
+});

@@ -7,9 +7,9 @@
 <title>Cerney Tips · Private inbox</title>
 <link rel="manifest" href="/tip-alerts/manifest.webmanifest"><link rel="apple-touch-icon" href="/tip-alerts/icon-192.png">
 <link rel="icon" href="/tip-alerts/icon.svg" type="image/svg+xml"><link rel="stylesheet" href="/tip-alerts/style.css?v=inbox-20261021-4">
-<link rel="stylesheet" href="/tip-alerts/story-requests.css?v=20261022-backgrounds-2">
-<script src="/tip-alerts/story-backgrounds.js?v=20261022-backgrounds-2" defer></script>
-<script src="/tip-alerts/story-requests.js?v=20261022-backgrounds-2" defer></script>
+<link rel="stylesheet" href="/tip-alerts/story-requests.css?v=20261023-simple-stories-1">
+<script src="/tip-alerts/story-backgrounds.js?v=20261023-simple-stories-1" defer></script>
+<script src="/tip-alerts/story-requests.js?v=20261023-simple-stories-1" defer></script>
 <script src="/tip-alerts/report-copy.js" defer></script>
 <script src="/tip-alerts/thumbnail.js" defer></script><script src="/tip-alerts/app.js?v=story-requests-20261022-1" defer></script>
 </head>
@@ -17,11 +17,11 @@
 <div id="pullIndicator" class="pull-indicator" role="status" aria-live="polite" hidden></div>
 <main>
 <header><div class="brand"><img src="/tip-alerts/icon.svg" width="44" height="44" alt=""><div><span class="eyebrow">CHRIS CERNEY REPORTS</span><strong>Cerney Tips</strong></div></div><span class="private">Private inbox</span></header>
-<section id="intro" class="intro"><p class="eyebrow">YOUR NEWSROOM, WITH YOU</p><h1>Be there when<br>the story arrives.</h1><p>Get a phone alert for new tips. Open the matching Google Drive folder with a tap.</p></section>
+<section id="intro" class="intro"><h1>Private inbox</h1></section>
 <section id="install" class="card install" hidden><span class="step">ONE-TIME IPHONE SETUP</span><h2>Add Tip Alerts to your Home Screen</h2><p>In Safari, tap <strong>Share</strong>, then <strong>Add to Home Screen</strong>. Open the new <strong>Cerney Tips</strong> icon, sign in, and enable alerts.</p><p class="muted">Notifications work from the Home Screen app.</p></section>
-<section id="login" class="card" hidden><h2>Your private tip inbox</h2><p>Sign in with your website administrator password to connect this device.</p><form id="loginForm"><label for="password">Administrator password</label><input id="password" type="password" autocomplete="current-password" required minlength="12" maxlength="256"><button type="submit">Sign in</button></form></section>
+<section id="login" class="card" hidden><h2>Sign in</h2><p>Sign in with your website administrator password to connect this device.</p><form id="loginForm"><label for="password">Administrator password</label><input id="password" type="password" autocomplete="current-password" required minlength="12" maxlength="256"><button type="submit">Sign in</button></form></section>
 <section id="connected" hidden>
-<section class="desk-heading"><div><p class="eyebrow">YOUR PRIVATE NEWSROOM</p><h1>The story desk.</h1><p class="muted">Find the story. Review the evidence. Take it with you.</p></div><button id="refreshButton" class="secondary" type="button" aria-label="Refresh inbox">↻ Refresh</button></section>
+<section class="desk-heading"><div><h1>Inbox</h1></div><button id="refreshButton" class="secondary" type="button" aria-label="Refresh inbox">↻ Refresh</button></section>
 <p id="inboxFreshness" class="small muted" role="status" aria-live="polite">Checking for new tips…</p>
 <button id="latestTipButton" class="latest-tip" type="button" hidden></button>
 <div class="desk-stats" aria-label="Inbox overview"><div><strong id="readyCount">—</strong><span>Drafts ready</span></div><div><strong id="attentionCount">—</strong><span>Need attention</span></div><div><strong id="totalCount">—</strong><span>Recent stories</span></div></div>
@@ -31,7 +31,7 @@
 <p id="filterStatus" class="small muted" role="status" aria-live="polite"></p>
 <nav class="source-nav" aria-label="Inbox sections"><a class="source-community" href="#communitySection">Community tips <span id="communityCount">0</span></a><a id="foundReportsLink" class="source-found" href="#reportsSection">Found reports <span id="foundCount">0</span></a></nav>
 <div id="selected" class="card selected" hidden></div>
-<section id="communitySection" class="inbox source-community" aria-labelledby="communityHeading"><div class="section-heading"><div><p class="eyebrow">SENT TO YOUR TIPLINE</p><h2 id="communityHeading">Community tips</h2><p class="section-description">From your community, with each report’s progress in one place.</p></div></div><p id="inboxStatus" class="muted small" role="status" aria-live="polite">Loading community tips…</p><p id="empty" class="muted" hidden>No community tips received in the past 30 days.</p><div id="tips"></div><p id="tipsEmpty" class="empty-state" hidden>No community tips match these filters.</p><p class="muted small">All submissions received in the past 30 days. Use Show more to browse older tips. Files stay in your existing private storage.</p></section>
+<section id="communitySection" class="inbox source-community" aria-labelledby="communityHeading"><div class="section-heading"><div><h2 id="communityHeading">Community tips</h2><p class="section-description">Tips submitted to the tipline.</p></div></div><p id="inboxStatus" class="muted small" role="status" aria-live="polite">Loading community tips…</p><p id="empty" class="muted" hidden>No community tips received in the past 30 days.</p><div id="tips"></div><p id="tipsEmpty" class="empty-state" hidden>No community tips match these filters.</p><p class="muted small">All submissions received in the past 30 days. Use Show more to browse older tips. Files stay in your existing private storage.</p></section>
 <section id="reportsSection" class="inbox source-found" aria-labelledby="reportsHeading" hidden><div class="section-heading"><div><p class="eyebrow">FOUND THROUGH MONITORING</p><h2 id="reportsHeading">Found reports</h2><p class="section-description">Official releases and stories found through monitoring.</p></div></div><p id="reportsStatus" class="muted small" role="status" aria-live="polite"></p><div id="reports"></div><p id="reportsEmpty" class="empty-state" hidden>No found reports match these filters.</p></section>
 <details id="notificationSettings" class="card settings"><summary>Notification settings</summary><div class="controls"><div class="statusline"><span id="statusDot" class="dot"></span><h2 id="pushStatus">Checking notifications…</h2></div><p id="pushHelp" class="muted"></p><div class="buttons"><button id="enable" hidden>Enable phone alerts</button><button id="disable" class="text-button" hidden>Turn off on this device</button></div></div></details>
 <details class="card"><summary>Connected devices</summary><p class="muted">If a device is lost or unfamiliar, disconnect it here to stop its access and alerts.</p><button id="showDevices" class="text-button">Check connected devices</button><div id="devices"></div></details>

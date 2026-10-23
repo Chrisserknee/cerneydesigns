@@ -1,72 +1,75 @@
 'use strict';
 (function(root){
  const ID=/^[a-f0-9]{64}$/;
- const CTA='Have photos or video? Upload them to my tipline or send them directly to me.';
+ const CTA='Send photos or video to me.';
  function lines(ctx,text,maxWidth){const words=String(text||'').trim().split(/\s+/),out=[];let line='';for(const word of words){const next=line?line+' '+word:word;if(ctx.measureText(next).width>maxWidth&&line){out.push(line);line=word;}else line=next;}if(line)out.push(line);return out;}
  function fit(ctx,text,width,size,min,maxLines){let result;for(let n=size;n>=min;n-=2){ctx.font=`700 ${n}px Arial, sans-serif`;result=lines(ctx,text,width);if(result.length<=maxLines&&result.every(l=>ctx.measureText(l).width<=width))return {lines:result,size:n};}throw Error('That text is too long for the story. Shorten it and try again.');}
  function render(canvas,story,art=null){
+  if(!String(story.headline||'').trim())throw Error('Add a short question before sharing this story.');
   canvas.width=1080;canvas.height=1920;const c=canvas.getContext('2d');
-  c.fillStyle='#f5f1e9';c.fillRect(0,0,1080,1920);c.fillStyle='#132f46';c.fillRect(0,0,1080,1440);
-  if(art)root.CerneyStoryBackgrounds.paint(c,art);
+  c.fillStyle='#132f46';c.fillRect(0,0,1080,1920);
+  if(art?.images?.length)root.CerneyStoryBackgrounds.paint(c,art);
   const accent=art?.style.color||'#ea8b77';
-  c.fillStyle='#f5f1e9';c.fillRect(60,1440,960,340);
-  c.fillStyle='#ea8b77';c.fillRect(88,218,64,64);c.fillStyle='#132f46';c.font='700 51px Arial';c.fillText('C',101,270);
-  c.fillStyle='#f5f1e9';c.font='700 26px Arial';c.fillText('CHRIS CERNEY REPORTS',180,246);c.font='24px Arial';c.fillText('Central Coast • Community reporting',180,279);
-  c.fillStyle=accent;c.font='700 25px Arial';c.fillText(story.basis==='demo'?'DESIGN EXAMPLE · NO REAL INCIDENT':'WERE YOU THERE?',88,365);
-  if(art){c.fillStyle='#f5f1e9';c.font='500 23px Arial';c.fillText(art.place.label.toUpperCase(),88,415);}
+  if(story.basis==='demo'){c.fillStyle=accent;c.font='700 25px Arial';c.fillText('DESIGN EXAMPLE · NO REAL INCIDENT',88,320);}
   function block(text,y,width,size,min,maxLines,color,weight='700'){
    const f=fit(c,text,width,size,min,maxLines);c.font=`${weight} ${f.size}px Arial, sans-serif`;c.fillStyle=color;
    for(const [i,line] of f.lines.entries())c.fillText(line,88,y+i*f.size*1.17);
    return y+(f.lines.length-1)*f.size*1.17;
   }
-  block(story.headline,485,904,86,54,3,'#ffffff');
-  c.strokeStyle='#506372';c.beginPath();c.moveTo(88,785);c.lineTo(992,785);c.stroke();
-  block(story.question,875,904,58,40,5,'#ffffff');
-  block(story.context||'I’m looking for people who saw what happened.',1270,904,34,28,3,'#cad5dd','400');
-  block(CTA,1500,904,41,35,3,'#132f46');
-  c.font='700 49px Arial';c.fillStyle='#132f46';c.fillText('chriscerney.org/upload',88,1670);
-  c.fillStyle='#ea8b77';c.fillRect(88,1710,180,7);
-  if(art){c.fillStyle='#f5f1e9';c.font='500 20px Arial';c.fillText('AI-ILLUSTRATED BACKGROUND · NOT INCIDENT FOOTAGE',88,1830);}
+  block(story.headline,580,904,120,66,4,'#ffffff');
+  c.fillStyle=accent;c.fillRect(88,1190,180,7);
+  block(CTA,1350,904,52,44,2,'#ffffff','400');
+  c.font='700 56px Arial';c.fillStyle=accent;c.fillText('chriscerney.org/upload',88,1550);
   return canvas;
  }
- let section,signature='',urls=[],timers=[],selected='';
+ let section,signature='',selected='';
+ const cards=new Map();
  const el=(tag,text,cls)=>{const x=document.createElement(tag);if(text)x.textContent=text;if(cls)x.className=cls;return x;};
- function clear(){signature='';selected='';for(const u of urls)URL.revokeObjectURL(u);urls=[];for(const t of timers)clearTimeout(t);timers=[];section?.remove();section=null;}
+ function clear(){signature='';selected='';for(const item of cards.values())item.node.dispose();cards.clear();section?.remove();section=null;}
  function card(story){
   const box=el('details',null,'witness-card');box.id='witness-'+story.id;
   const summary=el('summary');summary.append(el('span',story.headline),el('small',story.basis==='demo'?'Example · No alert sent':story.sources.length+' source'+(story.sources.length===1?'':'s')+' · Review & share'));box.append(summary);
   const editor=el('div',null,'witness-editor'),preview=el('img',null,'witness-preview');preview.alt='Instagram Story preview';
   const form=el('div',null,'witness-form'),draft={...story},backgrounds=root.CerneyStoryBackgrounds;
-  let look=backgrounds?.suggested(story),manualLook=false,file=null,revision=0,ownURL=null;
+  let look=backgrounds?.suggested(story),manualLook=false,file=null,revision=0,ownURL=null,timer;
+  box.dispose=()=>{revision++;clearTimeout(timer);if(ownURL)URL.revokeObjectURL(ownURL);box.remove();};
   const status=el('p',null,'witness-status');status.setAttribute('role','status');
   const share=el('button','Share story image'),download=el('button','Save image','secondary');share.type=download.type='button';share.disabled=download.disabled=true;
   async function prepare(){
+   clearTimeout(timer);
    const current=++revision,snapshot={...draft},selectedLook={...look};file=null;share.disabled=download.disabled=true;status.textContent='Preparing image…';
-   try{let art=null,plain=false;if(backgrounds){try{art=await backgrounds.load(selectedLook);}catch{plain=true;}}
+   try{let art=null,plain=false;if(backgrounds){try{art=await backgrounds.load(selectedLook);}catch{plain=true;art=backgrounds.validated(selectedLook);}}
     if(current!==revision||!box.isConnected)return;
     const canvas=render(document.createElement('canvas'),snapshot,art);const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));
     if(current!==revision||!box.isConnected)return;if(!blob)throw Error('Could not prepare this image.');
-    if(ownURL)URL.revokeObjectURL(ownURL);ownURL=URL.createObjectURL(blob);urls.push(ownURL);preview.src=ownURL;
-    file=new File([blob],'cerney-story-'+story.id.slice(0,8)+'.png',{type:'image/png'});share.disabled=download.disabled=false;status.textContent=plain?'Background unavailable. A plain story image is ready; try again to load the illustration.':'Ready for your review.';
+    if(ownURL)URL.revokeObjectURL(ownURL);ownURL=URL.createObjectURL(blob);preview.src=ownURL;
+    file=new File([blob],'cerney-story-'+story.id.slice(0,8)+'.png',{type:'image/png'});share.disabled=download.disabled=false;status.textContent=plain?'Background unavailable. Your story is ready with a plain background.':(art?.style.label?art.style.label+' · ':'')+'Ready for your review.';
    }catch(e){if(current===revision)status.textContent=e.message;}
   }
   let syncLook=()=>{};
   if(backgrounds){
-   const settings=el('fieldset',null,'witness-appearance');settings.append(el('legend','Set the scene'));
+   const settings=el('fieldset',null,'witness-appearance');settings.append(el('legend','Appearance'));
    const placeLabel=el('label','Location background'),places=el('select');places.setAttribute('aria-label','Location background');
    for(const place of [...backgrounds.catalog].sort((a,b)=>a.label.localeCompare(b.label))){const option=el('option',place.label+(place.kind==='fallback'?'':' · '+place.counties.join(' / '))); option.value=place.id;places.append(option);}placeLabel.append(places);
-   const colorLabel=el('label','Urgency color'),colors=el('select');colors.setAttribute('aria-label','Urgency color');
-   for(const style of backgrounds.styles){const option=el('option',style.label);option.value=style.id;colors.append(option);}colorLabel.append(colors);
+   const colorLabel=el('div',null,'witness-urgency');colorLabel.append(el('p','Urgency color','witness-control-label'));
+   const colors=el('div',null,'witness-urgency-options');colors.setAttribute('role','group');colors.setAttribute('aria-label','Urgency color');
+   const colorButtons=[];
+   for(const style of backgrounds.styles){
+    const button=el('button',null,'witness-urgency-option');button.type='button';button.setAttribute('aria-label',style.label);button.style.setProperty('--urgency-color',style.color);
+    const check=el('span','✓','witness-urgency-check');check.setAttribute('aria-hidden','true');
+    button.append(el('span',null,'witness-urgency-swatch'),el('span',style.label),check);
+    button.addEventListener('click',()=>{manualLook=true;look={...look,urgency:style.id};syncLook();prepare();});colorButtons.push({button,id:style.id});colors.append(button);
+   }colorLabel.append(colors);
    const policeLabel=el('label',null,'witness-police'),police=el('input');police.type='checkbox';police.setAttribute('aria-label','Blurred police lights');policeLabel.append(police,document.createTextNode(' Blurred police lights'));
-   syncLook=()=>{places.value=look.locationID;colors.value=look.urgency;police.checked=look.policeLights;};syncLook();
-   function changed(){manualLook=true;look={locationID:places.value,urgency:colors.value,policeLights:police.checked};prepare();}
-   places.addEventListener('change',changed);colors.addEventListener('change',changed);police.addEventListener('change',changed);
+   syncLook=()=>{places.value=look.locationID;for(const option of colorButtons)option.button.setAttribute('aria-pressed',String(option.id===look.urgency));police.checked=look.policeLights;};syncLook();
+   function changed(){manualLook=true;look={...look,locationID:places.value,policeLights:police.checked};prepare();}
+   places.addEventListener('change',changed);police.addEventListener('change',changed);
    const reset=el('button','Use suggested appearance','text-button');reset.type='button';reset.addEventListener('click',()=>{manualLook=false;look=backgrounds.suggested(draft);syncLook();prepare();});
    settings.append(placeLabel,colorLabel,policeLabel,el('p','AI illustrations of an area, not incident photos. Use police lights only when they fit the source.','small muted'),reset);form.append(settings);
   }
-  for(const [key,label,max] of [['headline','Headline',100],['question','Question for witnesses',260],['context','Supporting line',200]]){
-   const field=el('label',label);const input=el('textarea');input.rows=key==='headline'?2:3;input.maxLength=max;input.value=draft[key]||'';input.setAttribute('aria-label',label);let timer;
-   input.addEventListener('input',()=>{draft[key]=input.value;revision++;file=null;share.disabled=download.disabled=true;if(backgrounds&&!manualLook){look=backgrounds.suggested(draft);syncLook();}clearTimeout(timer);timer=setTimeout(prepare,180);timers.push(timer);});field.append(input);form.append(field);
+  for(const [key,label,max] of [['headline','Story question',100]]){
+   const field=el('label',label);const input=el('textarea');input.rows=2;input.maxLength=max;input.value=draft[key]||'';input.setAttribute('aria-label',label);
+   input.addEventListener('input',()=>{draft[key]=input.value;revision++;file=null;share.disabled=download.disabled=true;if(backgrounds&&!manualLook){look=backgrounds.suggested(draft);syncLook();}clearTimeout(timer);timer=setTimeout(prepare,180);});field.append(input);form.append(field);
   }
   const actions=el('div',null,'witness-actions');actions.append(share,download);form.append(actions,status);
   share.addEventListener('click',()=>{
@@ -79,6 +82,7 @@
   form.append(el('p','Choose Instagram in the share sheet, then Story. If Instagram isn’t offered, save the image and add it from Photos. You decide whether to post.','small muted'));
   const copy=el('button','Copy upload link','text-button');copy.type='button';copy.addEventListener('click',async()=>{try{await navigator.clipboard.writeText('https://www.chriscerney.org/upload');status.textContent='Upload link copied. You can add it as an Instagram link sticker.';}catch{status.textContent='Link: https://www.chriscerney.org/upload';}});form.append(copy);
   const notes=el('details',null,'witness-notes');notes.append(el('summary','Sources & review notes'));
+  if(story.context)notes.append(el('p',story.context));
   notes.append(el('p',story.reviewNote||'Check the location and timing before sharing.'));
   if(story.timeLabel)notes.append(el('p','Incident timing: '+story.timeLabel));
   notes.append(el('p','Prepared '+new Date(story.createdAt).toLocaleString()+' · Available until '+new Date(story.expiresAt).toLocaleString()));
@@ -92,11 +96,24 @@
   const next=JSON.stringify(stories);const requested=new URLSearchParams(location.search).get('story');
   if(!section){section=el('section',null,'witness-section');section.id='storyRequests';const heading=connected.querySelector('.desk-heading');heading?heading.after(section):connected.prepend(section);}
   if(signature!==next || !section.childNodes.length){
-   for(const u of urls)URL.revokeObjectURL(u);urls=[];section.replaceChildren();signature=next;selected='';
-   const h=el('div',null,'witness-heading');const title=el('div');title.append(el('p','ASK YOUR COMMUNITY','eyebrow'),el('h2','Story requests'),el('p','Ready-to-share images asking witnesses for photos and video.','muted'));h.append(title,el('span',String(stories.length),'witness-count'));section.append(h);
-   const healthText=el('p',null,'small muted');healthText.id='storyRequestHealth';section.append(healthText);
-   if(!stories.length)section.append(el('p','New, timely incidents will appear here after checking the available sources.','witness-empty'));
-   for(const s of stories.filter(x=>ID.test(x.id||'')))section.append(card(s));
+   signature=next;
+   if(!section.childNodes.length){
+    const h=el('div',null,'witness-heading');const title=el('div');title.append(el('h2','Story requests'));h.append(title,el('span',null,'witness-count'));section.append(h);
+    const healthText=el('p',null,'small muted');healthText.id='storyRequestHealth';section.append(healthText);
+   }
+   const valid=[...new Map(stories.filter(x=>ID.test(x.id||'')).map(story=>[story.id,story])).values()],ids=new Set(valid.map(story=>story.id));
+   section.querySelector('.witness-count').textContent=String(valid.length);
+   for(const [id,item]of cards){if(!ids.has(id)){item.node.dispose();cards.delete(id);}}
+   section.querySelector('.witness-empty')?.remove();
+   if(!valid.length)section.append(el('p','New, timely incidents will appear here after checking the available sources.','witness-empty'));
+   for(const [index,story] of valid.entries()){
+    const source=JSON.stringify(story),previous=cards.get(story.id);let node=previous?.node;
+    if(previous?.source!==source){const open=Boolean(node?.open);node?.dispose();node=card(story);node.open=open;cards.set(story.id,{node,source});}
+    // Keep the actual editor node, local wording and selected color when only
+    // other incidents change during a background inbox refresh.
+    const current=section.querySelectorAll('.witness-card')[index];
+    if(current!==node)section.insertBefore(node,current||null);
+   }
   }
   const healthText=document.getElementById('storyRequestHealth');
   if(healthText)healthText.textContent=health?.checkedAt?(health.status==='attention'?'Story writer needs attention on the Mac. Last check: ':Date.now()-Date.parse(health.checkedAt)>10*60000?'Story monitor needs attention. Last check: ':'Story monitor checked ')+new Date(health.checkedAt).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})+(health.pending?' · '+health.pending+' awaiting a check':''):'Story monitor status is not available yet.';
