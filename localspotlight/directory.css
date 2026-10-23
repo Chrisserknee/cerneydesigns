@@ -206,28 +206,8 @@ body.directory-page{color-scheme:light;--bg:#d4cfc4;--elev:#fffefa;--text:#24313
 .directory-page .directory-card-top.dark-logo-backdrop{background:#304651}
 .directory-page .dark-logo-backdrop .directory-mark img{mix-blend-mode:normal}
 .directory-page .directory-mark.text-wordmark{font-family:var(--display);font-size:2rem;line-height:1.2;text-align:center;letter-spacing:0}
-.directory-page .weekly-badge{align-self:flex-start;display:inline-flex;align-items:center;gap:7px;background:#f1e3bc;color:#68481d;border:1px solid #dcc28b;border-radius:20px;padding:5px 11px;font-size:.7rem;line-height:1.5;font-weight:600;letter-spacing:.015em;margin-bottom:14px}
-.directory-page .directory-card.is-weekly-feature{grid-column:span 2;border:1px solid #b89553;background:#fffdf5;box-shadow:0 5px 24px #8c6d2730,0 0 0 3px #e5cd932b;display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:26px}
-.directory-page .is-weekly-feature .directory-card-top{margin:-24px 0 -24px -24px;padding:28px 22px;min-height:100%;height:calc(100% + 48px);background:#eee6d5}
-.directory-page .is-weekly-feature .directory-card-top.dark-logo-backdrop{background:#304651}
-.directory-page .is-weekly-feature .directory-mark{height:128px;max-width:270px}
-.directory-page .is-weekly-feature .directory-mark img{height:112px;max-height:128px}
-.directory-page .is-weekly-feature .directory-mark.wide-logo img{height:auto;max-height:112px}
-.directory-page .is-weekly-feature .directory-mark.tall-logo img{height:128px}
-.directory-page .is-weekly-feature h3{font-size:1.35rem;line-height:1.35}
-.directory-page .weekly-note{font-size:.67rem;line-height:1.5;color:#766444;margin-top:9px}
-.directory-page .is-weekly-feature.without-logo{display:flex}
-.directory-page .directory-card.is-weekly-feature:hover{box-shadow:0 9px 30px #8c6d273b,0 0 0 3px #e5cd9340;border-color:#a48140}
-.directory-page .directory-text-row .weekly-badge{margin:0 0 8px}
-@media(max-width:600px){
-.directory-page .directory-card.is-weekly-feature{grid-column:auto;display:flex;gap:0;padding:21px;border-radius:18px;box-shadow:0 4px 18px #8c6d2730,0 0 0 2px #e5cd932b}
-.directory-page .is-weekly-feature .directory-card-top{margin:-21px -21px 19px;padding:23px 21px;min-height:130px;height:auto}
-.directory-page .is-weekly-feature .directory-mark{height:95px;max-width:240px}
-.directory-page .is-weekly-feature .directory-mark img{height:82px;max-height:95px}
-.directory-page .is-weekly-feature .directory-mark.tall-logo img{height:95px}
-.directory-page .is-weekly-feature .directory-mark.wide-logo img{height:auto;max-height:82px}
-.directory-page .is-weekly-feature h3{font-size:1.2rem}
-}
+.directory-page .featured-badge{align-self:flex-start;display:inline-flex;align-items:center;gap:7px;background:#f1e3bc;color:#68481d;border:1px solid #dcc28b;border-radius:20px;padding:5px 11px;font-size:.7rem;line-height:1.5;font-weight:600;letter-spacing:.015em;margin-bottom:14px}
+.directory-page .directory-text-row .featured-badge{margin:0 0 8px}
 
 /* A little on-air personality, without adding weight to the directory. */
 .directory-page .spotlight-hero-kicker{display:flex;align-items:center;gap:15px;margin-bottom:17px}

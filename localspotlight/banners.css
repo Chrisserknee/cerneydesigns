@@ -1,4 +1,21 @@
 .directory-page .directory-card-top.has-banner { position: relative; isolation: isolate; overflow: hidden; }
 .directory-page .directory-card-top.has-banner .directory-banner { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -2; }
 .directory-page .directory-card-top.has-banner::after { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(5, 20, 32, .12), rgba(5, 20, 32, .36)); z-index: -1; }
-.directory-page .directory-card-top.has-banner .directory-mark { position: relative; width: fit-content; height: auto; max-width: 80%; min-width: 72px; min-height: 72px; background: #fff; padding: 10px; box-shadow: 0 4px 24px rgba(0, 0, 0, .2); }
+.directory-page .directory-card-top.has-banner .directory-mark { position: relative; width: fit-content; height: 100px; max-width: 80%; min-width: 72px; min-height: 0; max-height: 100%; background: #fff; padding: 10px; box-shadow: 0 4px 24px rgba(0, 0, 0, .2); }
+
+/* Equal membership placement: image proportions never change the banner slot. */
+.directory-page .directory-grid:not(.is-text-view) { grid-auto-rows: 1fr; }
+.directory-page .directory-card { --listing-banner-height: 148px; grid-column: auto; min-width: 0; }
+.directory-page .directory-card .directory-card-top {
+    height: var(--listing-banner-height);
+    min-height: var(--listing-banner-height);
+    flex: 0 0 var(--listing-banner-height);
+    padding: 18px 24px;
+    overflow: hidden;
+}
+.directory-page .directory-card-top .directory-mark { max-height: 100%; }
+.directory-page .directory-card-top .directory-mark img { max-width: 100%; max-height: 100%; object-fit: contain; }
+@media (max-width: 600px) {
+    .directory-page .directory-card { --listing-banner-height: 140px; }
+    .directory-page .directory-card .directory-card-top { margin: -21px -21px 18px; padding: 18px 21px; }
+}

@@ -133,12 +133,11 @@
         return mark;
     }
 
-    function businessCard(profile, index, featured = false) {
+    function businessCard(profile, index) {
         if (mode === 'text') {
             const row = node('article', 'directory-text-row');
             const content = node('div');
-            if (featured) content.append(node('p', 'weekly-badge', '✦ Featured this week'));
-            if (profile.featuredSpecialty) content.append(node('p', 'weekly-badge', `Featured ${profile.featuredSpecialty} · Monterey County`));
+            if (profile.featuredSpecialty) content.append(node('p', 'featured-badge', `Featured ${profile.featuredSpecialty} · Monterey County`));
             content.append(businessName(profile), node('p', 'directory-text-meta', [profile.city, profile.category].filter(Boolean).join(' · ')));
             const arrow = node('span', 'directory-text-arrow', '↗');
             arrow.setAttribute('aria-hidden', 'true');
@@ -147,7 +146,6 @@
         }
         const showMark = mode !== 'cards';
         const card = node('article', `directory-card${showMark ? '' : ' without-logo'}`);
-        if (featured) card.classList.add('is-weekly-feature');
         const tone = Array.from(profile.businessName).reduce((total, char) => total + char.codePointAt(0), 0) % 4;
         card.dataset.tone = String(tone);
         if (showMark) {
@@ -166,8 +164,7 @@
             card.append(top);
         }
         const body = node('div', 'directory-card-body');
-        if (featured) body.append(node('p', 'weekly-badge', '✦ Featured this week'));
-        if (profile.featuredSpecialty) body.append(node('p', 'weekly-badge', `Featured ${profile.featuredSpecialty} · Monterey County`));
+        if (profile.featuredSpecialty) body.append(node('p', 'featured-badge', `Featured ${profile.featuredSpecialty} · Monterey County`));
         body.append(node('p', 'directory-card-category', profile.category || 'Local business'), businessName(profile), node('p', 'directory-city', profile.city));
         if (profile.description) body.append(node('p', 'directory-description', profile.description));
         const bottom = node('div', 'directory-card-bottom');
@@ -187,23 +184,8 @@
         const socials = window.CerneySelectsSocialLinks(profile);
         if (socials) bottom.append(socials);
         if (bottom.childElementCount) body.append(bottom);
-        if (featured) body.append(node('p', 'weekly-note', 'A new local business in the spotlight each week.'));
         card.append(body);
         return card;
-    }
-
-    function weeklyBusiness(pool, now = Date.now()) {
-        // A stable shuffled rotation: everyone sees the same pick for the week,
-        // and each business gets a turn before the unchanged pool repeats.
-        const identity = listing => `${listing.businessName}\n${listing.website}`;
-        const hash = text => {
-            let value = 2166136261;
-            for (const character of text) value = Math.imul(value ^ character.codePointAt(0), 16777619);
-            return value >>> 0;
-        };
-        const shuffled = [...pool].sort((a, b) => hash(identity(a)) - hash(identity(b)) || identity(a).localeCompare(identity(b)));
-        const week = Math.floor((now - Date.UTC(2026, 0, 5)) / (7 * 86400000));
-        return shuffled.length ? shuffled[((week % shuffled.length) + shuffled.length) % shuffled.length] : null;
     }
 
     async function request() {
@@ -244,17 +226,17 @@
             const searchable = `${listing.businessName} ${listing.city} ${listing.category} ${listing.description}`.toLocaleLowerCase();
             return matchesCategory(listing, category) && (!city || listing.city === city) && (!search || searchable.includes(search));
         });
+        // Only server-verified featured entitlements affect priority; every base listing uses the same card geometry.
+        const sortLabel = document.querySelector('.directory-sort');
+        if (sortLabel) sortLabel.textContent = listings.some(listing => listing.featuredSpecialty) ? 'Featured, then A–Z' : 'Businesses A–Z';
         filtered.sort((a, b) => Number(!!b.featuredSpecialty) - Number(!!a.featuredSpecialty));
-        const featured = listings.some(listing => listing.featuredSpecialty) ? null : weeklyBusiness(listings);
-        const featuredIndex = filtered.indexOf(featured);
-        if (featuredIndex > 0) filtered.unshift(...filtered.splice(featuredIndex, 1));
         filteredCount = filtered.length;
         const pages = Math.max(1, Math.ceil(filtered.length / pageSize));
         page = Math.min(page, pages);
         const offset = (page - 1) * pageSize;
         const visible = filtered.slice(offset, offset + pageSize);
         byId('businessGrid').classList.toggle('is-text-view', mode === 'text');
-        byId('businessGrid').replaceChildren(...visible.map((listing, index) => businessCard(listing, offset + index, listing === featured)));
+        byId('businessGrid').replaceChildren(...visible.map((listing, index) => businessCard(listing, offset + index)));
         byId('directoryEmpty').hidden = Boolean(filtered.length);
         const noun = filtered.length === 1 ? 'business' : 'businesses';
         const suffix = isPreview ? ' · design examples' : '';
