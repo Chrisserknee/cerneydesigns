@@ -16,6 +16,18 @@ test('broad, ambiguous and out-of-area names do not fabricate city matches',()=>
  for(const text of ['Monterey County','Monterey Bay','Salinas River','Monterey Park','Marina del Rey','Santa Cruz County','San Benito County','Santa Cruz and Hollister','Highway 101','Salinas and Monterey','Greenfield Road'])assert.equal(backgrounds.match(text),null,text);
  assert.equal(backgrounds.suggested({location:'Unknown',headline:'Monterey reporter asks'}).locationID,'central-coast');
 });
+test('explicit road stays on a corridor backdrop without overriding conflicting districts',()=>{
+ for(const [location,id] of [['Laureles Grade, Salinas side','toro'],['Laurales Grade, Salinas side','toro'],['Highway 68, Monterey','toro'],['Highway 17, Santa Cruz','summit-highway-17']]){
+  assert.equal(backgrounds.match(location)?.id,id,location);
+  assert.equal(backgrounds.suggested({location,headline:'Were you nearby?'}).locationID,id,location);
+ }
+ for(const location of ['Highway 68 and Cannery Row, Monterey','Highway 17 and Seabright, Santa Cruz','Laureles Grade and Santa Cruz Boardwalk'])assert.equal(backgrounds.match(location),null,location);
+});
+test('Boardwalk and Cannery Row do not borrow unrelated waterfront scenes',()=>{
+ for(const location of ['Santa Cruz Beach Boardwalk','Boardwalk / Main Beach, Santa Cruz','Santa Cruz Main Beach'])assert.equal(backgrounds.match(location)?.id,'santa-cruz-boardwalk',location);
+ assert.equal(backgrounds.match('Cannery Row, Monterey')?.id,'monterey-waterfront');
+ for(const location of ["Fisherman's Wharf","Fisherman's Wharf, Monterey",'Monterey harbor'])assert.notEqual(backgrounds.match(location)?.id,'monterey-waterfront',location);
+});
 test('unverified language is not automatically promoted to critical',()=>{
  assert.notEqual(backgrounds.suggested({headline:'Immediate danger, evacuation order',basis:'reported'}).urgency,'critical');
  assert.equal(backgrounds.suggested({headline:'Evacuation order',basis:'official'}).urgency,'critical');
