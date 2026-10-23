@@ -70,7 +70,9 @@ async function documents(prefix) {
 // record, and every inbox refresh lists storage generations to detect changes.
 const inboxRecords = new Map();
 async function inboxDocuments(prefix='tips/') {
-    const [files] = await bucket().getFiles({prefix:ROOT + prefix});
+    const [listed] = await bucket().getFiles({prefix:ROOT + prefix});
+    // Push receipts share deliveries/ but never contribute to the inbox.
+    const files = prefix==='deliveries/' ? listed.filter(f=>/^[a-f0-9]{64}\.json$/.test(f.name.slice((ROOT+prefix).length))) : listed;
     const names = new Set(files.map(f=>f.name));
     for (const name of inboxRecords.keys()) if (name.startsWith(ROOT+prefix) && !names.has(name)) inboxRecords.delete(name);
     const records = await Promise.all(files.map(async file=>{
@@ -269,7 +271,7 @@ async function handleApi(req, res) {
             return res.json({authenticated:false});
         }
         if (body.op === 'list' || body.op === 'tip') {
-            let tips, incidentReports;
+            const publicTip=({path,sourceGeneration,sourceTitle,sourceSummary,sourceLocation,contextReceivedAt,...tip})=>tip;
             if (body.op === 'tip') {
                 if (!/^[a-f0-9]{64}$/.test(body.id || '')) return res.status(400).json({error:'Invalid tip.'});
                 const stored = await read(`tips/${body.id}.json`);
@@ -278,30 +280,34 @@ async function handleApi(req, res) {
                     if(!incident)return res.status(404).json({error:'Tip not found.'});
                     return res.json({authenticated:true,expiresAt:device.expiresAt,tips:[withDetails(incident,(await read(`details/${body.id}.json`))?.data)]});
                 }
-                // Resolve the current destination even while a storage event is catching up.
-                const [latest] = await bucket().file(stored.data.path).getMetadata();
-                tips = [await syncTip(latest)];
-            } else {
-                const incidents=(await inboxDocuments('incidents/')).map(incidentRecord).filter(Boolean);
-                // Keep prepared agency reports accessible even when more than
-                // 50 newer tip submissions fill the general inbox window.
-                incidentReports=incidents.filter(t=>Date.parse(t.receivedAt)>Date.now()-30*86400000)
-                    .sort((a,b)=>Date.parse(b.contextUpdatedAt)-Date.parse(a.contextUpdatedAt)).slice(0,50);
-                // Community submissions have their own complete 30-day inbox.
-                // Agency reports must never consume its slots. The client pages
-                // the cards locally so search can also find older recent tips.
-                tips = (await inboxDocuments()).filter(t => Date.parse(t.receivedAt) > Date.now()-30*86400000)
-                    .sort((a,b)=>Date.parse(b.receivedAt)-Date.parse(a.receivedAt));
+                // The selected card needs only its own report and delivery.
+                // Resolve the current source as before, without reloading the inbox.
+                const [tip,report,delivery]=await Promise.all([
+                    bucket().file(stored.data.path).getMetadata().then(([latest])=>syncTip(latest)),
+                    read(`enrichment/${body.id}.json`),read(`deliveries/${body.id}.json`),
+                ]);
+                return res.json({authenticated:true,expiresAt:device.expiresAt,tips:[publicTip(displayContext(tip,report?.data,delivery?.data))]});
             }
-            const reports=await inboxDocuments('enrichment/');
-            const detailRecords=new Map((await inboxDocuments('details/')).map(d=>[d.id,d]));
-            const monitor=monitorHealth((await read('monitor/status.json'))?.data);
-            const storyRequests=(await inboxDocuments('story-requests/')).map(d=>storyRequest(d)).filter(Boolean).sort((a,b)=>Date.parse(b.createdAt)-Date.parse(a.createdAt)).slice(0,60);
-            const storyRequestMonitor=storyMonitor((await read('story-monitor/status.json'))?.data);
-            if(incidentReports)incidentReports=incidentReports.map(t=>withDetails(t,detailRecords.get(t.id)));
+            // Independent reads run together; authentication above stays fresh.
+            const [incidentData,tipData,reports,details,monitorData,stories,storyMonitorData,deliveryData]=await Promise.all([
+                inboxDocuments('incidents/'),inboxDocuments(),inboxDocuments('enrichment/'),inboxDocuments('details/'),
+                read('monitor/status.json'),inboxDocuments('story-requests/'),read('story-monitor/status.json'),inboxDocuments('deliveries/'),
+            ]);
+            const detailRecords=new Map(details.map(d=>[d.id,d]));
+            const incidentReports=incidentData.map(incidentRecord).filter(Boolean)
+                .filter(t=>Date.parse(t.receivedAt)>Date.now()-30*86400000)
+                .sort((a,b)=>Date.parse(b.contextUpdatedAt)-Date.parse(a.contextUpdatedAt)).slice(0,50)
+                .map(t=>withDetails(t,detailRecords.get(t.id)));
+            // Community tips retain their complete, separate 30-day inbox.
+            const tips=tipData.filter(t=>Date.parse(t.receivedAt)>Date.now()-30*86400000)
+                .sort((a,b)=>Date.parse(b.receivedAt)-Date.parse(a.receivedAt));
             const byId=new Map(reports.map(r=>[r.id,r]));
-            const deliveries=new Map((await inboxDocuments('deliveries/')).map(d=>[d.id,d]));
-            return res.json({authenticated:true,expiresAt:device.expiresAt,monitor,storyRequests,storyRequestMonitor,...(incidentReports ? {reports:incidentReports} : {}),tips:tips.map(t=>t.type==='incident'?withDetails(t,detailRecords.get(t.id)):displayContext(t,byId.get(t.id),deliveries.get(t.id))).map(({path,sourceGeneration,sourceTitle,sourceSummary,sourceLocation,contextReceivedAt,...t})=>t)});
+            const deliveries=new Map(deliveryData.map(d=>[d.id,d]));
+            const storyRequests=stories.map(d=>storyRequest(d)).filter(Boolean)
+                .sort((a,b)=>Date.parse(b.createdAt)-Date.parse(a.createdAt)).slice(0,60);
+            return res.json({authenticated:true,expiresAt:device.expiresAt,
+                monitor:monitorHealth(monitorData?.data),storyRequests,storyRequestMonitor:storyMonitor(storyMonitorData?.data),
+                reports:incidentReports,tips:tips.map(t=>t.type==='incident'?withDetails(t,detailRecords.get(t.id)):displayContext(t,byId.get(t.id),deliveries.get(t.id))).map(publicTip)});
         }
         if (body.op === 'test') {
             if (!device.subscription) return res.status(409).json({error:'Enable notifications on this device first.'});
