@@ -4,13 +4,16 @@
  const CTA='Have photos or video? Upload them to my tipline or send them directly to me.';
  function lines(ctx,text,maxWidth){const words=String(text||'').trim().split(/\s+/),out=[];let line='';for(const word of words){const next=line?line+' '+word:word;if(ctx.measureText(next).width>maxWidth&&line){out.push(line);line=word;}else line=next;}if(line)out.push(line);return out;}
  function fit(ctx,text,width,size,min,maxLines){let result;for(let n=size;n>=min;n-=2){ctx.font=`700 ${n}px Arial, sans-serif`;result=lines(ctx,text,width);if(result.length<=maxLines&&result.every(l=>ctx.measureText(l).width<=width))return {lines:result,size:n};}throw Error('That text is too long for the story. Shorten it and try again.');}
- function render(canvas,story){
+ function render(canvas,story,art=null){
   canvas.width=1080;canvas.height=1920;const c=canvas.getContext('2d');
   c.fillStyle='#f5f1e9';c.fillRect(0,0,1080,1920);c.fillStyle='#132f46';c.fillRect(0,0,1080,1440);
-  c.strokeStyle='#385367';c.lineWidth=2;c.strokeRect(54,142,972,1630);
+  if(art)root.CerneyStoryBackgrounds.paint(c,art);
+  const accent=art?.style.color||'#ea8b77';
+  c.fillStyle='#f5f1e9';c.fillRect(60,1440,960,340);
   c.fillStyle='#ea8b77';c.fillRect(88,218,64,64);c.fillStyle='#132f46';c.font='700 51px Arial';c.fillText('C',101,270);
   c.fillStyle='#f5f1e9';c.font='700 26px Arial';c.fillText('CHRIS CERNEY REPORTS',180,246);c.font='24px Arial';c.fillText('Central Coast • Community reporting',180,279);
-  c.fillStyle='#ea8b77';c.font='700 25px Arial';c.fillText(story.basis==='demo'?'DESIGN EXAMPLE · NO REAL INCIDENT':'WERE YOU THERE?',88,365);
+  c.fillStyle=accent;c.font='700 25px Arial';c.fillText(story.basis==='demo'?'DESIGN EXAMPLE · NO REAL INCIDENT':'WERE YOU THERE?',88,365);
+  if(art){c.fillStyle='#f5f1e9';c.font='500 23px Arial';c.fillText(art.place.label.toUpperCase(),88,415);}
   function block(text,y,width,size,min,maxLines,color,weight='700'){
    const f=fit(c,text,width,size,min,maxLines);c.font=`${weight} ${f.size}px Arial, sans-serif`;c.fillStyle=color;
    for(const [i,line] of f.lines.entries())c.fillText(line,88,y+i*f.size*1.17);
@@ -23,6 +26,7 @@
   block(CTA,1500,904,41,35,3,'#132f46');
   c.font='700 49px Arial';c.fillStyle='#132f46';c.fillText('chriscerney.org/upload',88,1670);
   c.fillStyle='#ea8b77';c.fillRect(88,1710,180,7);
+  if(art){c.fillStyle='#f5f1e9';c.font='500 20px Arial';c.fillText('AI-ILLUSTRATED BACKGROUND · NOT INCIDENT FOOTAGE',88,1830);}
   return canvas;
  }
  let section,signature='',urls=[],timers=[],selected='';
@@ -32,20 +36,37 @@
   const box=el('details',null,'witness-card');box.id='witness-'+story.id;
   const summary=el('summary');summary.append(el('span',story.headline),el('small',story.basis==='demo'?'Example · No alert sent':story.sources.length+' source'+(story.sources.length===1?'':'s')+' · Review & share'));box.append(summary);
   const editor=el('div',null,'witness-editor'),preview=el('img',null,'witness-preview');preview.alt='Instagram Story preview';
-  const form=el('div',null,'witness-form'),draft={...story};let file=null,revision=0,ownURL=null;
+  const form=el('div',null,'witness-form'),draft={...story},backgrounds=root.CerneyStoryBackgrounds;
+  let look=backgrounds?.suggested(story),manualLook=false,file=null,revision=0,ownURL=null;
   const status=el('p',null,'witness-status');status.setAttribute('role','status');
   const share=el('button','Share story image'),download=el('button','Save image','secondary');share.type=download.type='button';share.disabled=download.disabled=true;
   async function prepare(){
-   const current=++revision;file=null;share.disabled=download.disabled=true;status.textContent='Preparing image…';
-   try{const canvas=render(document.createElement('canvas'),draft);const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));
+   const current=++revision,snapshot={...draft},selectedLook={...look};file=null;share.disabled=download.disabled=true;status.textContent='Preparing image…';
+   try{let art=null,plain=false;if(backgrounds){try{art=await backgrounds.load(selectedLook);}catch{plain=true;}}
+    if(current!==revision||!box.isConnected)return;
+    const canvas=render(document.createElement('canvas'),snapshot,art);const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));
     if(current!==revision||!box.isConnected)return;if(!blob)throw Error('Could not prepare this image.');
     if(ownURL)URL.revokeObjectURL(ownURL);ownURL=URL.createObjectURL(blob);urls.push(ownURL);preview.src=ownURL;
-    file=new File([blob],'cerney-story-'+story.id.slice(0,8)+'.png',{type:'image/png'});share.disabled=download.disabled=false;status.textContent='Ready for your review.';
+    file=new File([blob],'cerney-story-'+story.id.slice(0,8)+'.png',{type:'image/png'});share.disabled=download.disabled=false;status.textContent=plain?'Background unavailable. A plain story image is ready; try again to load the illustration.':'Ready for your review.';
    }catch(e){if(current===revision)status.textContent=e.message;}
+  }
+  let syncLook=()=>{};
+  if(backgrounds){
+   const settings=el('fieldset',null,'witness-appearance');settings.append(el('legend','Set the scene'));
+   const placeLabel=el('label','Location background'),places=el('select');places.setAttribute('aria-label','Location background');
+   for(const place of [...backgrounds.catalog].sort((a,b)=>a.label.localeCompare(b.label))){const option=el('option',place.label);option.value=place.id;places.append(option);}placeLabel.append(places);
+   const colorLabel=el('label','Urgency color'),colors=el('select');colors.setAttribute('aria-label','Urgency color');
+   for(const style of backgrounds.styles){const option=el('option',style.label);option.value=style.id;colors.append(option);}colorLabel.append(colors);
+   const policeLabel=el('label',null,'witness-police'),police=el('input');police.type='checkbox';police.setAttribute('aria-label','Blurred police lights');policeLabel.append(police,document.createTextNode(' Blurred police lights'));
+   syncLook=()=>{places.value=look.locationID;colors.value=look.urgency;police.checked=look.policeLights;};syncLook();
+   function changed(){manualLook=true;look={locationID:places.value,urgency:colors.value,policeLights:police.checked};prepare();}
+   places.addEventListener('change',changed);colors.addEventListener('change',changed);police.addEventListener('change',changed);
+   const reset=el('button','Use suggested appearance','text-button');reset.type='button';reset.addEventListener('click',()=>{manualLook=false;look=backgrounds.suggested(draft);syncLook();prepare();});
+   settings.append(placeLabel,colorLabel,policeLabel,el('p','AI illustrations of an area, not incident photos. Use police lights only when they fit the source.','small muted'),reset);form.append(settings);
   }
   for(const [key,label,max] of [['headline','Headline',100],['question','Question for witnesses',260],['context','Supporting line',200]]){
    const field=el('label',label);const input=el('textarea');input.rows=key==='headline'?2:3;input.maxLength=max;input.value=draft[key]||'';input.setAttribute('aria-label',label);let timer;
-   input.addEventListener('input',()=>{draft[key]=input.value;file=null;share.disabled=download.disabled=true;clearTimeout(timer);timer=setTimeout(prepare,180);timers.push(timer);});field.append(input);form.append(field);
+   input.addEventListener('input',()=>{draft[key]=input.value;revision++;file=null;share.disabled=download.disabled=true;if(backgrounds&&!manualLook){look=backgrounds.suggested(draft);syncLook();}clearTimeout(timer);timer=setTimeout(prepare,180);timers.push(timer);});field.append(input);form.append(field);
   }
   const actions=el('div',null,'witness-actions');actions.append(share,download);form.append(actions,status);
   share.addEventListener('click',()=>{
