@@ -28,65 +28,41 @@
  function clear(){signature='';selected='';for(const item of cards.values())item.node.dispose();cards.clear();section?.remove();section=null;}
  function card(story){
   const box=el('details',null,'witness-card');box.id='witness-'+story.id;
-  const summary=el('summary');summary.append(el('span',story.headline),el('small',story.basis==='demo'?'Example · No alert sent':story.sources.length+' source'+(story.sources.length===1?'':'s')+' · Review & share'));box.append(summary);
-  const editor=el('div',null,'witness-editor'),preview=el('img',null,'witness-preview');preview.alt='Instagram Story preview';
-  const form=el('div',null,'witness-form'),draft={...story},backgrounds=root.CerneyStoryBackgrounds;
-  let look=backgrounds?.suggested(story),manualLook=false,file=null,revision=0,ownURL=null,timer;
-  box.dispose=()=>{revision++;clearTimeout(timer);if(ownURL)URL.revokeObjectURL(ownURL);box.remove();};
+  const summary=el('summary');summary.append(el('span',story.headline),el('small',story.basis==='demo'?'Example · No alert sent':story.sources.length+' source'+(story.sources.length===1?'':'s')));box.append(summary);
+  const editor=el('div',null,'witness-editor'),preview=el('img',null,'witness-preview');preview.alt='Instagram Story preview: '+story.headline;
+  const form=el('div',null,'witness-form'),backgrounds=root.CerneyStoryBackgrounds;
+  const look=backgrounds?.suggested(story);
+  let file=null,revision=0,ownURL=null,downloadFallback=false;
+  box.dispose=()=>{revision++;if(ownURL)URL.revokeObjectURL(ownURL);box.remove();};
   const status=el('p',null,'witness-status');status.setAttribute('role','status');
-  const share=el('button','Share story image'),download=el('button','Save image','secondary');share.type=download.type='button';share.disabled=download.disabled=true;
+  const share=el('button','Share to Instagram');share.type='button';share.disabled=true;
   async function prepare(){
-   clearTimeout(timer);
-   const current=++revision,snapshot={...draft},selectedLook={...look};file=null;share.disabled=download.disabled=true;status.textContent='Preparing image…';
-   try{let art=null,plain=false;if(backgrounds){try{art=await backgrounds.load(selectedLook);}catch{plain=true;art=backgrounds.validated(selectedLook);}}
+   const current=++revision;file=null;share.disabled=true;status.textContent='Preparing image…';
+   try{let art=null,plain=false;if(backgrounds){try{art=await backgrounds.load(look);}catch{plain=true;art=backgrounds.validated(look);}}
     if(current!==revision||!box.isConnected)return;
-    const canvas=render(document.createElement('canvas'),snapshot,art);const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));
+    const canvas=render(document.createElement('canvas'),story,art);const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));
     if(current!==revision||!box.isConnected)return;if(!blob)throw Error('Could not prepare this image.');
     if(ownURL)URL.revokeObjectURL(ownURL);ownURL=URL.createObjectURL(blob);preview.src=ownURL;
-    file=new File([blob],'cerney-story-'+story.id.slice(0,8)+'.png',{type:'image/png'});share.disabled=download.disabled=false;status.textContent=plain?'Background unavailable. Your story is ready with a plain background.':(art?.style.label?art.style.label+' · ':'')+'Ready for your review.';
+    file=new File([blob],'cerney-story-'+story.id.slice(0,8)+'.png',{type:'image/png'});share.disabled=false;status.textContent=plain?'Background unavailable. A plain image is ready.':'Ready to share.';
    }catch(e){if(current===revision)status.textContent=e.message;}
   }
-  let syncLook=()=>{};
-  if(backgrounds){
-   const settings=el('fieldset',null,'witness-appearance');settings.append(el('legend','Appearance'));
-   const placeLabel=el('label','Location background'),places=el('select');places.setAttribute('aria-label','Location background');
-   for(const place of [...backgrounds.catalog].sort((a,b)=>a.label.localeCompare(b.label))){const option=el('option',place.label+(place.kind==='fallback'?'':' · '+place.counties.join(' / '))); option.value=place.id;places.append(option);}placeLabel.append(places);
-   const colorLabel=el('div',null,'witness-urgency');colorLabel.append(el('p','Urgency color','witness-control-label'));
-   const colors=el('div',null,'witness-urgency-options');colors.setAttribute('role','group');colors.setAttribute('aria-label','Urgency color');
-   const colorButtons=[];
-   for(const style of backgrounds.styles){
-    const button=el('button',null,'witness-urgency-option');button.type='button';button.setAttribute('aria-label',style.label);button.style.setProperty('--urgency-color',style.color);
-    const check=el('span','✓','witness-urgency-check');check.setAttribute('aria-hidden','true');
-    button.append(el('span',null,'witness-urgency-swatch'),el('span',style.label),check);
-    button.addEventListener('click',()=>{manualLook=true;look={...look,urgency:style.id};syncLook();prepare();});colorButtons.push({button,id:style.id});colors.append(button);
-   }colorLabel.append(colors);
-   const policeLabel=el('label',null,'witness-police'),police=el('input');police.type='checkbox';police.setAttribute('aria-label','Blurred police lights');policeLabel.append(police,document.createTextNode(' Blurred police lights'));
-   syncLook=()=>{places.value=look.locationID;for(const option of colorButtons)option.button.setAttribute('aria-pressed',String(option.id===look.urgency));police.checked=look.policeLights;};syncLook();
-   function changed(){manualLook=true;look={...look,locationID:places.value,policeLights:police.checked};prepare();}
-   places.addEventListener('change',changed);police.addEventListener('change',changed);
-   const reset=el('button','Use suggested appearance','text-button');reset.type='button';reset.addEventListener('click',()=>{manualLook=false;look=backgrounds.suggested(draft);syncLook();prepare();});
-   settings.append(placeLabel,colorLabel,policeLabel,el('p','AI illustrations of an area, not incident photos. Use police lights only when they fit the source.','small muted'),reset);form.append(settings);
-  }
-  for(const [key,label,max] of [['headline','Story question',100]]){
-   const field=el('label',label);const input=el('textarea');input.rows=2;input.maxLength=max;input.value=draft[key]||'';input.setAttribute('aria-label',label);
-   input.addEventListener('input',()=>{draft[key]=input.value;revision++;file=null;share.disabled=download.disabled=true;if(backgrounds&&!manualLook){look=backgrounds.suggested(draft);syncLook();}clearTimeout(timer);timer=setTimeout(prepare,180);});field.append(input);form.append(field);
-  }
-  const actions=el('div',null,'witness-actions');actions.append(share,download);form.append(actions,status);
+  function saveImage(){const a=el('a');a.href=ownURL;a.download=file.name;a.click();status.textContent='Save the image, then add it from Photos in Instagram’s Story editor.';}
+  const actions=el('div',null,'witness-actions');actions.append(share);form.append(actions,status);
   share.addEventListener('click',()=>{
-   if(!file)return; // File is prepared before the tap, preserving iOS user activation.
-   if(Date.parse(story.expiresAt)<=Date.now()){status.textContent='This draft has expired. Refresh to check for current story requests.';return;}
-   if(!navigator.canShare?.({files:[file]})||!navigator.share){status.textContent='Use Save image, then add it to your Instagram Story.';return;}
-   navigator.share({files:[file]}).then(()=>{status.textContent='Image handed to the share sheet. Choose Instagram and Story, then review before posting.';}).catch(e=>{status.textContent=e.name==='AbortError'?'Sharing canceled. Your draft is still here.':'Sharing was unavailable. Save the image, then add it in Instagram.';});
+   if(!file)return; // Prepared before the tap, preserving iOS user activation.
+   if(Date.parse(story.expiresAt)<=Date.now()){status.textContent='This draft has expired. Refresh for current requests.';return;}
+   if(downloadFallback||!navigator.canShare?.({files:[file]})||!navigator.share){saveImage();return;}
+   navigator.share({files:[file]}).then(()=>{status.textContent='Choose Instagram, then Story, in the share sheet.';}).catch(e=>{
+    if(e.name==='AbortError'){status.textContent='Sharing canceled.';return;}
+    downloadFallback=true;status.textContent='Sharing is unavailable. Tap Share to Instagram again to save the image, then add it in Instagram.';
+   });
   });
-  download.addEventListener('click',()=>{if(!file||!ownURL)return;if(Date.parse(story.expiresAt)<=Date.now()){status.textContent='This draft has expired. Refresh to check for current story requests.';return;}const a=el('a');a.href=ownURL;a.download=file.name;a.click();status.textContent='Save the image, then choose it in Instagram’s Story editor.';});
-  form.append(el('p','Choose Instagram in the share sheet, then Story. If Instagram isn’t offered, save the image and add it from Photos. You decide whether to post.','small muted'));
-  const copy=el('button','Copy upload link','text-button');copy.type='button';copy.addEventListener('click',async()=>{try{await navigator.clipboard.writeText('https://www.chriscerney.org/upload');status.textContent='Upload link copied. You can add it as an Instagram link sticker.';}catch{status.textContent='Link: https://www.chriscerney.org/upload';}});form.append(copy);
-  const notes=el('details',null,'witness-notes');notes.append(el('summary','Sources & review notes'));
+  if(story.timeLabel)form.append(el('p',story.timeLabel,'small muted'));
+  const notes=el('details',null,'witness-notes');notes.append(el('summary','Sources & timing'));
   if(story.context)notes.append(el('p',story.context));
   notes.append(el('p',story.reviewNote||'Check the location and timing before sharing.'));
-  if(story.timeLabel)notes.append(el('p','Incident timing: '+story.timeLabel));
   notes.append(el('p','Prepared '+new Date(story.createdAt).toLocaleString()+' · Available until '+new Date(story.expiresAt).toLocaleString()));
-  for(const s of story.sources){const p=el('p',s.label);if(ID.test(s.tipId||'')){const a=el('a','Open linked tip');a.href='/tip-alerts/?tip='+s.tipId;p.append(document.createTextNode(' · '),a);}notes.append(p);}
+  for(const source of story.sources){const p=el('p',source.label);if(ID.test(source.tipId||'')){const a=el('a','Open linked tip');a.href='/tip-alerts/?tip='+source.tipId;p.append(document.createTextNode(' · '),a);}notes.append(p);}
   form.append(notes);editor.append(preview,form);box.append(editor);
   let prepared=false;box.addEventListener('toggle',()=>{if(box.open&&!prepared){prepared=true;prepare();}});
   return box;
@@ -109,8 +85,7 @@
    for(const [index,story] of valid.entries()){
     const source=JSON.stringify(story),previous=cards.get(story.id);let node=previous?.node;
     if(previous?.source!==source){const open=Boolean(node?.open);node?.dispose();node=card(story);node.open=open;cards.set(story.id,{node,source});}
-    // Keep the actual editor node, local wording and selected color when only
-    // other incidents change during a background inbox refresh.
+    // Keep the prepared image when only other incidents change during refresh.
     const current=section.querySelectorAll('.witness-card')[index];
     if(current!==node)section.insertBefore(node,current||null);
    }
