@@ -44,3 +44,10 @@
     filter: blur(9px);
 }
 .directory-page .directory-card-top .directory-banner[src$="/localspotlight/banners/paint-store-buckets.png"] { opacity: 0; }
+
+/* Their studio artwork supplies a soft backdrop behind the sharp logo. */
+.directory-banner[src$="/wholehearted-tattoo.jpg"] {
+  object-position: center 30%;
+  transform: scale(1.18);
+  filter: blur(4px);
+}
