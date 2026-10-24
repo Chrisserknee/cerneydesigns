@@ -38,9 +38,9 @@
 .directory-page .directory-card-top:has(.directory-banner[src$="/localspotlight/banners/paint-store-buckets.png"])::before {
     content: '';
     position: absolute;
-    inset: -8px;
+    inset: -24px;
     z-index: -2;
     background: #cad4db url('/localspotlight/banners/paint-store-buckets.png') center center / 130px auto repeat-x;
-    filter: blur(2.5px);
+    filter: blur(9px);
 }
 .directory-page .directory-card-top .directory-banner[src$="/localspotlight/banners/paint-store-buckets.png"] { opacity: 0; }
