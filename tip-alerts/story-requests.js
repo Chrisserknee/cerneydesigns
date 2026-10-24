@@ -81,7 +81,7 @@
    section.querySelector('.witness-count').textContent=String(valid.length);
    for(const [id,item]of cards){if(!ids.has(id)){item.node.dispose();cards.delete(id);}}
    section.querySelector('.witness-empty')?.remove();
-   if(!valid.length)section.append(el('p','New, timely incidents will appear here after checking the available sources.','witness-empty'));
+   if(!valid.length)section.append(el('p','Suitable recent tips will become Story drafts after a source check. Every imported tip remains in the inbox.','witness-empty'));
    for(const [index,story] of valid.entries()){
     const source=JSON.stringify(story),previous=cards.get(story.id);let node=previous?.node;
     if(previous?.source!==source){const open=Boolean(node?.open);node?.dispose();node=card(story);node.open=open;cards.set(story.id,{node,source});}

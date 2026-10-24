@@ -16,6 +16,7 @@ const { SITE, hash, activeDevice, validSubscription, tipRecord, retryTime, notif
 const {sourceContext,displayContext}=require('./tip-inbox-context');
 const {thumbnailDescriptor,requestedThumbnail,sameThumbnail,verifiedThumbnailBytes,MAX_BYTES}=require('./tip-thumbnail');
 const ROOT = '_tipalerts/v1/';
+const {voiceTip,refreshFromStored,voiceMonitor}=require('./voice-tip');
 const bucket = () => getStorage().bucket('tip-line-8c2d7.firebasestorage.app');
 const options = {region:'us-west1', memory:'256MiB', timeoutSeconds:120, maxInstances:3};
 async function read(name) {
@@ -160,6 +161,12 @@ async function deliver(tip, device, keys) {
     }
 }
 async function capture(event) {
+    if(event.data?.bucket==='tip-line-8c2d7.firebasestorage.app' && /^_tipalerts\/v1\/tips\/[a-f0-9]{64}\.json$/.test(event.data.name||'')){
+        const stored=await read(event.data.name.slice(ROOT.length));
+        if(!stored || String(stored.generation)!==String(event.data.generation) || !voiceTip(stored.data))return;
+        const keys=await config(),devices=await documents('devices/');
+        await Promise.all(devices.map(device=>deliver(stored.data,device,keys)));return;
+    }
     if (!event.data?.name?.startsWith('tips/') || !/\/_(submission|context_ready)\.json$/.test(event.data.name)) return;
     const contextOnly=event.data.name.endsWith('/_context_ready.json');
     const [current] = await bucket().file(event.data.name.replace('_context_ready.json','_submission.json')).getMetadata();
@@ -283,15 +290,15 @@ async function handleApi(req, res) {
                 // The selected card needs only its own report and delivery.
                 // Resolve the current source as before, without reloading the inbox.
                 const [tip,report,delivery]=await Promise.all([
-                    typeof stored.data.sourceDescription==='string' && body.refreshSource!==true ? Promise.resolve(stored.data) : bucket().file(stored.data.path).getMetadata().then(([latest])=>syncTip(latest)),
+                    refreshFromStored(stored.data,body.refreshSource) ? Promise.resolve(stored.data) : bucket().file(stored.data.path).getMetadata().then(([latest])=>syncTip(latest)),
                     read(`enrichment/${body.id}.json`),read(`deliveries/${body.id}.json`),
                 ]);
                 return res.json({authenticated:true,expiresAt:device.expiresAt,tips:[publicTip(displayContext(tip,report?.data,delivery?.data))]});
             }
             // Independent reads run together; authentication above stays fresh.
-            const [incidentData,tipData,reports,details,monitorData,stories,storyMonitorData,deliveryData]=await Promise.all([
+            const [incidentData,tipData,reports,details,monitorData,stories,storyMonitorData,deliveryData,voiceMonitorData]=await Promise.all([
                 inboxDocuments('incidents/'),inboxDocuments(),inboxDocuments('enrichment/'),inboxDocuments('details/'),
-                read('monitor/status.json'),inboxDocuments('story-requests/'),read('story-monitor/status.json'),inboxDocuments('deliveries/'),
+                read('monitor/status.json'),inboxDocuments('story-requests/'),read('story-monitor/status.json'),inboxDocuments('deliveries/'),read('voice-monitor/status.json'),
             ]);
             const detailRecords=new Map(details.map(d=>[d.id,d]));
             const incidentReports=incidentData.map(incidentRecord).filter(Boolean)
@@ -306,7 +313,7 @@ async function handleApi(req, res) {
             const storyRequests=stories.map(d=>storyRequest(d)).filter(Boolean)
                 .sort((a,b)=>Date.parse(b.createdAt)-Date.parse(a.createdAt)).slice(0,60);
             return res.json({authenticated:true,expiresAt:device.expiresAt,
-                monitor:monitorHealth(monitorData?.data),storyRequests,storyRequestMonitor:storyMonitor(storyMonitorData?.data),
+                monitor:monitorHealth(monitorData?.data),storyRequests,storyRequestMonitor:storyMonitor(storyMonitorData?.data),voiceIntakeMonitor:voiceMonitor(voiceMonitorData?.data),
                 reports:incidentReports,tips:tips.map(t=>t.type==='incident'?withDetails(t,detailRecords.get(t.id)):displayContext(t,byId.get(t.id),deliveries.get(t.id))).map(publicTip)});
         }
         if (body.op === 'test') {

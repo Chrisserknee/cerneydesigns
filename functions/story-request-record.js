@@ -23,7 +23,7 @@ function storyRequest(data,now=Date.now()) {
 function storyMonitor(data){
  if(data?.version!==1 || !Number.isFinite(Date.parse(data.checkedAt)))return null;
  const count=v=>Number.isSafeInteger(v)&&v>=0?v:0;
- return {checkedAt:data.checkedAt,startedAt:data.startedAt,status:['healthy','attention'].includes(data.status)?data.status:'unknown',
+ return {checkedAt:data.checkedAt,startedAt:data.startedAt,status:Date.now()-Date.parse(data.checkedAt)>180000?'attention':['healthy','attention'].includes(data.status)?data.status:'unknown',
   pending:count(data.pending),drafts:count(data.drafts),held:count(data.held),lastCrossCheckAt:Number.isFinite(Date.parse(data.lastCrossCheckAt))?data.lastCrossCheckAt:null};
 }
 module.exports={storyRequest,storyMonitor};

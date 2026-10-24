@@ -167,7 +167,7 @@ function shortDate(value) { return new Intl.DateTimeFormat('en-US',{timeZone:'Am
 function sourceClass(tip) { return tip.type==='incident' ? 'source-found' : 'source-community'; }
 function sourceBadge(tip) {
     const badge=document.createElement('p');badge.className='source-badge';
-    badge.textContent=tip.type==='incident' ? 'Found report' : 'Community tip';
+    badge.textContent=tip.type==='incident' ? 'Found report' : tip.sourceKind==='google_voice' ? 'Google Voice tip' : 'Community tip';
     return badge;
 }
 function folderURL(value) {
@@ -317,7 +317,7 @@ function storyCard(tip) {
     paragraph(info,tip.contextSource==='claude'?'Prepared draft · Review before publishing':tip.contextSource==='tipster'?'Submitted context · Not independently verified':'Context pending','tip-provenance');
     const actions=document.createElement('div');actions.className='story-actions';
     if(videoURL(tip.videoUrl)){const v=document.createElement('a');v.className='folder watch-video';v.href=videoURL(tip.videoUrl);v.target='_blank';v.rel='noopener noreferrer';v.textContent='Watch draft'+(tip.durationSeconds?' · '+Math.round(tip.durationSeconds)+'s':'');actions.append(v);}
-    if(folderURL(tip.driveUrl)) actions.append(folderLink(tip)); else paragraph(actions,tip.status==='review'?'Files need review':'Files processing','state');
+    if(folderURL(tip.driveUrl)) actions.append(folderLink(tip)); else paragraph(actions,tip.sourceKind==='google_voice'?'Text received from Google Voice':tip.status==='review'?'Files need review':'Files processing','state');
     const save=document.createElement('button');save.type='button';save.className='save-story';save.textContent=savedStories.has(tip.id)?'Saved ✓':'Save';save.setAttribute('aria-label',(savedStories.has(tip.id)?'Unsave ':'Save ')+(tip.title || 'story'));save.setAttribute('aria-pressed',String(savedStories.has(tip.id)));
     save.addEventListener('click',()=>{if(savedStories.has(tip.id))savedStories.delete(tip.id);else if(/^[a-f0-9]{64}$/.test(tip.id))savedStories.add(tip.id);try{localStorage.setItem('cerney-saved-stories',JSON.stringify([...savedStories].slice(-200)));}catch{}renderInbox();});
     const finished=doneStories.has(tip.id);const done=document.createElement('button');done.type='button';done.className='mark-done';done.textContent=finished?'Undo done':'Done';done.setAttribute('aria-pressed',String(finished));done.setAttribute('aria-label',(finished?'Mark not done: ':'Mark done: ')+(tip.title || 'story'));
