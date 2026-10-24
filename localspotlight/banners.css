@@ -33,3 +33,11 @@
     transform: scale(1.4);
     filter: blur(3px);
 }
+
+/* Use the photo side of GPS Paints' artwork behind the outlet's sharp logo. */
+.directory-page .directory-card-top.has-banner .directory-banner[src$="/localspotlight/banners/paint-store-outlet.webp"] {
+    object-position: right center;
+    transform: scale(2.3);
+    transform-origin: 94% center;
+    filter: blur(5px);
+}
