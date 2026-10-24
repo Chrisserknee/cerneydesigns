@@ -57,7 +57,7 @@
         if (!raw) return '';
         try {
             const url = new URL(raw, window.location.origin);
-            if (url.origin === window.location.origin && /^\/localspotlight\/(?:preview\/assets|banners)\/[a-z0-9-]+\.(png|jpg|jpeg|webp|ico|svg|avif)$/.test(url.pathname) && !url.search && !url.hash) return url.href;
+            if (url.origin === window.location.origin && /^\/localspotlight\/(?:preview\/assets|banners|logos)\/[a-z0-9-]+\.(png|jpg|jpeg|webp|ico|svg|avif)$/.test(url.pathname) && !url.search && !url.hash) return url.href;
             // Remote logos still obey the site's image CSP. A blocked or failed asset becomes initials.
             return websiteUrl(raw, 500);
         } catch { return ''; }

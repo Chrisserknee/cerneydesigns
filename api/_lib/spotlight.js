@@ -184,11 +184,13 @@ function published(subscription, settings) {
 function publicListing(subscription) {
     const profile = readProfile(subscription.metadata);
     const listingId = crypto.createHash('sha256').update(`spotlight:${subscription.id}`).digest('hex').slice(0, 20);
+    const existingLogo = require('./spotlight-existing-logos.json')[listingId];
+    const logo = subscription.livemode && !profile.logoUrl && existingLogo?.profileHash === publicProfileHash(profile) ? existingLogo.url : '';
     const existingBanner = require('./spotlight-existing-banners.json')[listingId];
     const fallback = subscription.livemode && !profile.bannerSourceUrl && existingBanner?.profileHash === publicProfileHash(profile) ? existingBanner.url : '';
     const image = (subscription.metadata.spotlight_banner_profile === publicProfileHash(profile)
         ? bannerUrl(subscription.metadata.spotlight_banner_url, subscription.livemode) : '') || fallback;
-    return { id: crypto.createHash('sha256').update(`spotlight:${subscription.id}`).digest('hex').slice(0, 20), ...profile, ...(image ? { bannerUrl: image } : {}) };
+    return { id: crypto.createHash('sha256').update(`spotlight:${subscription.id}`).digest('hex').slice(0, 20), ...profile, ...(logo ? { logoUrl: logo } : {}), ...(image ? { bannerUrl: image } : {}) };
 }
 
 function createService(stripe, settings = config(), moderation = callModeration) {
