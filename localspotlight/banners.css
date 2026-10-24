@@ -34,10 +34,13 @@
     filter: blur(3px);
 }
 
-/* Use the photo side of GPS Paints' artwork behind the outlet's sharp logo. */
-.directory-page .directory-card-top.has-banner .directory-banner[src$="/localspotlight/banners/paint-store-outlet.webp"] {
-    object-position: right center;
-    transform: scale(2.3);
-    transform-origin: 94% center;
-    filter: blur(5px);
+/* Repeat actual paint containers across the backdrop; keep the logo sharp. */
+.directory-page .directory-card-top:has(.directory-banner[src$="/localspotlight/banners/paint-store-buckets.png"])::before {
+    content: '';
+    position: absolute;
+    inset: -8px;
+    z-index: -2;
+    background: #cad4db url('/localspotlight/banners/paint-store-buckets.png') center center / 130px auto repeat-x;
+    filter: blur(2.5px);
 }
+.directory-page .directory-card-top .directory-banner[src$="/localspotlight/banners/paint-store-buckets.png"] { opacity: 0; }
