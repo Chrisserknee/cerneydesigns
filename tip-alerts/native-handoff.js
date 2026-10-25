@@ -8,6 +8,14 @@
   if(!items.length&&u.searchParams.get('test')==='1')return 'cerneytips://open';
   return null;
  }
+ let pending=null;
+ function resume(){
+  if(!pending||document.hidden)return;
+  const href=pending;pending=null;
+  if(globalThis.CerneyNewsroom?.hasUnsavedWork()||attempted.has(href))return;
+  attempted.add(href);location.href=href;
+ }
+ document.addEventListener('visibilitychange',resume);
  function open(value){
   const href=target(value),ios=/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
   if(!href||!ios)return false;
@@ -16,8 +24,7 @@
   // Never interrupt an unsaved recording or notebook. The explicit link remains available.
   const unsaved=globalThis.CerneyNewsroom?.hasUnsavedWork();
   if(!unsaved&&!attempted.has(href)&&(navigator.standalone||matchMedia('(display-mode: standalone)').matches)){
-   attempted.add(href);
-   setTimeout(()=>{if(!document.hidden&&!globalThis.CerneyNewsroom?.hasUnsavedWork())location.href=href;},150);
+   pending=href;resume();
   }
   return true;
  }
