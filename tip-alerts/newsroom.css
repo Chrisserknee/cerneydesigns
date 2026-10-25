@@ -4,3 +4,5 @@
 
 .app-update-notice{padding:12px 20px;background:#e7f0f4;color:#163543;text-align:center;font-size:14px}.app-update-notice button{margin-left:10px;min-height:44px}
 .story-writer-review a{display:inline-block;padding:8px 12px;margin:4px;border:1px solid #8297a455;border-radius:10px;min-height:44px;box-sizing:border-box}.story-writer-review p{font-size:.85rem}
+
+.field-note-actions{justify-content:flex-start;margin:18px 0;gap:10px}.field-note-actions button{flex:0 1 auto}#fieldCapture[hidden]{display:none}

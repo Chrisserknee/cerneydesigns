@@ -1,4 +1,5 @@
 'use strict';
+const CLIENT_RELEASE='2026-10-25-field-notebooks-15b';
 const $ = id => document.getElementById(id);
 const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
@@ -78,11 +79,13 @@ function paintMonitor(health) {
 let tipId = new URLSearchParams(location.search).get('tip');
 const show = (id, visible) => { $(id).hidden = !visible; };
 function message(text='', error=false) { $('message').textContent=text; $('message').classList.toggle('error',error); }
-function clearSession() {
+function clearSession({expired=false}={}) {
     try { localStorage.removeItem('cerney-open-tip'); } catch {}
     thumbnails.reset();
     globalThis.CerneyStoryRequests?.clear();
-    globalThis.CerneyNewsroom?.clear();
+    // Expiring authentication must hide private work without destroying a take.
+    if(expired) globalThis.CerneyNewsroom?.suspend();
+    else globalThis.CerneyNewsroom?.clear();
     state = null; renderedTips=null; inboxSnapshot={tips:[],reports:[]}; sessionVersion++; message(); resetPull(); closeReview();
     $('inboxStatus').textContent = '';
     clearTimeout(retryTimer); clearTimeout(inboxTimer);
@@ -98,13 +101,13 @@ async function api(op, data={}, options={}) {
         // An upstream gateway may return HTML or an empty body with its 5xx.
         // Preserve that status so transient preview failures can still retry.
         if(!response.ok) {
-            if(response.status===401) clearSession();
+            if(response.status===401) clearSession({expired:true});
             const unavailable=new Error('Could not load the inbox. Please try again.');
             unavailable.status=response.status; throw unavailable;
         }
         throw error;
     }
-    if (!response.ok) { if (response.status === 401) clearSession(); const error = new Error(result?.error || 'Something went wrong. Please try again.'); error.status=response.status; throw error; }
+    if (!response.ok) { if (response.status === 401) clearSession({expired:true}); const error = new Error(result?.error || 'Something went wrong. Please try again.'); error.status=response.status; throw error; }
     return result;
 }
 function bytes(base64) { return Uint8Array.from(atob(base64.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0)); }
@@ -516,6 +519,7 @@ if(standalone) {
 if('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message',event=>{
     if(event.origin!==location.origin)return;
     if(event.data?.type==='cerney-client-update') {
+        if(event.data.release===CLIENT_RELEASE)return;
         if(!document.getElementById('appUpdateNotice')){const notice=document.createElement('div');notice.id='appUpdateNotice';notice.className='app-update-notice';notice.textContent='An app update is ready. ';const reload=document.createElement('button');reload.type='button';reload.textContent='Reload when finished';reload.addEventListener('click',()=>{if(globalThis.CerneyNewsroom?.hasUnsavedWork()){message('Finish and submit your recording or save your notes before reloading.',true);return;}location.reload();});notice.append(reload);document.body.prepend(notice);}return;
     }
     if(event.data?.type!=='cerney-tip-open')return;
@@ -532,7 +536,7 @@ if('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('messa
     openTip().catch(error=>message(error.message,true));
 });
 window.addEventListener('online',()=>{if(!document.hidden) load();});
-$('logout').addEventListener('click',async()=>{try{await api('logout');clearSession();await removeLocalSubscription();location.replace('/tip-alerts/');}catch(e){message(e.message,true);}});
+$('logout').addEventListener('click',async()=>{if(globalThis.CerneyNewsroom?.hasUnsavedWork()){message('Save your notes and submit or download your recording before signing out.',true);return;}try{await api('logout');clearSession();await removeLocalSubscription();location.replace('/tip-alerts/');}catch(e){message(e.message,true);}});
 document.addEventListener('visibilitychange',()=>{
     if(document.hidden) { resetPull(); clearTimeout(inboxTimer); clearTimeout(retryTimer); }
     else if(state) load();

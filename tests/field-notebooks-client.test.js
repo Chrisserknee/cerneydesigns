@@ -1,8 +1,8 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs'),{webcrypto}=require('node:crypto');
-function client(respond){
+function client(respond,{audioDuration=125.5}={}){
  const elements=[],events={},timers=new Map();let timerID=0;
- function el(tag){const e={tag,children:[],handlers:{},attrs:{},value:'',isConnected:true,textContent:'',append(...v){for(const c of v){if(c&&typeof c==='object')c.parent=this;this.children.push(c);}},replaceChildren(...v){this.children=[];this.append(...v);},replaceWith(...v){const p=this.parent,index=p.children.indexOf(this);p.children.splice(index,1,...v);},setAttribute(k,v){this.attrs[k]=v;},addEventListener(k,v){this.handlers[k]=v;},scrollIntoView(){},remove(){this.isConnected=false;},click(){return this.handlers.click?.();}};elements.push(e);return e;}
+ function el(tag){const e={tag,children:[],handlers:{},attrs:{},value:'',isConnected:true,textContent:'',append(...v){for(const c of v){if(c&&typeof c==='object')c.parent=this;this.children.push(c);}},replaceChildren(...v){this.children=[];this.append(...v);},replaceWith(...v){const p=this.parent,index=p.children.indexOf(this);p.children.splice(index,1,...v);},setAttribute(k,v){this.attrs[k]=v;},addEventListener(k,v){this.handlers[k]=v;},scrollIntoView(){},remove(){this.isConnected=false;},click(){return this.handlers.click?.();}};if(tag==='audio'){e.duration=audioDuration;Object.defineProperty(e,'src',{set(){queueMicrotask(()=>e.handlers.loadedmetadata?.());}});}elements.push(e);return e;}
  const root=el('main'),heading=el('h1');heading.after=e=>root.append(e);
  const context=vm.createContext({document:{createElement:el,getElementById:id=>elements.find(e=>e.id===id&&e.isConnected),querySelector:()=>heading},window:{addEventListener:(k,f)=>events[k]=f},location:{search:''},URL,URLSearchParams,Date,Blob,Uint8Array,TextEncoder,crypto:webcrypto,confirm:()=>true,navigator:{mediaDevices:{getUserMedia:()=>{throw Error('Microphone must not start during these tests');}}},atob:s=>Buffer.from(s,'base64').toString('binary'),btoa:s=>Buffer.from(s,'binary').toString('base64'),setInterval:()=>1,clearInterval(){},setTimeout:(fn,ms)=>{timers.set(++timerID,{fn,ms});return timerID;},clearTimeout:id=>timers.delete(id)});
  vm.runInContext(fs.readFileSync(__dirname+'/../tip-alerts/newsroom.js','utf8'),context);
@@ -22,4 +22,23 @@ test('failed autosave keeps edits and warns before closing instead of discarding
 });
 test('source excerpts are rendered as text and AI development retains them',async()=>{
  const f=fixture();await f.c.app.refresh(f.c.api);await f.c.app.startStory({title:'Notebook',evidence:[{id:'b'.repeat(64),title:'Source',excerpt:'<img src=x onerror=alert(1)>',url:'javascript:alert(1)'}]});await f.c.button('Develop story with AI').click();assert.equal(f.note.processRequested,true);assert.equal(f.note.evidence[0].excerpt,'<img src=x onerror=alert(1)>');assert(!f.c.elements.some(e=>e.href==='javascript:alert(1)'));assert(f.c.elements.some(e=>e.tag==='p'&&e.textContent==='<img src=x onerror=alert(1)>'));
+});
+test('expired sign-in retains unsaved work, stops saves while locked and recovers after authentication',async()=>{
+ const f=fixture();await f.c.app.refresh(f.c.api);await f.c.app.startStory({title:'Field interview'});
+ const input=f.c.field('Reporting notes');input.value='A unique detail entered before the session expired.';input.handlers.input();
+ const saves=f.calls.filter(c=>c.op==='field-save').length;
+ f.c.app.suspend();await f.c.runTimer();assert.equal(f.calls.filter(c=>c.op==='field-save').length,saves);assert.equal(f.c.app.hasUnsavedWork(),true);
+ await f.c.app.refresh(f.c.api);assert.equal(input.value,'A unique detail entered before the session expired.');
+ await f.c.button('Save now').click();assert.equal(f.note.notes,input.value);assert.equal(f.c.app.hasUnsavedWork(),false);
+});
+
+test('imported Voice Memo keeps its measured duration and source title without starting a microphone',async()=>{
+ let note;const c=client(async(op,p)=>{if(op==='newsroom')return {alerts:[],notes:[]};if(op==='field-save'){note=structuredClone(p.note);return {note};}return {saved:true};},{audioDuration:125.5});await c.app.refresh(c.api);
+ const file=new Blob(['fixture bytes'],{type:'audio/mp4'});file.name='Interview original.m4a';const input=c.field('Import Voice Memo');input.files=[file];await input.handlers.change();
+ assert.equal(c.app.hasUnsavedWork(),true);await c.button('Submit recording').click();assert.equal(note.duration,125.5);assert.equal(note.title,'Interview original');assert.equal(c.app.hasUnsavedWork(),false);
+});
+test('invalid audio metadata never replaces the current take with a fabricated duration',async()=>{
+ const c=client(async()=>({alerts:[],notes:[]}),{audioDuration:Infinity});await c.app.refresh(c.api);
+ const file=new Blob(['fixture bytes'],{type:'audio/mp4'});file.name='Unreadable.m4a';const input=c.field('Import Voice Memo');input.files=[file];await input.handlers.change();
+ assert.equal(c.app.hasUnsavedWork(),false);assert.equal(c.button('Submit recording').disabled,true);assert(c.elements.some(e=>e.id==='fieldStatus'&&e.textContent.includes('playable Voice Memo')));
 });

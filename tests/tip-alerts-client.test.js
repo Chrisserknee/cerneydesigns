@@ -90,6 +90,21 @@ test('an in-flight inbox cannot restore content after revocation', async () => {
     assert.equal(c.elements.get('connected').hidden,true);
     assert.deepEqual(c.elements.get('tips').children,[]);
 });
+test('authentication expiry hides the inbox but suspends unfinished field work instead of clearing it',async()=>{
+ const c=client({respond:op=>op==='expiry-fixture'?{status:401,body:{error:'Sign in again.'}}:null});await c.ready;
+ c.run('globalThis.suspended=0;globalThis.erased=0;globalThis.CerneyNewsroom={suspend(){suspended++},clear(){erased++}}');
+ await c.run('api("expiry-fixture").catch(()=>{})');
+ assert.equal(c.run('suspended'),1);assert.equal(c.run('erased'),0);assert.equal(c.elements.get('connected').hidden,true);assert.equal(c.elements.get('login').hidden,false);
+});
+test('sign-out waits for unfinished recording or notes to be saved',async()=>{
+ const c=client();await c.ready;c.run('globalThis.CerneyNewsroom={hasUnsavedWork:()=>true}');
+ await c.elements.get('logout').handlers.click();assert(!c.calls.includes('logout'));assert.equal(c.destinations.length,0);assert.match(c.elements.get('message').textContent,/submit or download/);
+});
+test('a worker matching the loaded release does not offer an unnecessary reload',async()=>{
+ const c=client({serviceWorker:{}});await c.ready;
+ c.events['worker:message']({data:{type:'cerney-client-update',release:'2026-10-25-field-notebooks-15b'}});
+ assert.equal(c.elements.has('appUpdateNotice'),false);
+});
 
 test('newly available folders stay in the inbox until explicitly tapped', async () => {
     let ready=false;

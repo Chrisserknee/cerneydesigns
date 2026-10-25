@@ -1,5 +1,5 @@
 'use strict';
-// Worker/client release: 2026-10-25-field-notebooks-15.
+const RELEASE='2026-10-25-field-notebooks-15b';
 self.addEventListener('install',event=>event.waitUntil(self.skipWaiting()));
 function inboxURL(value) {
     try {
@@ -13,7 +13,7 @@ self.addEventListener('activate',event=>event.waitUntil((async()=>{
     // Never reload a recording or unsaved notebook when a release arrives.
     const windows=await self.clients.matchAll({type:'window'});
     for(const client of windows.filter(client=>inboxURL(client.url)===client.url))
-        client.postMessage({type:'cerney-client-update'});
+        client.postMessage({type:'cerney-client-update',release:RELEASE});
 })()));
 // Deliberately no fetch cache: private tip data must never be cached offline.
 self.addEventListener('push',event=>{
