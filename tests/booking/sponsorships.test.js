@@ -30,7 +30,7 @@ test('public response strips capability tokens and signature audit metadata',asy
     assert.equal(Object.hasOwn(result.signature,'clientKey'),false);assert.equal(core.validToken('b'.repeat(64),core.hash('a'.repeat(64))),false);
 });
 test('gateway checks origin, closed booking and admin authentication before backend calls',async()=>{
-    const handler=require('../../api/booking'),old=process.env.BOOKING_ENABLED;delete process.env.BOOKING_ENABLED;
+    const handler=require('../../api/_lib/booking-handler'),old=process.env.BOOKING_ENABLED;delete process.env.BOOKING_ENABLED;
     const invoke=async(op,headers)=>{const r={setHeader(){},status(code){this.code=code;return this;},json(data){this.data=data;return this;}};await handler({method:'POST',headers,body:{op}},r);return r;};
     try{
         const access=require('../../api/_lib/booking-auth');process.env.BOOKING_SESSION_SECRET='fixture'.repeat(10);process.env.BOOKING_PASSWORD_HASH='scrypt:fixture:fixture';

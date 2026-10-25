@@ -147,6 +147,10 @@
     {
       "source": "/api/spotlight-review",
       "destination": "/api/spotlight?handler=review"
+    },
+    {
+      "source": "/api/booking",
+      "destination": "/api/spotlight?handler=booking"
     }
   ]
 }

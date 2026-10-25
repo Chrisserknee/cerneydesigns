@@ -1,9 +1,9 @@
 'use strict';
 const {createHmac}=require('node:crypto');
-const access=require('./_lib/booking-auth');
-const {reserveLoginAttempt}=require('./_lib/tip-backend');
-const {isAuthenticated}=require('./_lib/admin-auth');
-const {bodyIsTooLarge,parseBody,sendJson}=require('./_lib/http');
+const access=require('./booking-auth');
+const {reserveLoginAttempt}=require('./tip-backend');
+const {isAuthenticated}=require('./admin-auth');
+const {bodyIsTooLarge,parseBody,sendJson}=require('./http');
 module.exports=async(req,res)=>{
     if(req.method!=='POST')return sendJson(res,405,{error:'POST required.'});
     const origin='https://cerneyselects.com';

@@ -54,6 +54,7 @@ const reviewHandler = require('./_lib/spotlight-handlers/review');
 // Share one serverless function while preserving each handler's own validation.
 module.exports = (request, response) => {
     const handler = new URL(request.url || '/', 'https://cerneyselects.com').searchParams.get('handler');
+    if (handler === 'booking') return require('./_lib/booking-handler')(request, response);
     if (handler === 'logo') return logoHandler(request, response);
     if (handler === 'review') return reviewHandler(request, response);
     if (handler) return sendJson(response, 404, { error: 'Not found.' });
