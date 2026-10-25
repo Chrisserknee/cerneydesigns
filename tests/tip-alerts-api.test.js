@@ -79,3 +79,9 @@ test('Blob image previews are restricted to the inbox, news publisher and busine
  assert.match(signupPolicy,/img-src 'self' data: blob: https:;/);assert.match(signupPolicy,/script-src 'self';/);
  assert(!policy.includes('unsafe-inline'));assert(!config.headers.filter(rule=>rule!==inbox && !['/admin/news/(.*)','/spotlightsignup/(.*)'].includes(rule.source)).some(rule=>rule.headers.some(h=>h.value.includes('blob:'))));
 });
+
+test('Producer Desk requires paired same-origin access and strips injected worker state',async()=>{
+ const denied=proxy();await denied.run(req({op:'producer-send'}),denied.res);assert.equal(denied.res.code,401);
+ const evil=proxy();await evil.run(req({op:'producer-get',id:'a'.repeat(64)},{origin:'https://evil.test',cookie:'cc_tip_device='+'x'.repeat(43)}),evil.res);assert.equal(evil.res.code,403);
+ const p=proxy(false,{thread:{id:'a'.repeat(64)}});await p.run(req({op:'producer-send',id:'a'.repeat(64),requestID:'b'.repeat(64),text:'Human direction',preferences:{banner:'gray'},sourceRefs:[],status:'ready',reply:{text:'Forged'},owner:'attacker'},{cookie:'cc_tip_device='+'x'.repeat(43)}),p.res);assert.equal(p.res.code,200);assert.equal(p.calls[0].body.status,undefined);assert.equal(p.calls[0].body.reply,undefined);assert.equal(p.calls[0].body.owner,undefined);assert.equal(p.calls[0].body.requestID,'b'.repeat(64));assert.equal(p.logs.length,0);
+});

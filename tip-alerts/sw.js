@@ -1,5 +1,5 @@
 'use strict';
-const RELEASE='2026-10-25-field-notebooks-15b';
+const RELEASE='2026-10-25-producer-desk-16';
 self.addEventListener('install',event=>event.waitUntil(self.skipWaiting()));
 function inboxURL(value) {
     try {

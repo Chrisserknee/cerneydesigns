@@ -1,5 +1,5 @@
 'use strict';
-const CLIENT_RELEASE='2026-10-25-field-notebooks-15b';
+const CLIENT_RELEASE='2026-10-25-producer-desk-16';
 const $ = id => document.getElementById(id);
 const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
@@ -335,6 +335,7 @@ function storyCard(tip) {
     if(videoURL(tip.videoUrl)){const v=document.createElement('a');v.className='folder watch-video';v.href=videoURL(tip.videoUrl);v.target='_blank';v.rel='noopener noreferrer';v.textContent='Watch draft'+(tip.durationSeconds?' · '+Math.round(tip.durationSeconds)+'s':'');actions.append(v);}
     if(folderURL(tip.driveUrl)) actions.append(folderLink(tip)); else paragraph(actions,tip.sourceKind==='google_voice'?'Text received from Google Voice':tip.status==='review'?'Files need review':'Files processing','state');
     if(/^https:\/\/mail\.google\.com\/mail\/u\/0\/#all\/[A-Za-z0-9]{1,80}$/.test(tip.sourceMailURL||'')){const original=document.createElement('a');original.href=tip.sourceMailURL;original.target='_blank';original.rel='noopener noreferrer';original.textContent='Open original email';actions.append(original);}
+    {const producer=document.createElement('a');producer.className='secondary';producer.textContent='Open in Producer Desk';producer.href='/tip-alerts/producer.html?kind=tip&source='+encodeURIComponent(tip.id)+'&title='+encodeURIComponent(tip.title||'New report');actions.append(producer);}
     if(globalThis.CerneyNewsroom?.startStory){const notebook=document.createElement('button');notebook.type='button';notebook.className='secondary';notebook.textContent='Start story notebook';notebook.addEventListener('click',()=>globalThis.CerneyNewsroom.startStory({title:tip.title||'New story',evidence:[{id:tip.id,title:tip.title||'Source submission',excerpt:String(tip.submission?.text||tip.sourceText||tip.description||tip.summary||'No written source context supplied.').slice(0,6000),url:tip.sourceMailURL||tip.sourceUrl||tip.driveUrl,kind:tip.sourceKind||'community_tip',receivedAt:tip.receivedAt}]}));actions.append(notebook);}
     const save=document.createElement('button');save.type='button';save.className='save-story';save.textContent=savedStories.has(tip.id)?'Saved ✓':'Save';save.setAttribute('aria-label',(savedStories.has(tip.id)?'Unsave ':'Save ')+(tip.title || 'story'));save.setAttribute('aria-pressed',String(savedStories.has(tip.id)));
     save.addEventListener('click',()=>{if(savedStories.has(tip.id))savedStories.delete(tip.id);else if(/^[a-f0-9]{64}$/.test(tip.id))savedStories.add(tip.id);try{localStorage.setItem('cerney-saved-stories',JSON.stringify([...savedStories].slice(-200)));}catch{}renderInbox();});

@@ -11,10 +11,10 @@
 <script src="/tip-alerts/story-backgrounds.js?v=20261023-simple-stories-1" defer></script>
 <script src="/tip-alerts/story-requests.js?v=20261025-outreach-15" defer></script>
 <link rel="stylesheet" href="/tip-alerts/newsroom.css?v=20261025-15b">
-<script src="/tip-alerts/newsroom.js?v=20261025-15b" defer></script>
+<script src="/tip-alerts/newsroom.js?v=20261025-16" defer></script>
 <script src="/tip-alerts/report-copy.js" defer></script>
 <script src="/tip-alerts/conversations.js?v=20261025-1" defer></script>
-<script src="/tip-alerts/thumbnail.js" defer></script><script src="/tip-alerts/app.js?v=newsroom-20261025-15b" defer></script>
+<script src="/tip-alerts/thumbnail.js" defer></script><script src="/tip-alerts/app.js?v=producer-20261025-16" defer></script>
 </head>
 <body>
 <div id="pullIndicator" class="pull-indicator" role="status" aria-live="polite" hidden></div>
@@ -30,6 +30,7 @@
 <div class="desk-stats" aria-label="Inbox overview"><div><strong id="readyCount">—</strong><span>Drafts ready</span></div><div><strong id="attentionCount">—</strong><span>Need attention</span></div><div><strong id="totalCount">—</strong><span>Recent stories</span></div></div>
 <button id="reviewStart" class="review-start" type="button" hidden><span>Review drafts, one at a time</span><span id="reviewStartCount">0</span></button>
 <details id="monitorHealth" class="monitor-health"><summary><span id="monitorSummary">Monitoring status unavailable</span><span class="health-more">Details</span></summary><div id="monitorDetails"><p>Collection status has not arrived yet. The inbox update time does not indicate that Facebook was checked.</p></div></details>
+<a class="secondary" href="/tip-alerts/producer.html">Producer Desk · message Claude</a>
 <section class="desk-tools" aria-label="Find a story"><div class="search-row"><label class="sr-only" for="storySearch">Search stories, agencies and locations</label><input id="storySearch" type="search" placeholder="Search stories…" autocomplete="off"><label class="sr-only" for="storySort">Order</label><select id="storySort"><option value="newest">Newest</option><option value="oldest">Oldest</option><option value="status">By status</option></select></div><div class="status-chips" role="group" aria-label="Filter by status"><button id="chipAll" class="chip active" type="button" aria-pressed="true">All <span id="chipAllCount">0</span></button><button id="chipAttention" class="chip" type="button" aria-pressed="false">Needs attention <span id="chipAttentionCount">0</span></button><button id="chipReady" class="chip" type="button" aria-pressed="false">Draft ready <span id="chipReadyCount">0</span></button><button id="chipProcessing" class="chip" type="button" aria-pressed="false">In progress <span id="chipProcessingCount">0</span></button><button id="chipDone" class="chip" type="button" aria-pressed="false">Done <span id="chipDoneCount">0</span></button><button id="chipSaved" class="chip" type="button" aria-pressed="false">Saved <span id="chipSavedCount">0</span></button></div></section>
 <p id="filterStatus" class="small muted" role="status" aria-live="polite"></p>
 <nav class="source-nav" aria-label="Inbox sections"><a class="source-community" href="#communitySection">Community tips <span id="communityCount">0</span></a><a id="foundReportsLink" class="source-found" href="#reportsSection">Found reports <span id="foundCount">0</span></a></nav>

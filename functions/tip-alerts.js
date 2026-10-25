@@ -19,6 +19,8 @@ const ROOT = '_tipalerts/v1/';
 const {noteMetadata,noteSummary}=require('./field-note-index');
 const {researchRecord}=require('./newsroom-record');
 const fieldHandler=require('./field-notes').createFieldNotes({read,write,bucket:()=>bucket(),root:ROOT});
+const {threadMetadata,threadSummary,createProducerDesk}=require('./producer-desk');
+const producerHandler=createProducerDesk({read,write,list:producerThreads,bucket:()=>bucket(),root:ROOT});
 const {voiceTip,refreshFromStored,voiceMonitor}=require('./voice-tip');
 const bucket = () => getStorage().bucket('tip-line-8c2d7.firebasestorage.app');
 const options = {region:'us-west1', memory:'256MiB', timeoutSeconds:120, maxInstances:3};
@@ -32,7 +34,18 @@ async function read(name) {
 }
 async function write(name, data, generation) {
     await bucket().file(ROOT + name).save(JSON.stringify(data), {resumable:false, contentType:'application/json',
-        metadata:{cacheControl:'no-store',...(/^field-notes\/[a-f0-9]{64}\.json$/.test(name)?{metadata:noteMetadata(data)}:{})}, ...(generation === undefined ? {} : {preconditionOpts:{ifGenerationMatch:generation}})});
+        metadata:{cacheControl:'no-store',...(/^field-notes\/[a-f0-9]{64}\.json$/.test(name)?{metadata:noteMetadata(data)}:/^producer-threads\/[a-f0-9]{64}\.json$/.test(name)?{metadata:threadMetadata(data)}:{})}, ...(generation === undefined ? {} : {preconditionOpts:{ifGenerationMatch:generation}})});
+}
+async function producerThreads(cursor){
+ const [files,next]=await bucket().getFiles({prefix:ROOT+'producer-threads/',maxResults:100,autoPaginate:false,...(cursor?{pageToken:cursor}:{})});
+ const threads=[];
+ for(const file of files){
+  if(!/^_tipalerts\/v1\/producer-threads\/[a-f0-9]{64}\.json$/.test(file.name))continue;
+  const m=file.metadata?.metadata;
+  if(m?.producerIndex==='1')threads.push({id:m.id,title:m.title,revision:Number(m.revision),createdAt:m.createdAt,updatedAt:m.updatedAt,status:m.status,pending:Number(m.pending)||0,lastReply:m.lastReply||null});
+  else{const t=await read(file.name.slice(ROOT.length));if(t)threads.push(threadSummary(t.data));}
+ }
+ return {threads:threads.sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt)),nextCursor:next?.pageToken||null};
 }
 async function updateDevice(id, changes) {
     const name = `devices/${id}.json`;
@@ -234,7 +247,7 @@ async function readThumbnail(body){
 async function handleApi(req, res) {
     res.set('Cache-Control','no-store'); res.set('X-Content-Type-Options','nosniff');
     if (req.method !== 'POST') return res.status(405).json({error:'Method not allowed.'});
-    if (!req.is('application/json') || req.rawBody?.length > (String(req.body?.op||'').startsWith('field-')?800000:16384)) return res.status(400).json({error:'Invalid request.'});
+    if (!req.is('application/json') || req.rawBody?.length > (String(req.body?.op||'').startsWith('field-')||req.body?.op==='producer-media-part'?800000:String(req.body?.op||'').startsWith('producer-')?32768:16384)) return res.status(400).json({error:'Invalid request.'});
     const body = req.body || {};
     try {
         if (body.op === 'login-attempt') {
@@ -253,6 +266,7 @@ async function handleApi(req, res) {
         }
         const device = await authenticate(body.token);
         if (!device) return res.status(401).json({error:'Sign in to connect this device.'});
+        if(String(body.op||'').startsWith('producer-'))return res.json(await producerHandler(body,device));
         if(String(body.op||'').startsWith('field-'))return res.json(await fieldHandler(body));
         if(body.op==='newsroom'){
             const [records,notes,health]=await Promise.all([inboxDocuments('research/'),fieldSummaries(),read('research-monitor/status.json')]);
