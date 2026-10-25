@@ -1,5 +1,5 @@
 'use strict';
-const CLIENT_RELEASE='2026-10-25-phone-alerts-17';
+const CLIENT_RELEASE='2026-10-25-native-handoff-18';
 const $ = id => document.getElementById(id);
 const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
@@ -539,6 +539,7 @@ if('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('messa
     if(event.data?.type!=='cerney-tip-open')return;
     let url;
     try { url=new URL(event.data.url); } catch { return; }
+    globalThis.CerneyNativeHandoff?.open(url.href);
     const alert=url.searchParams.get('alert');
     if(url.origin===location.origin && url.pathname==='/tip-alerts/' && /^[a-f0-9]{64}$/.test(alert || '')) {history.replaceState(null,'',url.pathname+url.search);globalThis.CerneyNewsroom?.refresh(api,true);return;}
     const story=url.searchParams.get('story');
@@ -555,4 +556,5 @@ document.addEventListener('visibilitychange',()=>{
     if(document.hidden) { resetPull(); clearTimeout(inboxTimer); clearTimeout(retryTimer); }
     else if(state) load();
 });
+globalThis.CerneyNativeHandoff?.open(location.href);
 load();
