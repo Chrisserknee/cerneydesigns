@@ -9,9 +9,10 @@ function createFieldNotes({read,write,bucket,root}){
   if(body.op==='field-save'){
    const value=fieldNote({...body.note,id:body.id});
    if(current&&current.data.revision>=value.revision){
-    if(current.data.revision===value.revision&&['title','transcript','draft','notes'].every(k=>current.data[k]===value[k]))return {note:current.data};
+    if(current.data.revision===value.revision&&['title','transcript','draft','notes','processRequested'].every(k=>current.data[k]===value[k]))return {note:current.data};
     throw Object.assign(Error('A newer note is saved. Refresh before editing.'),{code:409});
    }
+   if(body.expectedRevision!==undefined&&body.expectedRevision!==(current?.data.revision||0))throw Object.assign(Error('This recording changed on another device. Refresh before editing; your local draft is still saved.'),{code:409});
    const saved={...value,createdAt:current?.data.createdAt||value.createdAt,audio:current?.data.audio||null};
    await write(name,saved,current?.generation||0);return {note:saved};
   }

@@ -25,7 +25,7 @@ module.exports = async (request, response) => {
         const token = readCookie(request,COOKIE);
         if (!/^[A-Za-z0-9_-]{43}$/.test(token)) return sendJson(response,401,{error:'Sign in to connect this device.'});
         payload = {op:body.op,token,...(body.op === 'subscribe' ? {subscription:body.subscription} : {}),...(['tip','revoke-device','thumbnail'].includes(body.op) ? {id:body.id} : {})};
-        if(String(body.op).startsWith('field-'))Object.assign(payload,{id:body.id,note:body.note,index:body.index,sha256:body.sha256,base64:body.base64,parts:body.parts,mimeType:body.mimeType});
+        if(String(body.op).startsWith('field-'))Object.assign(payload,{id:body.id,note:body.note,expectedRevision:body.expectedRevision,index:body.index,sha256:body.sha256,base64:body.base64,parts:body.parts,mimeType:body.mimeType});
         if (body.op === 'thumbnail') Object.assign(payload,{generation:body.generation,sha256:body.sha256,revision:body.revision,contextVersion:body.contextVersion});
     }
     try {

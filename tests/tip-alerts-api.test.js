@@ -6,6 +6,8 @@ function proxy(authenticated=false, reply={}, status=200) {
  return {run:c.module.exports,calls,res,logs};
 }
 const req=(body,headers={})=>({method:'POST',headers:{origin:'https://www.chriscerney.org','content-type':'application/json',...headers},body});
+test('field edits preserve conflict guards through the authenticated proxy',async()=>{const p=proxy(false,{note:{revision:8}});await p.run(req({op:'field-save',id:'a'.repeat(64),expectedRevision:3,note:{revision:8,draft:'offline edits'}},{cookie:'cc_tip_device='+'x'.repeat(43)}),p.res);assert.equal(p.calls[0].body.expectedRevision,3);assert.equal(p.calls[0].body.note.revision,8);assert.equal(p.calls[0].body.token,'x'.repeat(43));});
+test('microphone is permitted only on the private Field Mode page',()=>{const config=JSON.parse(fs.readFileSync(__dirname+'/../vercel.json','utf8'));const policy=source=>config.headers.find(x=>x.source===source).headers.find(x=>x.key==='Permissions-Policy').value;assert.match(policy('/tip-alerts/(.*)'),/microphone=\(self\)/);assert.match(policy('/(.*)'),/microphone=\(\)/);assert.match(policy('/tip-alerts/(.*)'),/camera=\(\)/);});
 test('inbox diagnostics contain counts but no private fields',async()=>{
  const p=proxy(false,{tips:[{type:'upload',title:'PRIVATE'}, {type:'incident',id:'SECRET'}],reports:[{voiceover:'PRIVATE'}]});
  await p.run(req({op:'list'},{cookie:'cc_tip_device='+'x'.repeat(43),'user-agent':'iPhone'}),p.res);
