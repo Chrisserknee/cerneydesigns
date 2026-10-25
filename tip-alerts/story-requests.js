@@ -1,6 +1,7 @@
 'use strict';
 (function(root){
  const ID=/^[a-f0-9]{64}$/;
+ const TEXT_SCALE=0.70; // Shrink fitted copy, including long headlines, by 30%.
  const CTA='Send photos or video to me.';
  function lines(ctx,text,maxWidth){const words=String(text||'').trim().split(/\s+/),out=[];let line='';for(const word of words){const next=line?line+' '+word:word;if(ctx.measureText(next).width>maxWidth&&line){out.push(line);line=word;}else line=next;}if(line)out.push(line);return out;}
  function fit(ctx,text,width,size,min,maxLines){let result;for(let n=size;n>=min;n-=2){ctx.font=`700 ${n}px Arial, sans-serif`;result=lines(ctx,text,width);if(result.length<=maxLines&&result.every(l=>ctx.measureText(l).width<=width))return {lines:result,size:n};}throw Error('That text is too long for the story. Shorten it and try again.');}
@@ -10,16 +11,16 @@
   c.fillStyle='#132f46';c.fillRect(0,0,1080,1920);
   if(art?.images?.length)root.CerneyStoryBackgrounds.paint(c,art);
   const accent=art?.style.color||'#ea8b77';
-  if(story.basis==='demo'){c.fillStyle=accent;c.font='700 25px Arial';c.fillText('DESIGN EXAMPLE · NO REAL INCIDENT',88,320);}
+  if(story.basis==='demo'){c.fillStyle=accent;c.font=`700 ${25*TEXT_SCALE}px Arial`;c.fillText('DESIGN EXAMPLE · NO REAL INCIDENT',88,320);}
   function block(text,y,width,size,min,maxLines,color,weight='700'){
-   const f=fit(c,text,width,size,min,maxLines);c.font=`${weight} ${f.size}px Arial, sans-serif`;c.fillStyle=color;
+   const f=fit(c,text,width,size,min,maxLines);f.size*=TEXT_SCALE;c.font=`${weight} ${f.size}px Arial, sans-serif`;f.lines=lines(c,text,width);c.fillStyle=color;
    for(const [i,line] of f.lines.entries())c.fillText(line,88,y+i*f.size*1.17);
    return y+(f.lines.length-1)*f.size*1.17;
   }
   block(story.headline,580,904,120,66,4,'#ffffff');
   c.fillStyle=accent;c.fillRect(88,1190,180,7);
   block(CTA,1350,904,52,44,2,'#ffffff','400');
-  c.font='700 56px Arial';c.fillStyle=accent;c.fillText('chriscerney.org/upload',88,1550);
+  c.font=`700 ${56*TEXT_SCALE}px Arial`;c.fillStyle=accent;c.fillText('chriscerney.org/upload',88,1550);
   return canvas;
  }
  let section,signature='',selected='';
