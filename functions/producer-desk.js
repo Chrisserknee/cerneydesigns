@@ -66,7 +66,7 @@ function createProducerDesk({read,write,list,bucket,root,clock=()=>new Date().to
    if(!validID(body.assetID)||!validID(body.sha256)||!Array.isArray(body.parts)||!body.parts.length||body.parts.length>192||!body.parts.every(validID))throw error('Invalid media manifest.');
    const filename=text(body.filename,180,'Filename');if(/[\\/\x00-\x1f]/.test(filename))throw error('Use a plain filename.');
    if(!['video/mp4','video/quicktime','image/jpeg','image/png','image/webp','audio/mp4','audio/mpeg','audio/wav','audio/x-wav','application/pdf'].includes(body.mimeType))throw error('Attach a video, image, audio recording, or PDF.');
-   let bytes=0;for(const [i,h] of body.parts.entries()){const [meta]=await bucket().file(`${root}producer-media/${body.id}/${body.assetID}/parts/${i}-${h}`).getMetadata();const size=Number(meta.size);if(!Number.isInteger(size)||size<1||size>512*1024)throw error('Media part is incomplete.');bytes+=size;}
+   let bytes=0;for(let start=0;start<body.parts.length;start+=12){const checked=await Promise.allSettled(body.parts.slice(start,start+12).map(async(h,j)=>{const [meta]=await bucket().file(`${root}producer-media/${body.id}/${body.assetID}/parts/${start+j}-${h}`).getMetadata();const size=Number(meta.size);if(!Number.isInteger(size)||size<1||size>512*1024)throw error('Media part is incomplete.');return size;}));for(const result of checked){if(result.status==='rejected')throw result.reason;bytes+=result.value;}}
    if(bytes!==body.bytes||bytes>96*1024*1024)throw error('Media size mismatch.');
    const asset={id:body.assetID,filename,mimeType:body.mimeType,sha256:body.sha256,parts:body.parts,bytes,savedAt:clock(),verification:'Mac checksum and format verification pending'};
    for(let attempt=0;attempt<5;attempt++){
