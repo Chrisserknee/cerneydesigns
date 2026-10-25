@@ -82,6 +82,7 @@ function clearSession() {
     try { localStorage.removeItem('cerney-open-tip'); } catch {}
     thumbnails.reset();
     globalThis.CerneyStoryRequests?.clear();
+    globalThis.CerneyNewsroom?.clear();
     state = null; renderedTips=null; inboxSnapshot={tips:[],reports:[]}; sessionVersion++; message(); resetPull(); closeReview();
     $('inboxStatus').textContent = '';
     clearTimeout(retryTimer); clearTimeout(inboxTimer);
@@ -240,6 +241,7 @@ async function fetchTips(quiet) {
     if(latest) $('latestTipButton').textContent='Latest community tip · '+shortDate(latest.receivedAt)+' · '+(latest.title || 'Tipline upload');
     paintMonitor(data.monitor);
     globalThis.CerneyStoryRequests?.update(data.storyRequests || [],data.storyRequestMonitor);
+    globalThis.CerneyNewsroom?.refresh(api);
     renderInbox();
     const updated=new Intl.DateTimeFormat('en-US',{hour:'numeric',minute:'2-digit'}).format(new Date());
     $('reportsStatus').textContent=`${reports.length} found video ${reports.length===1?'report':'reports'} · Updated ${updated}`;

@@ -13,9 +13,9 @@ module.exports = async (request, response) => {
     if (origin !== 'https://www.chriscerney.org') return sendJson(response,403,{error:'Request origin is not allowed.'});
     if (!String(request.headers['content-type'] || '').startsWith('application/json')) return sendJson(response,415,{error:'JSON request required.'});
     let body;
-    try { body = parseBody(request); if (Buffer.byteLength(JSON.stringify(body)) > 8192) return sendJson(response,413,{error:'Request too large.'}); }
+    try { body = parseBody(request); if (Buffer.byteLength(JSON.stringify(body)) > (String(body?.op||'').startsWith('field-')?780000:8192)) return sendJson(response,413,{error:'Request too large.'}); }
     catch { return sendJson(response,400,{error:'Invalid request.'}); }
-    const ops = ['pair','status','subscribe','unsubscribe','logout','list','tip','test','devices','revoke-device','thumbnail'];
+    const ops = ['pair','status','subscribe','unsubscribe','logout','list','tip','test','devices','revoke-device','thumbnail','newsroom','field-save','field-get','field-audio-part','field-audio-finish','field-audio-read'];
     if (!ops.includes(body?.op)) return sendJson(response,400,{error:'Unknown request.'});
     let payload;
     if (body.op === 'pair') {
@@ -25,6 +25,7 @@ module.exports = async (request, response) => {
         const token = readCookie(request,COOKIE);
         if (!/^[A-Za-z0-9_-]{43}$/.test(token)) return sendJson(response,401,{error:'Sign in to connect this device.'});
         payload = {op:body.op,token,...(body.op === 'subscribe' ? {subscription:body.subscription} : {}),...(['tip','revoke-device','thumbnail'].includes(body.op) ? {id:body.id} : {})};
+        if(String(body.op).startsWith('field-'))Object.assign(payload,{id:body.id,note:body.note,index:body.index,sha256:body.sha256,base64:body.base64,parts:body.parts,mimeType:body.mimeType});
         if (body.op === 'thumbnail') Object.assign(payload,{generation:body.generation,sha256:body.sha256,revision:body.revision,contextVersion:body.contextVersion});
     }
     try {

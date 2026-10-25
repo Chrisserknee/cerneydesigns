@@ -16,6 +16,8 @@ const { SITE, hash, activeDevice, validSubscription, tipRecord, retryTime, notif
 const {sourceContext,displayContext}=require('./tip-inbox-context');
 const {thumbnailDescriptor,requestedThumbnail,sameThumbnail,verifiedThumbnailBytes,MAX_BYTES}=require('./tip-thumbnail');
 const ROOT = '_tipalerts/v1/';
+const {researchRecord}=require('./newsroom-record');
+const fieldHandler=require('./field-notes').createFieldNotes({read,write,bucket:()=>bucket(),root:ROOT});
 const {voiceTip,refreshFromStored,voiceMonitor}=require('./voice-tip');
 const bucket = () => getStorage().bucket('tip-line-8c2d7.firebasestorage.app');
 const options = {region:'us-west1', memory:'256MiB', timeoutSeconds:120, maxInstances:3};
@@ -222,7 +224,7 @@ async function readThumbnail(body){
 async function handleApi(req, res) {
     res.set('Cache-Control','no-store'); res.set('X-Content-Type-Options','nosniff');
     if (req.method !== 'POST') return res.status(405).json({error:'Method not allowed.'});
-    if (!req.is('application/json') || req.rawBody?.length > 16384) return res.status(400).json({error:'Invalid request.'});
+    if (!req.is('application/json') || req.rawBody?.length > (String(req.body?.op||'').startsWith('field-')?800000:16384)) return res.status(400).json({error:'Invalid request.'});
     const body = req.body || {};
     try {
         if (body.op === 'login-attempt') {
@@ -241,6 +243,11 @@ async function handleApi(req, res) {
         }
         const device = await authenticate(body.token);
         if (!device) return res.status(401).json({error:'Sign in to connect this device.'});
+        if(String(body.op||'').startsWith('field-'))return res.json(await fieldHandler(body));
+        if(body.op==='newsroom'){
+            const [records,notes,health]=await Promise.all([inboxDocuments('research/'),inboxDocuments('field-notes/'),read('research-monitor/status.json')]);
+            return res.json({alerts:records.map(researchRecord).filter(Boolean).filter(x=>Date.parse(x.observedAt)>Date.now()-30*86400000).sort((a,b)=>Date.parse(b.observedAt)-Date.parse(a.observedAt)).slice(0,200),notes:notes.map(n=>({id:n.id,title:n.title,createdAt:n.createdAt,updatedAt:n.updatedAt,revision:n.revision,hasAudio:!!n.audio})),monitor:health?.data||null});
+        }
         if(body.op==='thumbnail'){
             if(!requestedThumbnail(body))return res.status(400).json({error:'Invalid thumbnail.'});
             let thumbnail;
@@ -250,7 +257,7 @@ async function handleApi(req, res) {
         }
         if(body.op === 'devices') {
             const devices=(await documents('devices/')).filter(d=>activeDevice(d));
-            return res.json({devices:devices.map(d=>({id:d.id,label:deviceLabel(d),createdAt:d.createdAt,current:d.id===device.id,alertsOn:!!d.subscription}))});
+            return res.json({devices:devices.map(d=>({id:d.id,label:deviceLabel(d),createdAt:d.createdAt,current:d.id===device.id,alertsOn:!!d.subscription,lastTestAt:d.lastTestAt||null,pushExpiredAt:d.pushExpiredAt||null}))});
         }
         if(body.op === 'revoke-device') {
             if(!/^[a-f0-9]{64}$/.test(body.id || '') || body.id===device.id)return res.status(400).json({error:'Use Sign out to disconnect this device.'});
@@ -326,6 +333,7 @@ async function handleApi(req, res) {
         }
         return res.status(400).json({error:'Unknown request.'});
     } catch(e) {
+        if ([409,412].includes(e.code))return res.status(409).json({error:'This note changed. Refresh it before saving again.'});
         if (e.code === 400) return res.status(400).json({error:'Invalid request.'});
         if (e.code === 401) return res.status(401).json({error:'Sign in to connect this device.'});
         logger.error('Tip alerts request failed', {op:body.op, code:Number(e.code || e.statusCode) || 0});

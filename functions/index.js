@@ -433,3 +433,5 @@ Object.assign(exports, require('./news'));
 
 // Private witness-callout drafts; never publish to Instagram.
 Object.assign(exports, require('./story-request-functions'));
+
+Object.assign(exports, require('./research-alert-functions'));
