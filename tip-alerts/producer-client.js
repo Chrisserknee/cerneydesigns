@@ -25,7 +25,7 @@ const cards=new Map();      // requestID -> report card element (kept across pol
 const loaded=new Map();     // artifactID -> {url,text}
 const uploadRows=[];
 
-function message(text,error=false){$('notice').textContent=text;$('notice').className=error?'error':'';}
+function message(text,error=false){if(text==='Sign-in required.')return;$('notice').textContent=text;$('notice').className=error?'error':'';}
 function button(text,fn,className){const b=E('button',text,className);b.type='button';b.addEventListener('click',fn);return b;}
 
 // ---- Device outbox: the exact unsent request survives reloads; retries reuse its IDs. ----
@@ -38,7 +38,7 @@ async function api(op,data={},timeout=45000){
  try{response=await fetch('/api/tip-alerts',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({op,...data}),cache:'no-store',signal:AbortSignal.timeout(timeout)});}
  catch{throw Object.assign(Error('The connection dropped.'),{retry:true});}
  try{body=await response.json();}catch{}
- if(response.status===401){authenticated=false;signedOut();throw Error('Sign-in required.');}
+ if(response.status===401){authenticated=false;signedOut();throw Object.assign(Error('Sign-in required.'),{signedOut:true});}
  if(!response.ok)throw Object.assign(Error(body.error||'The connection did not finish.'),{status:response.status,retry:response.status>=500||response.status===429});
  authenticated=true;return body;
 }
