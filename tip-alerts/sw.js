@@ -1,5 +1,5 @@
 'use strict';
-const RELEASE='2026-10-25-native-handoff-18';
+const RELEASE='2026-10-25-native-handoff-19';
 self.addEventListener('install',event=>event.waitUntil(self.skipWaiting()));
 function inboxURL(value) {
     try {

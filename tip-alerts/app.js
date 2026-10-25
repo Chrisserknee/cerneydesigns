@@ -1,5 +1,5 @@
 'use strict';
-const CLIENT_RELEASE='2026-10-25-native-handoff-18';
+const CLIENT_RELEASE='2026-10-25-native-handoff-19';
 const $ = id => document.getElementById(id);
 const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
