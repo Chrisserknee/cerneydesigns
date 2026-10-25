@@ -51,9 +51,10 @@ function pushNotification(notification) {
 function notification(tip, now = Date.now()) {
     const delayed = now - Date.parse(tip.receivedAt) > 10 * 60000;
     const received = new Intl.DateTimeFormat('en-US', {timeZone:'America/Los_Angeles', month:'short', day:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'}).format(new Date(tip.receivedAt));
+    const preview = String(tip.sourceTitle || tip.sourceSummary || '').replace(/https?:\/\/\S+|[\w.+-]+@[\w.-]+\.[a-z]{2,}/gi,'').replace(/(?:\+?1[ .-]?)?\(?\d{3}\)?[ .-]?\d{3}[ .-]?\d{4}/g,'').replace(/[\u0000-\u001f\u007f]/g,' ').replace(/\s+/g,' ').trim().slice(0,100);
     return pushNotification({
-            title: delayed ? 'Tip received earlier' : 'New tip received',
-            body: `Received ${received}.${tip.incomplete ? ' Incomplete upload saved.' : ''} Tap to review.`,
+            title: delayed ? 'Earlier tip' : tip.sourceKind === 'google_voice' ? 'Google Voice tip' : 'New tip',
+            body: `${preview ? 'Tip: ' + preview + '. ' : ''}${delayed || !preview ? 'Received ' + received + '. ' : ''}Open Cerney Tips → Inbox.`,
             navigate: `${SITE}/tip-alerts/?tip=${tip.id}`,
             tag: `tip-${tip.id}`, icon: `${SITE}/tip-alerts/icon-192.png`,
             data: { url: `${SITE}/tip-alerts/?tip=${tip.id}` },

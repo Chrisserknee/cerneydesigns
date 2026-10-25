@@ -38,7 +38,7 @@ test('retry is measured in minutes and honors server Retry-After',()=>{
 });
 test('notification has source timestamp, private inbox link, and no submitter details',()=>{
  const n=h.notification({...tip,senderName:'PRIVATE PERSON',description:'PRIVATE STORY',driveUrl:'https://drive.google.com/drive/folders/secret'},now+3600000);
- assert.equal(n.notification.title,'Tip received earlier');assert.match(n.notification.body,/Received/);assert.match(n.notification.navigate,/tip=[a-f0-9]{64}$/);
+ assert.equal(n.notification.title,'Earlier tip');assert.match(n.notification.body,/Received/);assert.match(n.notification.navigate,/tip=[a-f0-9]{64}$/);
  assert.doesNotMatch(JSON.stringify(n),/PRIVATE|secret/);
  assert.equal(n.mutable,true);assert.equal(n.notification.mutable,true);
 });
@@ -241,3 +241,5 @@ test('a cold library of 1000 indexed notebooks lists without downloading transcr
  const first=x.files.values().next().value;first.data.revision=2;first.data.title='Updated notebook';first.metadata.metadata=noteMetadata(first.data);assert.equal((await x.fieldSummaries())[0].title,'Updated notebook');assert.equal(x.counts.downloads,0);
 });
 test('legacy notebooks remain visible while new summaries use metadata',async()=>{const id='a'.repeat(64),x=harness({initial:{['_tipalerts/v1/field-notes/'+id+'.json']:{id,revision:1,title:'Older recording',createdAt:new Date(now).toISOString(),transcript:'Preserved'}}});const summaries=await x.fieldSummaries();assert.equal(summaries.length,1);assert.equal(summaries[0].title,'Older recording');assert.equal(x.counts.downloads,1);});
+
+test('simple alerts identify a Voice tip and point to the native inbox',()=>{const n=h.notification({...tip,sourceKind:'google_voice',sourceTitle:'Crash near Laurel Drive'},Date.parse(tip.receivedAt));assert.equal(n.notification.title,'Google Voice tip');assert.equal(n.notification.body,'Tip: Crash near Laurel Drive. Open Cerney Tips → Inbox.');});

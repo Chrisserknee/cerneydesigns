@@ -3,7 +3,7 @@ const {randomUUID}=require('node:crypto');
 const {researchRecord:storyRequest}=require('./newsroom-record');
 const {SITE,activeDevice,retryTime,pushNotification}=require('./tip-alerts-helpers');
 const BUCKET='tip-line-8c2d7.firebasestorage.app',ROOT='_tipalerts/v1/';
-function payload(story){const url=SITE+'/tip-alerts/?alert='+story.id;return pushNotification({title:story.kind==='facebook_group'?'Facebook alert':'Research alert',body:'New source report to review: '+story.title.slice(0,140),navigate:url,tag:'research-'+story.id,icon:SITE+'/tip-alerts/icon-192.png',data:{url}});}
+function payload(story){const url=SITE+'/tip-alerts/?alert='+story.id;return pushNotification({title:story.kind==='facebook_group'?'Facebook alert':'Research alert',body:story.title.slice(0,100)+'. Open Cerney Tips → Inbox.',navigate:url,tag:'research-'+story.id,icon:SITE+'/tip-alerts/icon-192.png',data:{url}});}
 function createAlerts({read,write,documents,send,config,logger={info(){},warn(){}}}){
  async function deliver(story,device,keys){
   if(Date.parse(story?.observedAt)<Date.now()-24*3600000)return;
