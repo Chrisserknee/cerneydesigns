@@ -16,3 +16,6 @@ firebase.spotlight.json
 **/*.test.mjs
 functions-selects/
 firebase.cerneyselects.json
+
+functions-booking/
+firebase.booking.json

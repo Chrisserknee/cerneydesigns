@@ -1,4 +1,5 @@
 import { next, rewrite } from '@vercel/functions';
+import bookingAccess from './api/_lib/booking-auth.js';
 import { gate } from './spotlight-gate.cjs';
 export const config = { runtime: 'nodejs', matcher: ['/:path*'] };
 
@@ -32,10 +33,26 @@ export default async function middleware(request: Request) {
     if (!path) return invalidPath();
     // These routes have only ASCII filenames. Never let an encoded alias skip a
     // preview/domain check and later resolve to a protected static file.
-    const selectsNamespace = /^\/(?:apply|localspotlight|spotlight|spotlightsignup|spotlightreview)(?:\/|$)/.test(path.pathname)
-        || /^\/api\/(?:spotlight|spotlight-logo|spotlight-review|spotlight-webhook)\/?$/.test(path.pathname);
+    const selectsNamespace = /^\/(?:book|apply|localspotlight|spotlight|spotlightsignup|spotlightreview)(?:\/|$)/.test(path.pathname)
+        || /^\/api\/(?:booking|spotlight|spotlight-logo|spotlight-review|spotlight-webhook)\/?$/.test(path.pathname);
     if (path.encoded && (selects || selectsNamespace)) return invalidPath();
     url.pathname = path.pathname;
+    const bookingPath = /^\/book(?:\/|$)/.test(url.pathname);
+    const bookingApi = /^\/api\/booking\/?$/.test(url.pathname);
+    if (bookingPath || bookingApi) {
+        if (!selects || staging || path.encoded) return new Response('Not found.', {status:404, headers:previewHeaders});
+        if (url.hostname !== 'cerneyselects.com') {url.hostname='cerneyselects.com';return Response.redirect(url,308);}
+        if (bookingApi) return next({headers:previewHeaders});
+        const loginAsset = ['/book/style.css','/book/login.js'].includes(url.pathname);
+        if (!loginAsset && !bookingAccess.authenticated(request.headers.get('cookie'))) {
+            if (!['/book','/book/','/book/index.html','/book/manage','/book/manage/','/book/manage.html'].includes(url.pathname)) return new Response('Sign in at /book.', {status:401,headers:previewHeaders});
+            url.pathname='/book/login.html';
+            return rewrite(url,{headers:{...previewHeaders,'Content-Security-Policy':directoryCsp,'Referrer-Policy':'no-referrer'}});
+        }
+        if (['/book','/book/'].includes(url.pathname)) url.pathname='/book/index.html';
+        if (['/book/manage','/book/manage/'].includes(url.pathname)) url.pathname='/book/manage.html';
+        return rewrite(url,{headers:{...previewHeaders,'Content-Security-Policy':directoryCsp,'Referrer-Policy':'no-referrer'}});
+    }
     const root = url.pathname === '/' || url.pathname === '/index.html';
     const crawlerFile = url.pathname === '/robots.txt' || url.pathname === '/sitemap.xml';
     const publicSite = selects && !staging && process.env.CERNEYSELECTS_PUBLIC === 'true';
@@ -72,7 +89,7 @@ export default async function middleware(request: Request) {
     if (selects && crawlerFile) {
         const robots = url.pathname === '/robots.txt';
         const robotsText = publicSite
-            ? 'User-agent: *\nAllow: /\nDisallow: /localspotlight/preview/\nDisallow: /admin/\nDisallow: /api/\nDisallow: /spotlightreview/\nSitemap: https://cerneyselects.com/sitemap.xml\n'
+            ? 'User-agent: *\nAllow: /\nDisallow: /localspotlight/preview/\nDisallow: /admin/\nDisallow: /book/\nDisallow: /api/\nDisallow: /spotlightreview/\nSitemap: https://cerneyselects.com/sitemap.xml\n'
             : 'User-agent: *\nDisallow: /\n';
         const locations = publicSite ? ['https://cerneyselects.com/','https://cerneyselects.com/apply/','https://cerneyselects.com/privacy/','https://cerneyselects.com/terms/'] : [];
         const sitemap = '<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' + locations.map(location => `<url><loc>${location}</loc></url>`).join('') + '</urlset>';

@@ -1,0 +1,2 @@
+'use strict';
+document.querySelector('#login').addEventListener('submit',async e=>{e.preventDefault();const b=e.target.querySelector('button'),n=document.querySelector('#notice');b.disabled=true;n.textContent='Signing in…';try{const r=await fetch('/api/booking',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({op:'login',password:e.target.password.value})});const d=await r.json();if(!r.ok)throw Error(d.error||'Unable to sign in.');location.reload();}catch(err){n.textContent=err.message;b.disabled=false;}});
