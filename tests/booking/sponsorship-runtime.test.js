@@ -3,7 +3,7 @@ const {test}=require('node:test'),assert=require('node:assert/strict'),vm=requir
 const {freshState}=require('../../functions-booking/sponsorship-workflow');
 function runtime(){
     const secret='s'.repeat(40),webhook='whsec_fixture';let data=freshState(),generation=1,vanish=false,saves=0;const received=[];
-    data.config.revision=7;
+    data.config.revision=7;data.orders.test={id:'test'};
     const bucket={file(_path,options){return {
         getMetadata:async()=>[{generation}],download:async()=>{if(vanish){vanish=false;generation++;throw {code:404};}if(options?.generation!==generation)throw {code:404};return [Buffer.from(JSON.stringify(data))];},
         save:async(body,opts)=>{if(opts.preconditionOpts.ifGenerationMatch!==generation)throw {code:412};data=JSON.parse(body);generation++;saves++;}
@@ -31,7 +31,9 @@ test('runtime reads draft settings without credentials and retries a vanished st
     assert.equal((await h.api({op:'settings'},false)).code,403);
 });
 test('webhook rejects invalid and expired signatures, then retrieves the invoice from Stripe',async()=>{
-    const h=runtime(),event={type:'invoice.paid',data:{object:{id:'in_trusted',amount_paid:1,metadata:{sponsorshipId:'test'}}}};
+    const h=runtime(),event={livemode:false,type:'invoice.paid',data:{object:{id:'in_trusted',amount_paid:1,metadata:{sponsorshipId:'test'}}}};
     assert.equal((await h.webhook(event,false)).code,400);assert.equal((await h.webhook(event,true,301)).code,400);assert.equal(h.received.length,0);
     assert.equal((await h.webhook(event)).data.received,true);assert.equal(h.received.length,1);assert.equal(h.received[0].id,'in_trusted');assert.equal(h.received[0].amount_paid,undefined);
 });
+
+test('webhook acknowledges other environments and unknown bookings without changing data',async()=>{const h=runtime();for(const event of [{livemode:true,type:'invoice.paid',data:{object:{id:'in_other',metadata:{sponsorshipId:'test'}}}},{livemode:false,type:'invoice.paid',data:{object:{id:'in_other',metadata:{sponsorshipId:'unknown'}}}}])assert.equal((await h.webhook(event)).data.received,true);assert.equal(h.received.length,0);assert.equal(h.saves(),0);});

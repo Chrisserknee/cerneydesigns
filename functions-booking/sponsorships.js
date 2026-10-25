@@ -63,7 +63,11 @@ exports.cerneyBookingStripeWebhook=onRequest({...options,secrets:[stripeKey,webh
         const expected=createHmac('sha256',webhookKey.value()).update(time+'.').update(req.rawBody).digest();
         if(!parts.some(([k,v])=>k==='v1'&&/^[a-f0-9]{64}$/.test(v||'')&&timingSafeEqual(expected,Buffer.from(v,'hex'))))return res.sendStatus(400);
         const event=JSON.parse(req.rawBody),object=event.data?.object;
-        if(!object)return res.json({received:true});
+        if(!object||event.livemode!==(mode.value()==='live'))return res.json({received:true});
+        const identity=require('./sponsorship-recurring').invoiceIdentity(object);
+        const id=identity.metadata?.sponsorshipId||object.metadata?.sponsorshipId;
+        // The Stripe account also serves other products and isolated test runs.
+        if(!id||!(await store.read()).orders[id])return res.json({received:true});
         const payments=createPayments({secret:()=>stripeKey.value()});
         if(event.type==='invoice.paid'){
             const identity=require('./sponsorship-recurring').invoiceIdentity(object);
