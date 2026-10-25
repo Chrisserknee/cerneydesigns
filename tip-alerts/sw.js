@@ -1,5 +1,5 @@
 'use strict';
-// Worker/client release: 2026-10-23-simple-stories-1.
+// Worker/client release: 2026-10-25-field-notebooks-15.
 self.addEventListener('install',event=>event.waitUntil(self.skipWaiting()));
 function inboxURL(value) {
     try {
@@ -10,11 +10,10 @@ function inboxURL(value) {
 }
 self.addEventListener('activate',event=>event.waitUntil((async()=>{
     await self.clients.claim();
-    // A Home Screen inbox can stay alive across releases. Load the new client
-    // once when this worker activates, preserving its selected report URL.
+    // Never reload a recording or unsaved notebook when a release arrives.
     const windows=await self.clients.matchAll({type:'window'});
-    await Promise.all(windows.filter(client=>inboxURL(client.url)===client.url)
-        .map(client=>client.navigate(client.url).catch(()=>null)));
+    for(const client of windows.filter(client=>inboxURL(client.url)===client.url))
+        client.postMessage({type:'cerney-client-update'});
 })()));
 // Deliberately no fetch cache: private tip data must never be cached offline.
 self.addEventListener('push',event=>{
@@ -32,12 +31,9 @@ self.addEventListener('notificationclick',event=>{
         const windows=await self.clients.matchAll({type:'window',includeUncontrolled:true});
         const existing=windows.find(client=>inboxURL(client.url)===client.url);
         if(existing) {
-            // iOS can merely foreground an existing Home Screen app when
-            // openWindow is used. Explicit navigation selects the alert's card.
-            let target=existing;
-            try { target=await existing.navigate(url) || existing; } catch {}
-            target.postMessage({type:'cerney-tip-open',url});
-            try { await target.focus(); return; } catch {}
+            // Route within the running app so a notification cannot erase a take.
+            existing.postMessage({type:'cerney-tip-open',url});
+            try { await existing.focus(); return; } catch {}
         }
         const opened=await self.clients.openWindow(url);
         opened?.postMessage({type:'cerney-tip-open',url});

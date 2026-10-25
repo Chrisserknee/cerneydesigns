@@ -284,18 +284,28 @@ function renderInbox() {
 }
 function storyGroup(key,label,members) {
     const limit=groupLimits.get(key) || GROUP_PAGE;
+    const grouped=key.startsWith('tips:') && statusFilter==='all' && !($('storySearch').value||'').trim() && $('storySort').value!=='oldest' && globalThis.CerneyConversations;
+    const units=grouped ? globalThis.CerneyConversations.groups(members) : members;
     const section=document.createElement('section');section.className='story-group group-'+key.split(':')[1];
     const heading=document.createElement('div');heading.className='group-heading';
     const title=document.createElement('h3');title.textContent=label;const count=document.createElement('span');count.textContent=String(members.length);heading.append(title,count);
     const list=document.createElement('div');list.className='story-list';
-    for(const tip of members.slice(0,limit)) list.append(storyCard(tip));
+    for(const item of units.slice(0,limit)) list.append(grouped ? item.messages.length>1 ? conversationCard(item) : storyCard(item.latest) : storyCard(item));
     section.append(heading,list);
-    if(members.length>limit) {
+    if(units.length>limit) {
         const more=document.createElement('button');more.type='button';more.className='secondary show-more';
-        more.textContent=`Show ${Math.min(GROUP_PAGE,members.length-limit)} more · ${members.length-limit} remaining`;
+        more.textContent=`Show ${Math.min(GROUP_PAGE,units.length-limit)} more · ${units.length-limit} remaining`;
         more.addEventListener('click',()=>{groupLimits.set(key,limit+GROUP_PAGE);renderInbox();});section.append(more);
     }
     return section;
+}
+function conversationCard(group) {
+    const row=document.createElement('details');row.className='tip tip-card voice-conversation';
+    const summary=document.createElement('summary'),badge=document.createElement('small'),title=document.createElement('h4'),latest=document.createElement('p');
+    badge.textContent=`Google Voice · ${group.messages.length} messages · ${shortDate(group.latest.receivedAt)}`;
+    title.textContent=group.context.title||globalThis.CerneyConversations.text(group.context).slice(0,120);
+    latest.textContent='Latest: '+globalThis.CerneyConversations.text(group.latest).slice(0,300);summary.append(badge,title,latest);row.append(summary);
+    let opened=false;row.addEventListener('toggle',()=>{if(!row.open||opened)return;opened=true;paragraph(row,'Incoming messages from the same email conversation. Source claims are not independently verified.','small muted');for(const tip of group.messages)row.append(storyCard(tip));});return row;
 }
 function storyCard(tip) {
     const row=document.createElement('article');row.className='tip tip-card '+sourceClass(tip);
@@ -304,6 +314,7 @@ function storyCard(tip) {
     const badge=document.createElement('span');badge.className='workflow-badge '+workflow(tip);badge.textContent=reportStates[tip.reportState] || (tip.status==='review'?'Needs review':'Tip received');meta.append(badge);info.append(meta);
     const title=document.createElement('h4');title.textContent=(tip.title || (tip.type==='story'?'Story submission':'Tipline upload'))+(tip.incomplete?' · Incomplete':'');info.append(title);
     if(tip.agency)paragraph(info,tip.agency,'agency-name');
+    if(tip.mediaSummary)paragraph(info,tip.mediaSummary,'small muted');
     const time=document.createElement('time');time.dateTime=tip.receivedAt;time.textContent='Received '+shortDate(tip.receivedAt);time.title=dateLabel(tip.receivedAt);info.append(time);
     if(tip.summary) {
         const summary=paragraph(info,tip.summary,'tip-summary');
@@ -320,6 +331,8 @@ function storyCard(tip) {
     const actions=document.createElement('div');actions.className='story-actions';
     if(videoURL(tip.videoUrl)){const v=document.createElement('a');v.className='folder watch-video';v.href=videoURL(tip.videoUrl);v.target='_blank';v.rel='noopener noreferrer';v.textContent='Watch draft'+(tip.durationSeconds?' · '+Math.round(tip.durationSeconds)+'s':'');actions.append(v);}
     if(folderURL(tip.driveUrl)) actions.append(folderLink(tip)); else paragraph(actions,tip.sourceKind==='google_voice'?'Text received from Google Voice':tip.status==='review'?'Files need review':'Files processing','state');
+    if(/^https:\/\/mail\.google\.com\/mail\/u\/0\/#all\/[A-Za-z0-9]{1,80}$/.test(tip.sourceMailURL||'')){const original=document.createElement('a');original.href=tip.sourceMailURL;original.target='_blank';original.rel='noopener noreferrer';original.textContent='Open original email';actions.append(original);}
+    if(globalThis.CerneyNewsroom?.startStory){const notebook=document.createElement('button');notebook.type='button';notebook.className='secondary';notebook.textContent='Start story notebook';notebook.addEventListener('click',()=>globalThis.CerneyNewsroom.startStory({title:tip.title||'New story',evidence:[{id:tip.id,title:tip.title||'Source submission',excerpt:String(tip.submission?.text||tip.sourceText||tip.description||tip.summary||'No written source context supplied.').slice(0,6000),url:tip.sourceMailURL||tip.sourceUrl||tip.driveUrl,kind:tip.sourceKind||'community_tip',receivedAt:tip.receivedAt}]}));actions.append(notebook);}
     const save=document.createElement('button');save.type='button';save.className='save-story';save.textContent=savedStories.has(tip.id)?'Saved ✓':'Save';save.setAttribute('aria-label',(savedStories.has(tip.id)?'Unsave ':'Save ')+(tip.title || 'story'));save.setAttribute('aria-pressed',String(savedStories.has(tip.id)));
     save.addEventListener('click',()=>{if(savedStories.has(tip.id))savedStories.delete(tip.id);else if(/^[a-f0-9]{64}$/.test(tip.id))savedStories.add(tip.id);try{localStorage.setItem('cerney-saved-stories',JSON.stringify([...savedStories].slice(-200)));}catch{}renderInbox();});
     const finished=doneStories.has(tip.id);const done=document.createElement('button');done.type='button';done.className='mark-done';done.textContent=finished?'Undo done':'Done';done.setAttribute('aria-pressed',String(finished));done.setAttribute('aria-label',(finished?'Mark not done: ':'Mark done: ')+(tip.title || 'story'));
@@ -501,9 +514,15 @@ if(standalone) {
 // A notification can resume a running iPhone inbox instead of loading a page.
 // Only accept a same-origin inbox destination sent through our service worker.
 if('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message',event=>{
-    if(event.data?.type!=='cerney-tip-open' || event.origin!==location.origin)return;
+    if(event.origin!==location.origin)return;
+    if(event.data?.type==='cerney-client-update') {
+        if(!document.getElementById('appUpdateNotice')){const notice=document.createElement('div');notice.id='appUpdateNotice';notice.className='app-update-notice';notice.textContent='An app update is ready. ';const reload=document.createElement('button');reload.type='button';reload.textContent='Reload when finished';reload.addEventListener('click',()=>{if(globalThis.CerneyNewsroom?.hasUnsavedWork()){message('Finish and submit your recording or save your notes before reloading.',true);return;}location.reload();});notice.append(reload);document.body.prepend(notice);}return;
+    }
+    if(event.data?.type!=='cerney-tip-open')return;
     let url;
     try { url=new URL(event.data.url); } catch { return; }
+    const alert=url.searchParams.get('alert');
+    if(url.origin===location.origin && url.pathname==='/tip-alerts/' && /^[a-f0-9]{64}$/.test(alert || '')) {history.replaceState(null,'',url.pathname+url.search);globalThis.CerneyNewsroom?.refresh(api,true);return;}
     const story=url.searchParams.get('story');
     if(url.origin===location.origin && url.pathname==='/tip-alerts/' && /^[a-f0-9]{64}$/.test(story || '')) {history.replaceState(null,'',url.pathname+url.search);loadTips().catch(e=>message(e.message,true));return;}
     const id=url.searchParams.get('tip');

@@ -16,6 +16,7 @@ const { SITE, hash, activeDevice, validSubscription, tipRecord, retryTime, notif
 const {sourceContext,displayContext}=require('./tip-inbox-context');
 const {thumbnailDescriptor,requestedThumbnail,sameThumbnail,verifiedThumbnailBytes,MAX_BYTES}=require('./tip-thumbnail');
 const ROOT = '_tipalerts/v1/';
+const {noteMetadata,noteSummary}=require('./field-note-index');
 const {researchRecord}=require('./newsroom-record');
 const fieldHandler=require('./field-notes').createFieldNotes({read,write,bucket:()=>bucket(),root:ROOT});
 const {voiceTip,refreshFromStored,voiceMonitor}=require('./voice-tip');
@@ -31,7 +32,7 @@ async function read(name) {
 }
 async function write(name, data, generation) {
     await bucket().file(ROOT + name).save(JSON.stringify(data), {resumable:false, contentType:'application/json',
-        metadata:{cacheControl:'no-store'}, ...(generation === undefined ? {} : {preconditionOpts:{ifGenerationMatch:generation}})});
+        metadata:{cacheControl:'no-store',...(/^field-notes\/[a-f0-9]{64}\.json$/.test(name)?{metadata:noteMetadata(data)}:{})}, ...(generation === undefined ? {} : {preconditionOpts:{ifGenerationMatch:generation}})});
 }
 async function updateDevice(id, changes) {
     const name = `devices/${id}.json`;
@@ -97,6 +98,15 @@ async function inboxDocuments(prefix='tips/') {
         }
     }));
     return records.filter(Boolean);
+}
+async function fieldSummaries() {
+    const [files]=await bucket().getFiles({prefix:ROOT+'field-notes/'});
+    return (await Promise.all(files.filter(f=>/^_tipalerts\/v1\/field-notes\/[a-f0-9]{64}\.json$/.test(f.name)).map(async file=>{
+        const id=file.name.split('/').pop().slice(0,-5), indexed=noteSummary(file.metadata,id);
+        if(indexed)return indexed;
+        const note=(await read(file.name.slice(ROOT.length)))?.data;
+        return note && note.id===id ? {id:note.id,title:note.title,createdAt:note.createdAt,updatedAt:note.updatedAt,revision:note.revision,hasAudio:!!note.audio}:null;
+    }))).filter(Boolean).sort((a,b)=>Date.parse(b.updatedAt||b.createdAt)-Date.parse(a.updatedAt||a.createdAt));
 }
 async function syncTip(object) {
     const record = tipRecord(object);
@@ -245,8 +255,8 @@ async function handleApi(req, res) {
         if (!device) return res.status(401).json({error:'Sign in to connect this device.'});
         if(String(body.op||'').startsWith('field-'))return res.json(await fieldHandler(body));
         if(body.op==='newsroom'){
-            const [records,notes,health]=await Promise.all([inboxDocuments('research/'),inboxDocuments('field-notes/'),read('research-monitor/status.json')]);
-            return res.json({alerts:records.map(researchRecord).filter(Boolean).filter(x=>Date.parse(x.observedAt)>Date.now()-30*86400000).sort((a,b)=>Date.parse(b.observedAt)-Date.parse(a.observedAt)).slice(0,200),notes:notes.map(n=>({id:n.id,title:n.title,createdAt:n.createdAt,updatedAt:n.updatedAt,revision:n.revision,hasAudio:!!n.audio})),monitor:health?.data||null});
+            const [records,notes,health]=await Promise.all([inboxDocuments('research/'),fieldSummaries(),read('research-monitor/status.json')]);
+            return res.json({alerts:records.map(researchRecord).filter(Boolean).filter(x=>Date.parse(x.observedAt)>Date.now()-30*86400000).sort((a,b)=>Date.parse(b.observedAt)-Date.parse(a.observedAt)).slice(0,200),notes,monitor:health?.data||null});
         }
         if(body.op==='thumbnail'){
             if(!requestedThumbnail(body))return res.status(400).json({error:'Invalid thumbnail.'});

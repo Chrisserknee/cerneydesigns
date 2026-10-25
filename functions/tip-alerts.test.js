@@ -7,7 +7,7 @@ const device={id:'b'.repeat(64),subscription,subscribedAt:new Date(now-60000).to
 const keys={enabledAt:new Date(now-60000).toISOString(),publicKey:'public',privateKey:'private'};
 function harness({send=async()=>{},fetchImpl=async()=>({ok:false}), initial={}, onList=async()=>{}}={}){
  const files=new Map(Object.entries(initial).map(([name,data])=>[name,{data,generation:1}]));let generation=1;const counts={metadata:0,downloads:0};
- const b={file(name,opts={}){return {name,getMetadata:async()=>{counts.metadata++;const x=files.get(name);if(!x)throw Object.assign(Error(),{code:404});return [{generation:x.generation,...(x.metadata||{})}];},download:async()=>{counts.downloads++;const x=files.get(name);if(!x || (opts.generation && opts.generation!==x.generation))throw Object.assign(Error(),{code:404});return [Buffer.from(JSON.stringify(x.data))];},save:async(value,opts)=>{const old=files.get(name);const expected=opts.preconditionOpts?.ifGenerationMatch;if(expected!==undefined && expected!==(old?.generation || 0))throw Object.assign(Error(),{code:412});files.set(name,{data:JSON.parse(value),generation:++generation});}};},getFiles:async({prefix})=>{await onList(prefix);return [[...files.keys()].filter(n=>n.startsWith(prefix)).map(name=>({name,metadata:{generation:files.get(name).generation}}))];}};
+ const b={file(name,opts={}){return {name,getMetadata:async()=>{counts.metadata++;const x=files.get(name);if(!x)throw Object.assign(Error(),{code:404});return [{generation:x.generation,...(x.metadata||{})}];},download:async()=>{counts.downloads++;const x=files.get(name);if(!x || (opts.generation && opts.generation!==x.generation))throw Object.assign(Error(),{code:404});return [Buffer.from(JSON.stringify(x.data))];},save:async(value,opts)=>{const old=files.get(name);const expected=opts.preconditionOpts?.ifGenerationMatch;if(expected!==undefined && expected!==(old?.generation || 0))throw Object.assign(Error(),{code:412});files.set(name,{data:JSON.parse(value),generation:++generation,metadata:opts.metadata||{}});}};},getFiles:async({prefix})=>{await onList(prefix);return [[...files.keys()].filter(n=>n.startsWith(prefix)).map(name=>({name,metadata:{generation:files.get(name).generation,...(files.get(name).metadata||{})}}))];}};
  const c=vm.createContext({exports:{},Buffer,URL,Date,Intl,AbortSignal,fetch:fetchImpl,require(name){
  if(name==='firebase-functions/params')return {defineSecret:()=>({value:()=> 'test-secret'.repeat(4)})};
  if(name==='web-push')return {sendNotification:send,generateVAPIDKeys:()=>keys};
@@ -18,7 +18,7 @@ function harness({send=async()=>{},fetchImpl=async()=>({ok:false}), initial={}, 
  if(name==='firebase-functions/v2/https')return {onRequest:(_,f)=>f};
  return require(name);
  }});
- vm.runInContext(fs.readFileSync(__dirname+'/tip-alerts.js','utf8')+'\nthis.testing={deliver,authenticate,handleApi,syncTip,adminVerified,updateDevice,reserveLogin,secureHandleApi,inboxDocuments};',c);
+ vm.runInContext(fs.readFileSync(__dirname+'/tip-alerts.js','utf8')+'\nthis.testing={deliver,authenticate,handleApi,syncTip,adminVerified,updateDevice,reserveLogin,secureHandleApi,inboxDocuments,fieldSummaries};',c);
  return {...c.testing,files,counts};
 }
 test('only supported HTTPS push endpoints and correctly sized keys are accepted',()=>{
@@ -233,3 +233,11 @@ test('opening one community tip avoids all inbox catalog reads',async()=>{
  assert.equal(res.body.tips[0].id,id);assert.equal(res.body.tips[0].summary,'A test description');
  assert.equal(listings,0);assert.doesNotMatch(JSON.stringify(res.body),/_submission|sourceGeneration/);
 });
+
+test('a cold library of 1000 indexed notebooks lists without downloading transcripts',async()=>{
+ const x=harness(),{noteMetadata}=require('./field-note-index');
+ for(let i=0;i<1000;i++){const id=i.toString(16).padStart(64,'0'),note={id,revision:1,title:'Notebook '+i,createdAt:new Date(now-i*1000).toISOString(),transcript:'Private transcript '.repeat(100),draft:'Separate draft'};x.files.set('_tipalerts/v1/field-notes/'+id+'.json',{data:note,generation:i+1,metadata:{metadata:noteMetadata(note)}});}
+ const summaries=await x.fieldSummaries();assert.equal(summaries.length,1000);assert.equal(x.counts.downloads,0);assert.equal(x.counts.metadata,0);assert(!JSON.stringify(summaries).includes('Private transcript'));
+ const first=x.files.values().next().value;first.data.revision=2;first.data.title='Updated notebook';first.metadata.metadata=noteMetadata(first.data);assert.equal((await x.fieldSummaries())[0].title,'Updated notebook');assert.equal(x.counts.downloads,0);
+});
+test('legacy notebooks remain visible while new summaries use metadata',async()=>{const id='a'.repeat(64),x=harness({initial:{['_tipalerts/v1/field-notes/'+id+'.json']:{id,revision:1,title:'Older recording',createdAt:new Date(now).toISOString(),transcript:'Preserved'}}});const summaries=await x.fieldSummaries();assert.equal(summaries.length,1);assert.equal(summaries[0].title,'Older recording');assert.equal(x.counts.downloads,1);});

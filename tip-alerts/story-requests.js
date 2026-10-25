@@ -75,8 +75,8 @@
   if(signature!==next || !section.childNodes.length){
    signature=next;
    if(!section.childNodes.length){
-    const h=el('div',null,'witness-heading');const title=el('div');title.append(el('h2','Story requests'));h.append(title,el('span',null,'witness-count'));section.append(h);
-    const healthText=el('p',null,'small muted');healthText.id='storyRequestHealth';section.append(healthText);
+    const h=el('div',null,'witness-heading');const title=el('div');title.append(el('h2','Instagram Story Outreach'));h.append(title,el('span',null,'witness-count'));section.append(h);
+    const healthText=el('p',null,'small muted');healthText.id='storyRequestHealth';section.append(healthText);const review=el('div',null,'story-writer-review');review.id='storyWriterReview';section.append(review);
    }
    const valid=[...new Map(stories.filter(x=>ID.test(x.id||'')).map(story=>[story.id,story])).values()],ids=new Set(valid.map(story=>story.id));
    section.querySelector('.witness-count').textContent=String(valid.length);
@@ -92,7 +92,8 @@
    }
   }
   const healthText=document.getElementById('storyRequestHealth');
-  if(healthText)healthText.textContent=health?.checkedAt?(health.status==='attention'?'Story writer needs attention on the Mac. Last check: ':Date.now()-Date.parse(health.checkedAt)>10*60000?'Story monitor needs attention. Last check: ':'Story monitor checked ')+new Date(health.checkedAt).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})+(health.pending?' · '+health.pending+' awaiting a check':''):'Story monitor status is not available yet.';
+  if(healthText)healthText.textContent=health?.checkedAt?(health.status==='attention'?'Story writer needs attention on the Mac. Last check: ':Date.now()-Date.parse(health.checkedAt)>10*60000?'Story monitor needs attention. Last check: ':'Story monitor checked ')+new Date(health.checkedAt).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})+(health.pending?' · '+health.pending+' awaiting a check':'')+(health.reviewCount?' · '+health.reviewCount+' sources need your review':''):'Story monitor status is not available yet.';
+  const review=document.getElementById('storyWriterReview');if(review){review.replaceChildren();if(health?.reviewCount){review.append(el('p','Automatic writing paused for these sources after repeated checks. Their original tips are preserved.'));for(const id of (health.reviewTipIDs||[]).filter(x=>ID.test(x)).slice(0,10)){const a=el('a','Review original tip');a.href='/tip-alerts/?tip='+id;a.target='_blank';a.rel='noopener noreferrer';review.append(a);}}}
   if(ID.test(requested||'')&&selected!==requested){const box=document.getElementById('witness-'+requested);if(box){box.open=true;box.scrollIntoView({block:'start',behavior:'smooth'});selected=requested;}else{const p=el('p','This story request has expired or is no longer available. New drafts are listed below.','witness-empty');section.prepend(p);selected=requested;}}
  }
  root.CerneyStoryRequests={render,fit,update,clear};
