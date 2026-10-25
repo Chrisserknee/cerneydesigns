@@ -14,7 +14,7 @@
 <script src="/tip-alerts/newsroom.js?v=20261025-16" defer></script>
 <script src="/tip-alerts/report-copy.js" defer></script>
 <script src="/tip-alerts/conversations.js?v=20261025-1" defer></script>
-<script src="/tip-alerts/thumbnail.js" defer></script><script src="/tip-alerts/app.js?v=producer-20261025-16" defer></script>
+<script src="/tip-alerts/thumbnail.js" defer></script><script src="/tip-alerts/app.js?v=phone-alerts-20261025-17" defer></script>
 </head>
 <body>
 <div id="pullIndicator" class="pull-indicator" role="status" aria-live="polite" hidden></div>
@@ -37,7 +37,7 @@
 <div id="selected" class="card selected" hidden></div>
 <section id="communitySection" class="inbox source-community" aria-labelledby="communityHeading"><div class="section-heading"><div><h2 id="communityHeading">Community tips</h2><p class="section-description">Tips submitted to the tipline.</p></div></div><p id="inboxStatus" class="muted small" role="status" aria-live="polite">Loading community tips…</p><p id="empty" class="muted" hidden>No community tips received in the past 30 days.</p><div id="tips"></div><p id="tipsEmpty" class="empty-state" hidden>No community tips match these filters.</p><p class="muted small">All submissions received in the past 30 days. Use Show more to browse older tips. Files stay in your existing private storage.</p></section>
 <section id="reportsSection" class="inbox source-found" aria-labelledby="reportsHeading" hidden><div class="section-heading"><div><p class="eyebrow">FOUND THROUGH MONITORING</p><h2 id="reportsHeading">Found reports</h2><p class="section-description">Official releases and stories found through monitoring.</p></div></div><p id="reportsStatus" class="muted small" role="status" aria-live="polite"></p><div id="reports"></div><p id="reportsEmpty" class="empty-state" hidden>No found reports match these filters.</p></section>
-<details id="notificationSettings" class="card settings"><summary>Notification settings</summary><div class="controls"><div class="statusline"><span id="statusDot" class="dot"></span><h2 id="pushStatus">Checking notifications…</h2></div><p id="pushHelp" class="muted"></p><div class="buttons"><button id="enable" hidden>Enable phone alerts</button><button id="disable" class="text-button" hidden>Turn off on this device</button></div></div></details>
+<details id="notificationSettings" class="card settings"><summary>Notification settings</summary><div class="controls"><div class="statusline"><span id="statusDot" class="dot"></span><h2 id="pushStatus">Checking notifications…</h2></div><p id="pushHelp" class="muted"></p><div class="buttons"><button id="enable" hidden>Enable phone alerts</button><button id="testNotification" class="secondary" type="button" hidden>Send test notification</button><button id="disable" class="text-button" hidden>Turn off on this device</button></div><p id="notificationTestStatus" class="small muted" role="status" aria-live="polite"></p></div></details>
 <details class="card"><summary>Connected devices</summary><p class="muted">If a device is lost or unfamiliar, disconnect it here to stop its access and alerts.</p><button id="showDevices" class="text-button">Check connected devices</button><div id="devices"></div></details>
 <p id="sessionHelp" class="muted small" hidden>This device stays signed in. Signing out disconnects its alerts.</p>
 <button id="logout" class="text-button signout">Sign out and disconnect this device</button>

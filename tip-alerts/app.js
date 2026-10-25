@@ -1,5 +1,5 @@
 'use strict';
-const CLIENT_RELEASE='2026-10-25-producer-desk-16';
+const CLIENT_RELEASE='2026-10-25-phone-alerts-17';
 const $ = id => document.getElementById(id);
 const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
@@ -135,6 +135,7 @@ async function updateControls() {
         : 'Allow notifications to receive new tips, even when the app is closed.';
     show('enable',supported && !(isIOS && !standalone) && Notification.permission !== 'denied' && !enabled);
     show('disable',!!local || state.subscribed);
+    show('testNotification',enabled);
 }
 function load() {
     if (loadRequest) return loadRequest;
@@ -434,6 +435,18 @@ $('enable').addEventListener('click',async()=>{
         const subscription=existing || await manager().subscribe({userVisibleOnly:true,applicationServerKey:bytes(state.publicKey)});
         await api('subscribe',{subscription:subscription.toJSON()});state.subscribed=true;await updateControls();message('Alerts enabled for new tips.');
     }catch(e){message(e.message,true);}finally{$('enable').disabled=false;}
+});
+$('testNotification').addEventListener('click',async()=>{
+    const button=$('testNotification'),version=sessionVersion;
+    button.disabled=true;
+    $('notificationTestStatus').textContent='Sending a test alert…';
+    try {
+        await api('test');
+        if(version!==sessionVersion)return;
+        $('notificationTestStatus').textContent='Test sent to the push service. Check your iPhone’s Notification Center for “Tip alerts are connected.” If it is missing, check Settings → Notifications → Cerney Tips and your Focus settings.';
+    } catch(e) {
+        if(version===sessionVersion)$('notificationTestStatus').textContent=e.message;
+    } finally { button.disabled=false; }
 });
 async function removeLocalSubscription() {
     try { const subscription=await manager()?.getSubscription(); if(subscription) await subscription.unsubscribe(); }
