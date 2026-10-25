@@ -42,7 +42,7 @@ async function producerThreads(cursor){
  for(const file of files){
   if(!/^_tipalerts\/v1\/producer-threads\/[a-f0-9]{64}\.json$/.test(file.name))continue;
   const m=file.metadata?.metadata;
-  if(m?.producerIndex==='1')threads.push({id:m.id,title:m.title,revision:Number(m.revision),createdAt:m.createdAt,updatedAt:m.updatedAt,status:m.status,pending:Number(m.pending)||0,lastReply:m.lastReply||null});
+  if(m?.producerIndex==='1')threads.push({id:m.id,title:m.title,revision:Number(m.revision),createdAt:m.createdAt,updatedAt:m.updatedAt,status:m.status,pending:Number(m.pending)||0,reports:Number(m.reports)||0,lastReply:m.lastReply||null});
   else{const t=await read(file.name.slice(ROOT.length));if(t)threads.push(threadSummary(t.data));}
  }
  return {threads:threads.sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt)),nextCursor:next?.pageToken||null};
@@ -247,7 +247,7 @@ async function readThumbnail(body){
 async function handleApi(req, res) {
     res.set('Cache-Control','no-store'); res.set('X-Content-Type-Options','nosniff');
     if (req.method !== 'POST') return res.status(405).json({error:'Method not allowed.'});
-    if (!req.is('application/json') || req.rawBody?.length > (String(req.body?.op||'').startsWith('field-')||req.body?.op==='producer-media-part'?800000:String(req.body?.op||'').startsWith('producer-')?32768:16384)) return res.status(400).json({error:'Invalid request.'});
+    if (!req.is('application/json') || req.rawBody?.length > (req.body?.op==='producer-media-part'?2900000:req.body?.op==='producer-media-finish'?100000:String(req.body?.op||'').startsWith('field-')?800000:String(req.body?.op||'').startsWith('producer-')?32768:16384)) return res.status(400).json({error:'Invalid request.'});
     const body = req.body || {};
     try {
         if (body.op === 'login-attempt') {
