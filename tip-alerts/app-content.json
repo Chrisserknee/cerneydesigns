@@ -1,8 +1,8 @@
 {
   "schema": 1,
-  "revision": 1,
-  "latestBuild": 18,
-  "releaseNote": "Apple Intelligence setup, quick writing actions, tip summaries, and remote content updates.",
+  "revision": 2,
+  "latestBuild": 20,
+  "releaseNote": "Scanner connects radio and agency observations with local weather alerts, clear feed status, search and quick copying for reports.",
   "outreach": [
     {
       "id": "shorter",

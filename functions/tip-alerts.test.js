@@ -5,6 +5,13 @@ const subscription={endpoint:'https://web.push.apple.com/test',keys:{p256dh:Buff
 const now=Date.now();const tip={id:'a'.repeat(64),receivedAt:new Date(now-1000).toISOString(),type:'upload',status:'processing'};
 const device={id:'b'.repeat(64),subscription,subscribedAt:new Date(now-60000).toISOString(),expiresAt:new Date(now+86400000).toISOString()};
 const keys={enabledAt:new Date(now-60000).toISOString(),publicKey:'public',privateKey:'private'};
+test('Scanner snapshot requires a trusted device and preserves paused source status',async()=>{
+ const token='s'.repeat(43),id=h.hash(token),record={version:1,updatedAt:new Date().toISOString(),sources:[{id:'scanner',name:'Scanner',status:'paused',checkedAt:new Date().toISOString(),message:'Stopped'}],events:[]};
+ const x=harness({initial:{['_tipalerts/v1/devices/'+id+'.json']:{id,createdAt:new Date().toISOString(),expiresAt:new Date(Date.now()+60000).toISOString(),subscription:null},['_tipalerts/v1/scanner/feed.json']:record}});
+ const response=()=>({set(){},status(code){this.code=code;return this;},json(body){this.body=body;return this;}});
+ const denied=response();await x.handleApi({method:'POST',is:()=>true,body:{op:'scanner',token:'invalid'}},denied);assert.equal(denied.code,401);
+ const allowed=response();await x.handleApi({method:'POST',is:()=>true,body:{op:'scanner',token}},allowed);assert.equal(allowed.body.sources[0].status,'paused');assert.equal(allowed.body.version,1);
+});
 function harness({send=async()=>{},fetchImpl=async()=>({ok:false}), initial={}, onList=async()=>{}}={}){
  const files=new Map(Object.entries(initial).map(([name,data])=>[name,{data,generation:1}]));let generation=1;const counts={metadata:0,downloads:0};
  const b={file(name,opts={}){return {name,getMetadata:async()=>{counts.metadata++;const x=files.get(name);if(!x)throw Object.assign(Error(),{code:404});return [{generation:x.generation,...(x.metadata||{})}];},download:async()=>{counts.downloads++;const x=files.get(name);if(!x || (opts.generation && opts.generation!==x.generation))throw Object.assign(Error(),{code:404});return [Buffer.from(JSON.stringify(x.data))];},save:async(value,opts)=>{const old=files.get(name);const expected=opts.preconditionOpts?.ifGenerationMatch;if(expected!==undefined && expected!==(old?.generation || 0))throw Object.assign(Error(),{code:412});files.set(name,{data:JSON.parse(value),generation:++generation,metadata:opts.metadata||{}});}};},getFiles:async({prefix})=>{await onList(prefix);return [[...files.keys()].filter(n=>n.startsWith(prefix)).map(name=>({name,metadata:{generation:files.get(name).generation,...(files.get(name).metadata||{})}}))];}};

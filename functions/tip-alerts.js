@@ -266,6 +266,7 @@ async function handleApi(req, res) {
         }
         const device = await authenticate(body.token);
         if (!device) return res.status(401).json({error:'Sign in to connect this device.'});
+        if(body.op==='scanner')return res.json(require('./scanner-feed').scannerFeed((await read('scanner/feed.json'))?.data));
         if(String(body.op||'').startsWith('producer-'))return res.json(await producerHandler(body,device));
         if(String(body.op||'').startsWith('field-'))return res.json(await fieldHandler(body));
         if(body.op==='newsroom'){

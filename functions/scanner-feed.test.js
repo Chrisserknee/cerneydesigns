@@ -1,0 +1,12 @@
+const test=require('node:test'),assert=require('node:assert/strict');
+const {scannerFeed}=require('./scanner-feed');
+const now=Date.parse('2026-10-26T20:00:00Z'),iso=ms=>new Date(ms).toISOString();
+const event={id:'a'.repeat(64),kind:'radio',source:'Example radio',title:'Example observation',summary:'Unverified transcript',observedAt:iso(now-60000)};
+const feed=events=>({version:1,updatedAt:iso(now),sources:[{id:'scanner',name:'Scanner',status:'paused',checkedAt:iso(now),message:'Stopped on the Mac'}],events});
+test('current radio stays explicitly unverified and paused state is preserved',()=>{const x=scannerFeed(feed([event]),now);assert.equal(x.events[0].kind,'radio');assert.equal(x.sources[0].status,'paused');});
+test('old radio records are never replayed as new incidents',()=>{assert.equal(scannerFeed(feed([{...event,observedAt:iso(now-86400001)}]),now).events.length,0);});
+test('an active weather alert may have been issued before today',()=>{assert.equal(scannerFeed(feed([{...event,kind:'weather',observedAt:iso(now-3*86400000),expiresAt:iso(now+3600000)}]),now).events.length,1);});
+test('expired weather alerts and future observations are removed',()=>{assert.equal(scannerFeed(feed([{...event,kind:'weather',expiresAt:iso(now-1)},{...event,id:'b'.repeat(64),observedAt:iso(now+3600000)}]),now).events.length,0);});
+test('rejects malformed payload and deduplicates stable IDs',()=>{assert.deepEqual(scannerFeed(null,now).events,[]);assert.equal(scannerFeed(feed([event,event]),now).events.length,1);});
+test('never returns credentials or arbitrary extra fields',()=>{const x=scannerFeed(feed([{...event,token:'secret',sourceURL:'https://user:secret@example.com/'}]),now).events[0];assert.equal(x.sourceURL,null);assert.equal(x.token,undefined);});
+test('rejects local and executable links and bounds public text',()=>{for(const sourceURL of ['javascript:alert(1)','http://example.com','https://127.0.0.1/private'])assert.equal(scannerFeed(feed([{...event,sourceURL}]),now).events[0].sourceURL,null);assert.equal(scannerFeed(feed([{...event,summary:'x'.repeat(6000)}]),now).events[0].summary.length,5000);});
