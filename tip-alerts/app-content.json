@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "revision": 1,
+  "latestBuild": 18,
+  "releaseNote": "Apple Intelligence setup, quick writing actions, tip summaries, and remote content updates.",
+  "outreach": [
+    {
+      "id": "shorter",
+      "label": "Make it shorter",
+      "instruction": "Shorten the headline and invitation. Keep the event, place, facts and uncertainty."
+    },
+    {
+      "id": "video",
+      "label": "Ask for video",
+      "instruction": "Change only the invitation to ask for video. Keep the headline unchanged."
+    }
+  ],
+  "fundraiser": [
+    {
+      "id": "personal",
+      "label": "More personal",
+      "instruction": "Make the wording warmer and more personal. Keep all campaign facts unchanged."
+    },
+    {
+      "id": "shorter",
+      "label": "Shorter",
+      "instruction": "Shorten the message while preserving the campaign facts."
+    }
+  ],
+  "field": [
+    {
+      "id": "draft",
+      "label": "Draft voiceover",
+      "instruction": "Develop a concise voiceover draft from these notes and sources. Preserve attribution and uncertainty."
+    },
+    {
+      "id": "verify",
+      "label": "What needs checking?",
+      "instruction": "List the unanswered reporting questions and conflicting claims. Do not invent missing information."
+    }
+  ]
+}
