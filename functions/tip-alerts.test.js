@@ -12,9 +12,9 @@ test('Scanner snapshot requires a trusted device and preserves paused source sta
  const denied=response();await x.handleApi({method:'POST',is:()=>true,body:{op:'scanner',token:'invalid'}},denied);assert.equal(denied.code,401);
  const allowed=response();await x.handleApi({method:'POST',is:()=>true,body:{op:'scanner',token}},allowed);assert.equal(allowed.body.sources[0].status,'paused');assert.equal(allowed.body.version,1);
 });
-function harness({send=async()=>{},fetchImpl=async()=>({ok:false}), initial={}, onList=async()=>{}}={}){
+function harness({send=async()=>{},fetchImpl=async()=>({ok:false}), initial={}, onList=async()=>{}, onDownload=async()=>{}}={}){
  const files=new Map(Object.entries(initial).map(([name,data])=>[name,{data,generation:1}]));let generation=1;const counts={metadata:0,downloads:0};
- const b={file(name,opts={}){return {name,getMetadata:async()=>{counts.metadata++;const x=files.get(name);if(!x)throw Object.assign(Error(),{code:404});return [{generation:x.generation,...(x.metadata||{})}];},download:async()=>{counts.downloads++;const x=files.get(name);if(!x || (opts.generation && opts.generation!==x.generation))throw Object.assign(Error(),{code:404});return [Buffer.from(JSON.stringify(x.data))];},save:async(value,opts)=>{const old=files.get(name);const expected=opts.preconditionOpts?.ifGenerationMatch;if(expected!==undefined && expected!==(old?.generation || 0))throw Object.assign(Error(),{code:412});files.set(name,{data:JSON.parse(value),generation:++generation,metadata:opts.metadata||{}});}};},getFiles:async({prefix})=>{await onList(prefix);return [[...files.keys()].filter(n=>n.startsWith(prefix)).map(name=>({name,metadata:{generation:files.get(name).generation,...(files.get(name).metadata||{})}}))];}};
+ const b={file(name,opts={}){return {name,getMetadata:async()=>{counts.metadata++;const x=files.get(name);if(!x)throw Object.assign(Error(),{code:404});return [{generation:x.generation,...(x.metadata||{})}];},download:async()=>{counts.downloads++;await onDownload(name);const x=files.get(name);if(!x || (opts.generation && opts.generation!==x.generation))throw Object.assign(Error(),{code:404});return [Buffer.from(JSON.stringify(x.data))];},save:async(value,opts)=>{const old=files.get(name);const expected=opts.preconditionOpts?.ifGenerationMatch;if(expected!==undefined && expected!==(old?.generation || 0))throw Object.assign(Error(),{code:412});files.set(name,{data:JSON.parse(value),generation:++generation,metadata:opts.metadata||{}});}};},getFiles:async({prefix})=>{await onList(prefix);return [[...files.keys()].filter(n=>n.startsWith(prefix)).map(name=>({name,metadata:{generation:files.get(name).generation,...(files.get(name).metadata||{})}}))];}};
  const c=vm.createContext({exports:{},Buffer,URL,Date,Intl,AbortSignal,fetch:fetchImpl,require(name){
  if(name==='firebase-functions/params')return {defineSecret:()=>({value:()=> 'test-secret'.repeat(4)})};
  if(name==='web-push')return {sendNotification:send,generateVAPIDKeys:()=>keys};
@@ -250,3 +250,12 @@ test('a cold library of 1000 indexed notebooks lists without downloading transcr
 test('legacy notebooks remain visible while new summaries use metadata',async()=>{const id='a'.repeat(64),x=harness({initial:{['_tipalerts/v1/field-notes/'+id+'.json']:{id,revision:1,title:'Older recording',createdAt:new Date(now).toISOString(),transcript:'Preserved'}}});const summaries=await x.fieldSummaries();assert.equal(summaries.length,1);assert.equal(summaries[0].title,'Older recording');assert.equal(x.counts.downloads,1);});
 
 test('simple alerts identify a Voice tip and point to the native inbox',()=>{const n=h.notification({...tip,sourceKind:'google_voice',sourceTitle:'Crash near Laurel Drive'},Date.parse(tip.receivedAt));assert.equal(n.notification.title,'Google Voice tip');assert.equal(n.notification.body,'Tip: Crash near Laurel Drive. Open Cerney Tips → Inbox.');});
+
+
+test('simultaneous inbox sections share one download budget and retain every record',async()=>{
+ const initial={}, prefixes=['tips/','details/','enrichment/']; let active=0,peak=0;
+ for(const prefix of prefixes) for(let i=0;i<50;i++) initial['_tipalerts/v1/'+prefix+h.hash(prefix+i)+'.json']={id:h.hash(prefix+i)};
+ const c=harness({initial,onDownload:async()=>{active++;peak=Math.max(peak,active);await new Promise(resolve=>setImmediate(resolve));active--;}});
+ const lists=await Promise.all([...prefixes,...prefixes].map(prefix=>c.inboxDocuments(prefix)));
+ assert(lists.every(items=>items.length===50));assert.equal(peak,16);assert.equal(c.counts.downloads,150);
+});

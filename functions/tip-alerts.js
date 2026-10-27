@@ -86,6 +86,7 @@ async function documents(prefix) {
 // Only tip summaries are cached. Every request still reads the current device
 // record, and every inbox refresh lists storage generations to detect changes.
 const inboxRecords = new Map();
+const readInboxRecord = require('./inbox-read-pool').createReadPool();
 async function inboxDocuments(prefix='tips/') {
     const [listed] = await bucket().getFiles({prefix:ROOT + prefix});
     // Push receipts share deliveries/ but never contribute to the inbox.
@@ -96,19 +97,23 @@ async function inboxDocuments(prefix='tips/') {
         const generation=file.metadata?.generation;
         const cached=inboxRecords.get(file.name);
         if (generation && cached?.generation===generation) return cached.data;
-        if (!generation) return (await read(file.name.slice(ROOT.length)))?.data;
-        try {
-            const [bytes]=await bucket().file(file.name,{generation}).download();
-            const data=JSON.parse(bytes.toString());
-            if (inboxRecords.size>=1000) inboxRecords.delete(inboxRecords.keys().next().value);
-            inboxRecords.set(file.name,{generation,data});
-            return data;
-        } catch(e) {
-            // A record may have been replaced since the listing. Read the new
-            // version instead of losing that tip or failing the entire inbox.
-            if(e.code===404) return (await read(file.name.slice(ROOT.length)))?.data;
-            throw e;
-        }
+        return readInboxRecord(JSON.stringify([file.name,generation || null]), async () => {
+            if (!generation) return (await read(file.name.slice(ROOT.length)))?.data;
+            // Another queued inbox request may already have populated this record.
+            if (inboxRecords.get(file.name)?.generation===generation) return inboxRecords.get(file.name).data;
+            try {
+                const [bytes]=await bucket().file(file.name,{generation}).download();
+                const data=JSON.parse(bytes.toString());
+                if (inboxRecords.size>=1000) inboxRecords.delete(inboxRecords.keys().next().value);
+                inboxRecords.set(file.name,{generation,data});
+                return data;
+            } catch(e) {
+                // A record may have been replaced since the listing. Read the new
+                // version instead of losing that tip or failing the entire inbox.
+                if(e.code===404) return (await read(file.name.slice(ROOT.length)))?.data;
+                throw e;
+            }
+        });
     }));
     return records.filter(Boolean);
 }
@@ -380,4 +385,4 @@ async function secureHandleApi(req,res) {
     if(req.body?.op==='upload-authorize'){try{const r=await require('./upload-admission').authorize(req.body);return res.status(r.status).json(r.body);}catch{return res.status(503).json({error:'Upload protection unavailable. Please try again.'});}}
     return handleApi(req,res);
 }
-exports.tipAlertsApi = onRequest({...options,invoker:'public',secrets:[proxySecret]},secureHandleApi);
+exports.tipAlertsApi = onRequest({...options,memory:'512MiB',concurrency:16,invoker:'public',secrets:[proxySecret]},secureHandleApi);
