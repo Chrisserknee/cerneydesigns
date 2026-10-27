@@ -1,8 +1,8 @@
 {
   "schema": 1,
-  "revision": 3,
-  "latestBuild": 21,
-  "releaseNote": "Start a story from Scanner, link related tips and source alerts, and keep reporting notes, voiceover and AI drafts together.",
+  "revision": 4,
+  "latestBuild": 22,
+  "releaseNote": "Story notebooks connect Scanner, tips and sources. Connection status now separates app sync from fresh, incomplete, paused or blocked source checks.",
   "outreach": [
     {
       "id": "shorter",

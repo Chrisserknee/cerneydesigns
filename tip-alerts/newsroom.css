@@ -6,3 +6,12 @@
 .story-writer-review a{display:inline-block;padding:8px 12px;margin:4px;border:1px solid #8297a455;border-radius:10px;min-height:44px;box-sizing:border-box}.story-writer-review p{font-size:.85rem}
 
 .field-note-actions{justify-content:flex-start;margin:18px 0;gap:10px}.field-note-actions button{flex:0 1 auto}#fieldCapture[hidden]{display:none}
+.newsroom .source-health{padding:12px 0;margin-bottom:14px;border-bottom:1px solid #8297a433}
+.source-health>summary{font-size:.9rem;font-weight:600;list-style-position:inside}
+.source-health[data-attention=true]>summary{color:#9c5720}
+.source-health-row{padding:12px 0;border-bottom:1px solid #8297a422}
+.source-health-title{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px;font-size:.85rem}
+.source-health-title span{color:var(--muted)}
+.source-health-row p{font-size:.8rem;line-height:1.45;margin:6px 0;color:var(--muted)}
+.source-health>button{margin-top:12px}
+@media(prefers-color-scheme:dark){.source-health[data-attention=true]>summary{color:#efb87a}}
