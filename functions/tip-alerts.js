@@ -118,7 +118,7 @@ async function fieldSummaries() {
         const id=file.name.split('/').pop().slice(0,-5), indexed=noteSummary(file.metadata,id);
         if(indexed)return indexed;
         const note=(await read(file.name.slice(ROOT.length)))?.data;
-        return note && note.id===id ? {id:note.id,title:note.title,createdAt:note.createdAt,updatedAt:note.updatedAt,revision:note.revision,hasAudio:!!note.audio}:null;
+        return note && note.id===id ? noteSummary(noteMetadata(note),id):null;
     }))).filter(Boolean).sort((a,b)=>Date.parse(b.updatedAt||b.createdAt)-Date.parse(a.updatedAt||a.createdAt));
 }
 async function syncTip(object) {

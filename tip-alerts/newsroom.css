@@ -15,3 +15,5 @@
 .source-health-row p{font-size:.8rem;line-height:1.45;margin:6px 0;color:var(--muted)}
 .source-health>button{margin-top:12px}
 @media(prefers-color-scheme:dark){.source-health[data-attention=true]>summary{color:#efb87a}}
+
+.source-story-actions{justify-content:flex-start;margin:18px 0}.source-story-actions>div{width:100%}.source-story-actions select{box-sizing:border-box;max-width:100%;min-height:44px;margin:8px 0}.source-story-actions>p{width:100%;margin:0;font-size:.85rem}.source-story-actions [hidden]{display:none}

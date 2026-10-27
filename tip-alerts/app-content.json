@@ -1,8 +1,8 @@
 {
   "schema": 1,
-  "revision": 4,
-  "latestBuild": 22,
-  "releaseNote": "Story notebooks connect Scanner, tips and sources. Connection status now separates app sync from fresh, incomplete, paused or blocked source checks.",
+  "revision": 5,
+  "latestBuild": 23,
+  "releaseNote": "Open a source in its existing story, add tips and alerts to a notebook, and keep original evidence and reporting drafts together. Includes clearer connection status.",
   "outreach": [
     {
       "id": "shorter",

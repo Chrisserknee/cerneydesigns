@@ -3,6 +3,7 @@
  const E=(tag,text)=>{const e=document.createElement(tag);if(text)e.textContent=text;return e;};
  let root,api,loading=false,last=0,notes=[],selected=null,recorder=null,chunks=[],stream=null,started=0,elapsed=0,recorded=null,uploadID=null,uploadNote=null,alertLimit=6,session=0,alertFilter='All',editor=null,draftDirty=false,uploadedParts=new Set(),audioURL=null,locked=false,importTitle=null;
  const stamp=()=>new Date().toISOString();
+ let sourceClient=null,sourceOpening=false,sourceEpoch=0;
  const hash=async bytes=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(x=>x.toString(16).padStart(2,'0')).join('');
  const base64=bytes=>{let s='';for(let i=0;i<bytes.length;i+=8192)s+=String.fromCharCode(...bytes.subarray(i,i+8192));return btoa(s);};
  function link(source){const a=E('a',source.label||'Open source');try{const u=new URL(source.url);if(u.protocol!=='https:'||u.username||u.password)throw Error();a.href=u.href;a.target='_blank';a.rel='noopener noreferrer';return a;}catch{return E('span',source.label||'Source');}}
@@ -105,20 +106,56 @@
   const footer=E('div');footer.className='field-actions field-note-actions';footer.append(button('Save now',()=>save(false)),button('Develop story with AI',()=>save(true)),button('Refresh AI result',()=>openNote(id)),button('Download notes backup',()=>{const blob=new Blob([JSON.stringify({...selected,...current()},null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=E('a');a.href=url;a.download='Cerney-story-notebook.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}),button('All recordings and stories',async()=>{if(!await leaveEditor())return;selected=null;editor=null;last=0;refresh(api);}));const producer=E('a','Open in Producer Desk');producer.href='/tip-alerts/producer.html?kind=note&source='+encodeURIComponent(id)+'&title='+encodeURIComponent(note.title);producer.className='secondary';footer.append(producer);box.append(footer);
   }catch(e){status(e.message||'Could not open this notebook.');}
  }
+ function sourceActions(alert){
+  const group=E('div');group.className='field-actions source-story-actions';
+  const helper=globalThis.CerneySourceStories;
+  if(!helper){group.append(E('p','Reload to open a source in a story notebook.'));return group;}
+  const message=E('p');message.setAttribute('role','status');
+  const start=button(helper.linkedID(notes,alert.id)?'Open story':'Start story',()=>run());
+  const choose=E('div');choose.hidden=true;const picker=E('select');picker.setAttribute('aria-label','Choose existing story');
+  for(const note of notes){const option=E('option',note.title);option.value=note.id;picker.append(option);}
+  choose.append(picker,button('Add source',()=>run(picker.value)),button('Cancel',()=>{choose.hidden=true;}));
+  group.append(start);if(notes.length)group.append(button('Add to an existing story',()=>{choose.hidden=false;}));group.append(choose,message);
+  async function run(destination){
+   if(sourceOpening||locked)return;
+   if(recorded||recorder?.state==='recording'||recorder?.state==='paused'){message.textContent='Submit or download the current recording before opening another story.';return;}
+   const expected=session,epoch=sourceEpoch;sourceOpening=true;start.disabled=true;
+   try{
+    if(!await leaveEditor()){message.textContent='Save the current notebook edits before linking another source.';return;}
+    if(session!==expected||sourceEpoch!==epoch||locked)return;
+    if(!sourceClient)sourceClient=helper.createClient(async(op,p)=>{
+     if(session!==expected||sourceEpoch!==epoch||locked)throw Error('Sign in again before opening a story.');
+     const result=await api(op,p);if(session!==expected||sourceEpoch!==epoch||locked)throw Error('Sign-in changed. Your previous story stays saved.');return result;
+    });
+    message.textContent='Opening story…';const items=[helper.evidence(alert)];
+    const note=destination?await sourceClient.attach(items,destination):await sourceClient.open({title:alert.title,items,summaries:notes});
+    if(session!==expected||sourceEpoch!==epoch||locked)return;
+    notes=[{id:note.id,title:note.title,revision:note.revision,createdAt:note.createdAt,hasAudio:!!note.audio,kind:note.kind,sourceIDs:(note.evidence||[]).map(e=>e.id)},...notes.filter(n=>n.id!==note.id)];
+    await openNote(note.id);if(session!==expected||sourceEpoch!==epoch||locked)return;
+    if(selected?.id!==note.id)throw Error('Notebook saved. Refresh to open it; the source is preserved.');
+    await refresh(api,true);if(session!==expected||sourceEpoch!==epoch||locked)return;
+    const panel=document.getElementById('fieldMode');panel.open=true;panel.scrollIntoView({behavior:'smooth',block:'start'});
+    message.textContent='Source linked. Your original material and story edits are preserved.';start.textContent='Open story';
+   }catch(e){if(session===expected&&sourceEpoch===epoch&&!locked)message.textContent=e.message||'Could not open the story. Your saved work is unchanged.';}
+   finally{if(session===expected&&sourceEpoch===epoch)sourceOpening=false;start.disabled=false;}
+  }
+  return group;
+ }
  function paint(data){
+  notes=data.notes||[];
   ensure();if(!document.getElementById('fieldMode')){root.append(fieldUI());const heading=E('h2','Source alerts');root.append(heading);const alerts=E('div');alerts.id='researchAlerts';root.append(alerts);}
-  const list=document.getElementById('researchAlerts'),statusOpen=list.querySelector?.('.source-health')?.open;list.replaceChildren();
+  const list=document.getElementById('researchAlerts'),statusOpen=list.querySelector?.('.source-health')?.open,expanded=new Set(Array.from(list.querySelectorAll?.('.research-card[open]')||[],card=>card.id));list.replaceChildren();
   if(globalThis.CerneySourceHealth){const status=globalThis.CerneySourceHealth.render(data.monitor,()=>refresh(api,true));status.open=!!statusOpen;list.append(status);}
   else list.append(E('p','Source status is unavailable. Reload to check again; saved source reports remain below.'));
   const filters=E('div');filters.className='field-actions';for(const name of ['All','Facebook','Email']){const b=button(name,()=>{alertFilter=name;alertLimit=6;paint(data);});b.setAttribute('aria-pressed',alertFilter===name?'true':'false');filters.append(b);}list.append(filters);
   const target=new URLSearchParams(location.search).get('alert'),all=(data.alerts||[]).filter(a=>a.id===target||alertFilter==='All'||(alertFilter==='Facebook'?a.kind==='facebook_group':a.kind.includes('email'))),targetIndex=all.findIndex(a=>a.id===target);alertLimit=Math.max(alertLimit,targetIndex+1);
-  for(const a of all.slice(0,alertLimit)){const card=E('details');card.className='research-card';card.id='alert-'+a.id;const summary=E('summary'),observed=Date.parse(a.observedAt);summary.append(E('small',(a.kind==='facebook_group'?'Facebook alert':a.kind==='official_email'?'Official email':a.kind.includes('email')?'Email lead':a.kind==='official_statement'?'Official statement':'Source alert')+' · '+a.priority),E('strong',a.title),E('small','Observed '+(Number.isFinite(observed)?new Date(observed).toLocaleString(): 'time unknown')+' · '+a.timeLabel));card.append(summary,E('p',a.summary),E('p',(a.location||'Location unconfirmed')+' · '+a.timeLabel));if(a.whatChanged)card.append(E('p','What changed: '+a.whatChanged));card.append(E('p',a.verification));for(const s of a.sources||[])card.append(link(s));card.append(button('Start story notebook',()=>startStory({title:a.title,evidence:[{id:a.id,title:a.title,excerpt:(a.summary+'\n'+a.timeLabel+'\n'+(a.sources||[]).map(s=>(s.label||'')+'\n'+(s.excerpt||'')+'\n'+(s.url||'')).join('\n\n')).slice(0,6000),url:a.sources?.[0]?.url,kind:a.kind,receivedAt:a.observedAt}]})));for(const q of a.questions||[])card.append(E('p','To check: '+q));for(const c of a.contradictions||[])card.append(E('p','Conflicting accounts: '+c));list.append(card);if(target===a.id)card.open=true;}
+  for(const a of all.slice(0,alertLimit)){const card=E('details');card.className='research-card';card.id='alert-'+a.id;const summary=E('summary'),observed=Date.parse(a.observedAt);summary.append(E('small',(a.kind==='facebook_group'?'Facebook alert':a.kind==='official_email'?'Official email':a.kind.includes('email')?'Email lead':a.kind==='official_statement'?'Official statement':'Source alert')+' · '+a.priority),E('strong',a.title),E('small','Observed '+(Number.isFinite(observed)?new Date(observed).toLocaleString(): 'time unknown')+' · '+a.timeLabel));card.append(summary,E('p',a.summary),E('p',(a.location||'Location unconfirmed')+' · '+a.timeLabel));if(a.whatChanged)card.append(E('p','What changed: '+a.whatChanged));card.append(E('p',a.verification));for(const s of a.sources||[])card.append(link(s));card.append(sourceActions(a));for(const q of a.questions||[])card.append(E('p','To check: '+q));for(const c of a.contradictions||[])card.append(E('p','Conflicting accounts: '+c));list.append(card);if(target===a.id||expanded.has(card.id))card.open=true;}
   if(all.length>alertLimit)list.append(button('Show more source alerts · '+(all.length-alertLimit)+' remaining',()=>{alertLimit+=10;paint(data);}));
   if(!data.alerts?.length)list.append(E('p','Facebook and email findings will appear here as they are collected.'));
   notes=data.notes||[];if(!selected){const library=document.getElementById('fieldLibrary');library.replaceChildren(E('h3','Your recordings and stories'));for(const n of notes)library.append(button(n.title,()=>openNote(n.id)));}
  }
  async function refresh(request,force=false){api=request;if(loading||(!locked&&!force&&Date.now()-last<60000))return;const expected=session;loading=true;try{const data=await api('newsroom');if(session!==expected)return;locked=false;paint(data);last=Date.now();}catch(e){if(session!==expected)return;ensure();if(!root.children.length)root.append(E('p','Research feed unavailable. Refresh to retry.'));}finally{if(session===expected)loading=false;}}
- function suspend(){locked=true;last=0;if(recorder?.state==='recording'){elapsed+=Date.now()-started;recorder.stop();}else if(recorder?.state==='paused')recorder.stop();stream?.getTracks().forEach(t=>t.stop());}
- function clear(){session++;locked=false;importTitle=null;loading=false;editor=null;draftDirty=false;uploadedParts.clear();if(audioURL){URL.revokeObjectURL(audioURL);audioURL=null;}if(recorder){recorder.onstop=null;if(recorder.state!=='inactive')recorder.stop();}stream?.getTracks().forEach(t=>t.stop());root?.remove();root=null;selected=null;notes=[];recorded=null;chunks=[];uploadNote=null;uploadID=null;last=0;alertLimit=6;}
+ function suspend(){locked=true;last=0;sourceClient=null;sourceOpening=false;sourceEpoch++;if(recorder?.state==='recording'){elapsed+=Date.now()-started;recorder.stop();}else if(recorder?.state==='paused')recorder.stop();stream?.getTracks().forEach(t=>t.stop());}
+ function clear(){session++;sourceClient=null;sourceOpening=false;sourceEpoch++;locked=false;importTitle=null;loading=false;editor=null;draftDirty=false;uploadedParts.clear();if(audioURL){URL.revokeObjectURL(audioURL);audioURL=null;}if(recorder){recorder.onstop=null;if(recorder.state!=='inactive')recorder.stop();}stream?.getTracks().forEach(t=>t.stop());root?.remove();root=null;selected=null;notes=[];recorded=null;chunks=[];uploadNote=null;uploadID=null;last=0;alertLimit=6;}
  globalThis.CerneyNewsroom={refresh,clear,suspend,startStory,hasUnsavedWork:()=>draftDirty||!!recorded||recorder?.state==='recording'||recorder?.state==='paused'};
 })();
