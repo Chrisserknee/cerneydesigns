@@ -1,8 +1,8 @@
 {
   "schema": 1,
-  "revision": 5,
-  "latestBuild": 23,
-  "releaseNote": "Open a source in its existing story, add tips and alerts to a notebook, and keep original evidence and reporting drafts together. Includes clearer connection status.",
+  "revision": 6,
+  "latestBuild": 24,
+  "releaseNote": "Adds the requested Natividad photo background for Story Outreach while keeping incident facts unchanged.",
   "outreach": [
     {
       "id": "shorter",

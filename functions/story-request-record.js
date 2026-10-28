@@ -14,6 +14,7 @@ function storyRequest(data,now=Date.now()) {
  const sources=data.sources.map(s=>({label:clean(s.label,100),kind:clean(s.kind,30),tipId:ID.test(s.tipId||'')?s.tipId:null}));
  if(sources.some(s=>!s.label))return null;
  return {version:1,id:data.id,state:'draft',revision:data.revision,createdAt:data.createdAt,updatedAt:data.updatedAt,expiresAt:data.expiresAt,
+  backgroundID:data.backgroundID==='natividad'?'natividad':null,
   headline:clean(data.headline,100),question:clean(data.question,260),context:clean(data.context,200),location:clean(data.location,120),
   timeLabel:clean(data.timeLabel,70),basis:data.basis,reviewNote:clean(data.reviewNote,800),sources,
   urgency:['community','developing','urgent','critical','update'].includes(data.urgency)?data.urgency:null,category:data.category==='police'?'police':null,

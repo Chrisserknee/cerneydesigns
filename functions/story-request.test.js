@@ -31,3 +31,5 @@ test('failed delivery is retained with backoff and expired subscriptions removed
  const h=harness({fail:503});await h.alerts.deliver(storyRequest(h.s),h.device,h.keys);await h.alerts.deliver(storyRequest(h.s),h.device,h.keys);assert.equal(h.sends(),1);assert([...h.files.values()].some(x=>x.data.status==='pending'));
  const e=harness({fail:410});await e.alerts.deliver(storyRequest(e.s),e.device,e.keys);assert.equal(e.files.get(`devices/${e.device.id}.json`).data.subscription,null);
 });
+
+test('background selection is an allowlisted visual choice, separate from incident location',()=>{const s=fixture();assert.equal(storyRequest({...s,backgroundID:'natividad'}).backgroundID,'natividad');assert.equal(storyRequest({...s,backgroundID:'natividad'}).location,s.location);assert.equal(storyRequest({...s,backgroundID:'../../private'}).backgroundID,null);});

@@ -6,7 +6,7 @@ test('all eighteen cities and every catalog image are packaged',()=>{
  assert.equal(backgrounds.catalog.filter(x=>x.kind==='city').length,18);
  assert.equal(new Set(backgrounds.catalog.map(x=>x.id)).size,backgrounds.catalog.length);
  const files=[...backgrounds.catalog.map(x=>x.id),...backgrounds.styles.map(x=>'style-'+x.id),'police-lights'];
- assert.equal(files.length,93);
+ assert.equal(files.length,94);
  for(const file of files){const bytes=fs.readFileSync(path.join(__dirname,'../tip-alerts/backgrounds/v1',file+'.jpg'));assert.deepEqual([...bytes.subarray(0,2)],[255,216]);assert(bytes.length>10000,file);}
 });
 test('precise community and road matching retains local specificity',()=>{
@@ -88,3 +88,5 @@ test('tri-county locations and parent districts retain specificity',()=>{
  for(const [input,id] of [['Santa Cruz, Santa Cruz County','santa-cruz'],['Seabright, Santa Cruz','seabright'],['San Juan Bautista, San Benito County','san-juan-bautista'],['Pajaro Dunes','pajaro-dunes'],['Aptos Hills Larkin Valley','aptos-hills'],['Hollister near Highway 101','hollister'],['Highway 9 between Felton and Ben Lomond','san-lorenzo-valley']])assert.equal(backgrounds.match(input)?.id,id,input);
  assert.deepEqual(backgrounds.catalog.find(x=>x.id==='aromas').counties,['Monterey','San Benito']);
 });
+
+test('explicit Natividad backdrop leaves Salinas incident facts unchanged',()=>{const story={headline:'Did you record the protest in Salinas?',location:'Salinas',backgroundID:'natividad'};assert.equal(backgrounds.suggested(story).locationID,'natividad');assert.equal(story.location,'Salinas');assert.equal(backgrounds.suggested({...story,backgroundID:'https://evil.example/img'}).locationID,'salinas');});
