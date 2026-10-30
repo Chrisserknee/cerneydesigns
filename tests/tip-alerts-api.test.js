@@ -94,3 +94,10 @@ test('large Producer uploads fit the proxy, and resume status is authenticated',
  const anon=proxy();await anon.run(req({op:'producer-media-status',id:'a'.repeat(64),assetID:'c'.repeat(64)}),anon.res);assert.equal(anon.res.code,401);assert.equal(anon.calls.length,0);
 });
 test('Producer review videos can play from private blob URLs without loosening other sources',()=>{const config=JSON.parse(fs.readFileSync(__dirname+'/../vercel.json','utf8'));const csp=config.headers.find(x=>x.source==='/tip-alerts/(.*)').headers.find(x=>x.key==='Content-Security-Policy').value;assert.match(csp,/media-src 'self' blob:;/);assert.match(csp,/connect-src 'self';/);assert.match(csp,/default-src 'none'/);});
+
+test('Story Tracker uses the paired device and forwards only tracker fields',async()=>{
+ const id='a'.repeat(64),cookie={cookie:'cc_tip_device='+'x'.repeat(43)};
+ const unauth=proxy();await unauth.run(req({op:'tracker-list'}),unauth.res);assert.equal(unauth.res.code,401);
+ const denied=proxy();await denied.run(req({op:'tracker-list'},{...cookie,origin:'https://evil.test'}),denied.res);assert.equal(denied.res.code,403);
+ const p=proxy(false,{story:{id}});await p.run(req({op:'tracker-separate',id,itemID:'b'.repeat(64),token:'forged',stories:[{id:'forged'}],evidence:[{}]},cookie),p.res);assert.equal(p.res.code,200);assert.equal(p.calls[0].body.token,'x'.repeat(43));assert.equal(p.calls[0].body.itemID,'b'.repeat(64));assert.equal(p.calls[0].body.stories,undefined);assert.equal(p.calls[0].body.evidence,undefined);assert.equal(p.logs.length,0);
+});

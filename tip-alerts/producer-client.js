@@ -1,6 +1,9 @@
 (()=>{'use strict';
 // Producer Desk: one context box, a large resumable picker, and a card for each finished video report.
 const $=id=>document.getElementById(id);
+const materialsID=new URLSearchParams(location.search).get('materials');
+const materials=/^[a-f0-9]{64}$/.test(materialsID||'');
+if(materials){document.documentElement.classList.add('materials');document.title='Story materials';document.querySelector('h1').textContent='Story materials';}
 const E=(tag,text,className)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(className)e.className=className;return e;};
 const statusNames={queued:'Saved in cloud · waiting for Mac',received:'Received by your Mac',working:'Claude is working',rendering:'Rendering a preview',needs_answer:'Claude has a question',ready:'Reply ready',failed:'Needs attention',cancelled:'Cancelled'};
 const defaults={format:'footage',banner:'slate',length:'standard',captions:true,originalAudio:true,noMusic:true};
@@ -130,7 +133,7 @@ async function pump(){
   catch(e){if(!sessionLocked){row.state='failed';row.error=e.message+(e.retry===false?'':' Your progress is kept; retry resumes where it stopped.');drawRow(row);}}
   finally{uploading--;if(!sessionLocked)changed();controls();}
  }}finally{pumping=false;}
- if(!uploadRows.length&&thread?.assets?.length)message('Files are backed up. Add your direction and send.');
+ if(!uploadRows.length&&thread?.assets?.length)message(materials?'Files saved to this story. You can close this screen.':'Files are backed up. Add your direction and send.');
 }
 async function upload(row){
  const file=row.file,mimeType=typeOf(file);if(!id)id=await uid();
@@ -158,8 +161,8 @@ async function upload(row){
 }
 function assetPaint(){
  const box=$('assets');box.replaceChildren();const list=thread?.assets||[];if(!list.length)return;
- box.append(E('div','Files Claude can use','hint'));
- for(const a of list){const row=E('div',undefined,'asset'),check=E('input'),label=E('label');check.type='checkbox';check.checked=assetIDs.has(a.id);check.disabled=sending||!!pending;check.addEventListener('change',()=>{check.checked?assetIDs.add(a.id):assetIDs.delete(a.id);changed();});label.append(check,document.createTextNode(' '+a.filename+' · '+size(a.bytes)));row.append(label);box.append(row);}
+ box.append(E('div',materials?'Saved materials':'Files Claude can use','hint'));
+ for(const a of list){const row=E('div',undefined,'asset'),check=E('input'),label=E('label');check.type='checkbox';check.checked=assetIDs.has(a.id);check.disabled=sending||!!pending;check.addEventListener('change',()=>{check.checked?assetIDs.add(a.id):assetIDs.delete(a.id);changed();});if(!materials)label.append(check);label.append(document.createTextNode(' '+a.filename+' · '+size(a.bytes)));row.append(label);box.append(row);}
 }
 function sourcePaint(){const box=$('sources');box.replaceChildren();for(const r of refs){const row=E('div',undefined,'source'),check=E('input'),label=E('label');check.type='checkbox';check.checked=true;check.disabled=sending||!!pending;check.addEventListener('change',()=>{refs=refs.filter(x=>x!==r);sourcePaint();changed();});label.append(check,document.createTextNode(' '+(r.label||'Attached '+r.kind)));row.append(label);box.append(row);}}
 
@@ -263,7 +266,7 @@ function paintList(){
 }
 async function refresh(more=false){
  if(loading||!authenticated||document.hidden)return;loading=true;const expected=epoch;
- try{const r=await api('producer-list',more&&cursor?{cursor}:{});if(expected!==epoch)return;
+ try{if(materials){const r=await api('producer-get',{id:materialsID});if(expected===epoch&&r.thread)paint(r.thread);return;}const r=await api('producer-list',more&&cursor?{cursor}:{});if(expected!==epoch)return;
   const map=new Map((more?threads:[]).map(t=>[t.id,t]));for(const t of r.threads||[])map.set(t.id,t);threads=[...map.values()].sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt));cursor=r.nextCursor;paintList();
   const healthy=r.health&&Date.now()-Date.parse(r.health.checkedAt)<90000;
   $('health').textContent=healthy?(r.health.status==='storage_offline'?'Mac connected · project SSD unavailable':r.health.status==='storage_full'?'Mac connected · SSD needs space; requests wait':r.health.status==='working'?'● Mac working':'● Mac ready'):'Mac offline · requests wait in the cloud';
@@ -280,13 +283,13 @@ async function newStory(){
 
 // ---- Send ----
 async function deliver(){
- if(!pending||sending||!authenticated)return;sending=true;controls();
+ if(materials||!pending||sending||!authenticated)return;sending=true;controls();
  try{const sent=pending,r=await api('producer-send',sent);await store.complete(sent);drafts.delete(sent.id);id=sent.id;pending=null;draftVersion=savedVersion=0;history.replaceState(null,'','?story='+id);titleEdited=false;$('retry').hidden=true;$('instruction').value='';$('saveState').textContent='Saved in the cloud. Your Mac will pick it up.';paint(r.thread);sourcePaint();message('Sent. You can leave this screen; the report card appears here when it’s done.');await refresh();}
  catch(e){$('retry').hidden=false;if(!e.signedOut)message(e.message+' Your exact request is saved on this device; retrying won’t create a duplicate.',true);}
  finally{sending=false;controls();}
 }
 async function send(event){
- event.preventDefault();if(booting||navigating||!authenticated||preparing||sending||uploadRows.length>0)return;if(pending)return deliver();
+ event.preventDefault();if(materials)return;if(booting||navigating||!authenticated||preparing||sending||uploadRows.length>0)return;if(pending)return deliver();
  const selected=[...assetIDs].filter(a=>thread?.assets?.some(x=>x.id===a));
  let text=$('instruction').value.trim();
  if(!text&&selected.length){text='Make a report from the attached files.';$('instruction').value=text;}
@@ -303,12 +306,13 @@ async function send(event){
 
 // ---- Start ----
 async function start(){
- try{const catalog=await api('producer-catalog');scope=catalog.deviceScope;
+ try{const catalog=await api('producer-catalog');scope=materials?await hash(textBytes(catalog.deviceScope+':story-materials')):catalog.deviceScope;
   for(const [key,list] of [['format',catalog.catalog.formats],['banner',catalog.catalog.banners],['length',catalog.catalog.lengths]])for(const item of list){const opt=E('option',item.label);opt.value=item.id;$(key).append(opt);}
   setPrefs();let active=null;
   try{store=await Drafts.open(scope);pending=await store.pending();for(const d of await store.list())drafts.set(d.id,d);active=await store.active();}catch(e){message(e.message,true);}
   const params=new URLSearchParams(location.search);
-  if(pending){id=pending.id;$('instruction').value=pending.text;$('title').value=pending.title||'';setPrefs(pending.preferences);refs=pending.sourceRefs||[];assetIDs=new Set(pending.assetIDs);$('retry').hidden=false;message('A previous instruction is saved on this device. Retry sends the same request without duplicating it.');
+  if(materials){pending=null;id=materialsID;const tracked=await api('tracker-get',{id});$('title').value=tracked.story.title;titleEdited=true;const r=await api('producer-get',{id});if(r.thread)paint(r.thread);if(drafts.has(id))await restoreDraft(drafts.get(id));$('saveState').textContent='Files save to this story automatically. Up to 20 files, 10 GB total.';}
+  else if(pending){id=pending.id;$('instruction').value=pending.text;$('title').value=pending.title||'';setPrefs(pending.preferences);refs=pending.sourceRefs||[];assetIDs=new Set(pending.assetIDs);$('retry').hidden=false;message('A previous instruction is saved on this device. Retry sends the same request without duplicating it.');
    try{const r=await api('producer-get',{id});if(r.thread)paint(r.thread);}catch{}}
   else if(/^[a-f0-9]{64}$/.test(params.get('story')||''))await open(params.get('story'));
   else if(!params.get('source')&&drafts.has(active))await open(active);

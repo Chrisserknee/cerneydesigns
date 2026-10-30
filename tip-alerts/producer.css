@@ -84,3 +84,6 @@ footer{font-size:12px;margin-top:32px}
  #notice.error,#uploads .failed{color:#ffad9d}
  .badge{background:#1f4630;color:#bfe8cd}
 }
+
+/* Story Tracker reuses the private resumable upload path, without submitting a production job. */
+.materials header,.materials #new,.materials #threads,.materials #more,.materials #instruction,.materials label[for="instruction"],.materials #send,.materials #retry,.materials #styleBox,.materials #sources,.materials #reports,.materials #convo,.materials footer{display:none!important}

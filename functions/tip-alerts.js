@@ -21,6 +21,10 @@ const {researchRecord}=require('./newsroom-record');
 const fieldHandler=require('./field-notes').createFieldNotes({read,write,bucket:()=>bucket(),root:ROOT});
 const {threadMetadata,threadSummary,createProducerDesk}=require('./producer-desk');
 const producerHandler=createProducerDesk({read,write,list:producerThreads,bucket:()=>bucket(),root:ROOT});
+const tracker=require('./story-tracker').createStoryTracker({read,write,collect:async()=>{
+    const [tips,research,incidents,scanner]=await Promise.all([inboxDocuments(),inboxDocuments('research/'),inboxDocuments('incidents/'),read('scanner/feed.json')]);
+    return require('./story-tracker-sources').sources({tips,research,incidents,scanner:scanner?.data});
+}});
 const {voiceTip,refreshFromStored,voiceMonitor}=require('./voice-tip');
 const bucket = () => getStorage().bucket('tip-line-8c2d7.firebasestorage.app');
 const options = {region:'us-west1', memory:'256MiB', timeoutSeconds:120, maxInstances:3};
@@ -272,6 +276,7 @@ async function handleApi(req, res) {
         const device = await authenticate(body.token);
         if (!device) return res.status(401).json({error:'Sign in to connect this device.'});
         if(body.op==='scanner')return res.json(require('./scanner-feed').scannerFeed((await read('scanner/feed.json'))?.data));
+        if(String(body.op||'').startsWith('tracker-'))return res.json(await tracker.handle(body));
         if(String(body.op||'').startsWith('producer-'))return res.json(await producerHandler(body,device));
         if(String(body.op||'').startsWith('field-'))return res.json(await fieldHandler(body));
         if(body.op==='newsroom'){
@@ -386,3 +391,4 @@ async function secureHandleApi(req,res) {
     return handleApi(req,res);
 }
 exports.tipAlertsApi = onRequest({...options,memory:'512MiB',concurrency:16,invoker:'public',secrets:[proxySecret]},secureHandleApi);
+exports.refreshStoryTracker = onSchedule({...options,memory:'512MiB',maxInstances:1,schedule:'every 5 minutes'},async()=>{await tracker.sync();});
