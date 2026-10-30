@@ -20,7 +20,7 @@ const {noteMetadata,noteSummary}=require('./field-note-index');
 const {researchRecord}=require('./newsroom-record');
 const fieldHandler=require('./field-notes').createFieldNotes({read,write,bucket:()=>bucket(),root:ROOT});
 const {threadMetadata,threadSummary,createProducerDesk}=require('./producer-desk');
-const producerHandler=createProducerDesk({read,write,list:producerThreads,bucket:()=>bucket(),root:ROOT});
+const producerHandler=createProducerDesk({read,write,list:producerThreads,bucket:()=>bucket(),root:ROOT,onMediaSaved:(id,assets)=>tracker.recordAssets(id,assets)});
 const tracker=require('./story-tracker').createStoryTracker({read,write,collect:async()=>{
     const [tips,research,incidents,scanner]=await Promise.all([inboxDocuments(),inboxDocuments('research/'),inboxDocuments('incidents/'),read('scanner/feed.json')]);
     return require('./story-tracker-sources').sources({tips,research,incidents,scanner:scanner?.data});
@@ -256,7 +256,7 @@ async function readThumbnail(body){
 async function handleApi(req, res) {
     res.set('Cache-Control','no-store'); res.set('X-Content-Type-Options','nosniff');
     if (req.method !== 'POST') return res.status(405).json({error:'Method not allowed.'});
-    if (!req.is('application/json') || req.rawBody?.length > (req.body?.op==='producer-media-part'?2900000:req.body?.op==='producer-media-finish'?100000:String(req.body?.op||'').startsWith('field-')?800000:String(req.body?.op||'').startsWith('producer-')?32768:16384)) return res.status(400).json({error:'Invalid request.'});
+    if (!req.is('application/json') || req.rawBody?.length > (req.body?.op==='tracker-edit'?65000:req.body?.op==='producer-media-part'?2900000:req.body?.op==='producer-media-finish'?100000:String(req.body?.op||'').startsWith('field-')?800000:String(req.body?.op||'').startsWith('producer-')?32768:16384)) return res.status(400).json({error:'Invalid request.'});
     const body = req.body || {};
     try {
         if (body.op === 'login-attempt') {

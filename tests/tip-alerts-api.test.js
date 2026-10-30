@@ -101,3 +101,12 @@ test('Story Tracker uses the paired device and forwards only tracker fields',asy
  const denied=proxy();await denied.run(req({op:'tracker-list'},{...cookie,origin:'https://evil.test'}),denied.res);assert.equal(denied.res.code,403);
  const p=proxy(false,{story:{id}});await p.run(req({op:'tracker-separate',id,itemID:'b'.repeat(64),token:'forged',stories:[{id:'forged'}],evidence:[{}]},cookie),p.res);assert.equal(p.res.code,200);assert.equal(p.calls[0].body.token,'x'.repeat(43));assert.equal(p.calls[0].body.itemID,'b'.repeat(64));assert.equal(p.calls[0].body.stories,undefined);assert.equal(p.calls[0].body.evidence,undefined);assert.equal(p.logs.length,0);
 });
+
+test('tracker search and edits preserve conflict guards without forwarding source or storage mutations',async()=>{
+ const cookie={cookie:'cc_tip_device='+'x'.repeat(43)};
+ for(const body of [{op:'tracker-list',query:'Natividad',filter:'archived'}, {op:'tracker-pin',id:'a'.repeat(64),pinned:true}, {op:'tracker-edit',id:'a'.repeat(64),title:'A report',notes:'📝'.repeat(7000),expectedRevision:4}]){
+ const p=proxy(false,{});await p.run(req({...body,files:['forged'],items:['forged'],path:'private.json'},cookie),p.res);assert.equal(p.res.code,200);assert.deepEqual(JSON.parse(JSON.stringify(p.calls[0].body)),{...body,token:'x'.repeat(43)});
+ }
+ const read=proxy(false,{});await read.run(req({op:'producer-media-read',id:'a'.repeat(64),assetID:'b'.repeat(64),index:1,path:'forged'},cookie),read.res);assert.equal(read.res.code,200);assert.equal(read.calls[0].body.path,undefined);
+ const denied=proxy();await denied.run(req({op:'producer-media-read',id:'a'.repeat(64),assetID:'b'.repeat(64),index:0}),denied.res);assert.equal(denied.res.code,401);
+});

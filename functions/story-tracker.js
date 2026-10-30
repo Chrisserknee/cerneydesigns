@@ -2,6 +2,7 @@
 const {sha,match,repeat}=require('./story-tracker-match');
 const {evidenceContext}=require('./evidence-context');
 const {sourceURL}=require('./newsroom-record');
+const {summary,query,fileSummary}=require('./story-tracker-presentation');
 const ID=/^[a-f0-9]{64}$/;
 const fail=(message,code=400)=>Object.assign(Error(message),{code});
 const clean=(s,n)=>typeof s==='string'?s.trim().slice(0,n):'';
@@ -29,11 +30,10 @@ function reconcile(state,incoming,at){
  }
  state.checkedAt=at;return state;
 }
-function summary(s){const newest=[...s.items].sort((a,b)=>(b.updatedAt||b.receivedAt).localeCompare(a.updatedAt||a.receivedAt))[0];return {id:s.id,title:s.title,status:s.status,createdAt:s.createdAt,updatedAt:s.updatedAt,itemCount:s.items.length,latest:newest?.title||'',kinds:[...new Set(s.items.map(e=>e.kind))]};}
 function createStoryTracker({read,write,collect,clock=()=>new Date().toISOString(),name='tracker/state.json'}){
  // A single conditional object write commits links and story history together.
  // Retries always rebase onto the latest state, including separations from another phone.
- async function mutate(fn){for(let attempt=0;attempt<5;attempt++){const stored=await read(name),state=stored?.data||empty();await fn(state);state.revision++;
+ async function mutate(fn){for(let attempt=0;attempt<5;attempt++){const stored=await read(name),state=stored?.data||empty();if(await fn(state)===false)return state;state.revision++;
    if(Buffer.byteLength(JSON.stringify(state))>12*1024*1024)throw fail('Story Tracker storage needs expansion. Existing stories remain saved.',507);
    try{await write(name,state,stored?.generation||0);return state;}catch(e){if(e.code!==412||attempt===4)throw e;}}}
  let flight;
@@ -43,11 +43,27 @@ function createStoryTracker({read,write,collect,clock=()=>new Date().toISOString
   try{return await flight;}finally{flight=null;}}
  async function handle(body){
   if(body.op==='tracker-list'){let state;try{state=await sync();}catch(e){const saved=await read(name);if(!saved)throw e;state={...saved.data,warning:e.code===507?e.message:'Automatic connections could not refresh. Showing saved stories.'};}
-   const sorted=state.stories.map(summary).sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt)||a.id.localeCompare(b.id));
-   if(body.cursor&&!ID.test(body.cursor))throw fail('Invalid page.');const start=body.cursor?sorted.findIndex(s=>s.id===body.cursor)+1:0,page=sorted.slice(start,start+100);
-   return {stories:page,nextCursor:start+100<sorted.length?page.at(-1).id:null,checkedAt:state.checkedAt,warning:state.warning||null};}
+   if(body.cursor&&!ID.test(body.cursor))throw fail('Invalid page.');return query(state,body);}
   if(!ID.test(body.id||''))throw fail('Invalid story.');
-  if(body.op==='tracker-get'){const s=(await read(name))?.data.stories.find(s=>s.id===body.id);if(!s)throw fail('Story not found.',404);return {story:s};}
+  if(body.op==='tracker-get'){
+   const s=(await read(name))?.data.stories.find(s=>s.id===body.id);if(!s)throw fail('Story not found.',404);
+   const files=(await read(`producer-threads/${body.id}.json`))?.data.assets||[];
+   // Also repairs metadata for uploads completed before this release.
+   const state=await recordAssets(body.id,files);return {story:{...state.stories.find(s=>s.id===body.id),files}};
+  }
+  if(body.op==='tracker-pin'){
+   if(typeof body.pinned!=='boolean')throw fail('Invalid pin state.');
+   const state=await mutate(s=>{const story=s.stories.find(x=>x.id===body.id);if(!story)throw fail('Story not found.',404);if(story.pinned===body.pinned)return false;story.pinned=body.pinned;});
+   return {story:state.stories.find(s=>s.id===body.id)};
+  }
+  if(body.op==='tracker-edit'){
+   if(typeof body.title!=='string'||!body.title.trim()||body.title.length>180||typeof body.notes!=='string'||body.notes.length>15000||!Number.isInteger(body.expectedRevision)||body.expectedRevision<0)throw fail('Invalid story edits.');
+   const state=await mutate(s=>{const story=s.stories.find(x=>x.id===body.id);if(!story)throw fail('Story not found.',404);
+    if(story.title===body.title.trim()&&(story.notes||'')===body.notes)return false;
+    if((story.editorRevision||0)!==body.expectedRevision)throw fail('This story was edited elsewhere. Your text is still here. Reopen the editor to compare.',409);
+    story.title=body.title.trim();story.notes=body.notes;story.editorRevision=(story.editorRevision||0)+1;
+   });return {story:state.stories.find(s=>s.id===body.id)};
+  }
   if(body.op==='tracker-status'){if(!['following','archived'].includes(body.status))throw fail('Invalid status.');const state=await mutate(s=>{const story=s.stories.find(x=>x.id===body.id);if(!story)throw fail('Story not found.',404);story.status=body.status;});return {story:state.stories.find(s=>s.id===body.id)};}
   if(body.op==='tracker-separate'){if(!ID.test(body.itemID||''))throw fail('Invalid material.');const state=await mutate(s=>{
    const story=s.stories.find(x=>x.id===body.id);if(!story)throw fail('Story not found.',404);
@@ -58,6 +74,16 @@ function createStoryTracker({read,write,collect,clock=()=>new Date().toISOString
   });return {story:state.stories.find(s=>s.id===body.id)};}
   throw fail('Unknown Story Tracker operation.');
  }
- return {handle,sync};
+ async function recordAssets(id,assets){
+  const fields=fileSummary(assets);
+  return mutate(s=>{const story=s.stories.find(x=>x.id===id);if(!story)return false;
+   // Uploads only append; a slower callback must not replace a newer manifest.
+   if(fields.fileCount<(story.fileCount||0))return false;
+   if(JSON.stringify(fileSummaryFromStory(story))===JSON.stringify(fields))return false;
+   Object.assign(story,fields);
+  });
+ }
+ function fileSummaryFromStory(s){return {fileCount:s.fileCount||0,fileNames:s.fileNames||[],filesUpdatedAt:s.filesUpdatedAt||null};}
+ return {handle,sync,recordAssets};
 }
 module.exports={createStoryTracker,reconcile,evidence,empty,summary};

@@ -27,7 +27,7 @@ function normalizeRequest(body){
  const assets=body.assetIDs||[];if(!Array.isArray(assets)||assets.length>20||!assets.every(validID)||new Set(assets).size!==assets.length)throw error('Invalid media selection.');
  return {id:body.requestID,text:message,preferences:style,sourceRefs:refs,assetIDs:assets};
 }
-function createProducerDesk({read,write,list,bucket,root,clock=()=>new Date().toISOString()}){
+function createProducerDesk({read,write,list,bucket,root,clock=()=>new Date().toISOString(),onMediaSaved=async()=>{}}){
  // One listing call (paged by the client library) instead of a metadata request per chunk keeps large finishes inside the proxy timeout.
  async function storedParts(story,asset){
   // Objects are named <index>-<sha256>, so the same index can hold more than one version if a file changed between attempts; key by both.
@@ -81,6 +81,15 @@ function createProducerDesk({read,write,list,bucket,root,clock=()=>new Date().to
    if(asset)return {asset,parts:[]};
    return {asset:null,parts:[...(await storedParts(body.id,body.assetID)).values()]};
   }
+  if(body.op==='producer-media-read'){
+   if(!validID(body.assetID)||!Number.isInteger(body.index)||body.index<0)throw error('Invalid attachment.');
+   const asset=(await read(name))?.data?.assets?.find(a=>a.id===body.assetID);
+   if(!asset||!Array.isArray(asset.parts)||body.index>=asset.parts.length)throw error('Attachment unavailable.',404);
+   const h=asset.parts[body.index];if(!validID(h))throw error('Invalid attachment manifest.');
+   const [bytes]=await bucket().file(`${root}producer-media/${body.id}/${asset.id}/parts/${body.index}-${h}`).download();
+   if(!bytes||bytes.length>MEDIA.partBytes||sha(bytes)!==h)throw error('Attachment checksum mismatch.');
+   return {base64:bytes.toString('base64'),sha256:h,total:asset.parts.length};
+  }
   if(body.op==='producer-media-finish'){
    if(!validID(body.assetID)||!validID(body.sha256)||!Array.isArray(body.parts)||!body.parts.length||body.parts.length>MEDIA.maxParts||!body.parts.every(validID))throw error('Invalid media manifest.');
    if(body.checksumMode!==undefined&&body.checksumMode!=='sha256'&&body.checksumMode!=='parts-v1')throw error('Invalid checksum mode.');
@@ -94,11 +103,11 @@ function createProducerDesk({read,write,list,bucket,root,clock=()=>new Date().to
    const asset={id:body.assetID,filename,mimeType:body.mimeType,sha256:body.sha256,parts:body.parts,checksumMode:body.checksumMode||'sha256',bytes,savedAt:clock(),verification:'Mac checksum and format verification pending'};
    for(let attempt=0;attempt<5;attempt++){
     const stored=await read(name),t=stored?.data||{version:1,id:body.id,title:text(body.title||'New report',180,'Story title'),createdAt:clock(),revision:0,commands:[],assets:[]};
-    const old=t.assets.find(x=>x.id===asset.id);if(old){if(old.sha256!==asset.sha256)throw error('This attachment already holds a different original.',409);return {thread:publicThread(t),asset:old};}
+    const old=t.assets.find(x=>x.id===asset.id);if(old){if(old.sha256!==asset.sha256)throw error('This attachment already holds a different original.',409);await onMediaSaved(body.id,t.assets);return {thread:publicThread(t),asset:old};}
     if(t.assets.length>=MEDIA.files)throw error(`Attach up to ${MEDIA.files} files to one story.`);
     if(t.assets.reduce((total,a)=>total+a.bytes,0)+bytes>MEDIA.storyBytes)throw error('This story has reached its 10 GB attachment limit. Start another story.');
     t.assets.push(asset);t.revision++;t.updatedAt=clock();
-    try{await write(name,t,stored?.generation||0);return {thread:publicThread(t),asset};}catch(e){if(e.code!==412||attempt===4)throw e;}
+    try{await write(name,t,stored?.generation||0);await onMediaSaved(body.id,t.assets);return {thread:publicThread(t),asset};}catch(e){if(e.code!==412||attempt===4)throw e;}
    }
   }
   if(body.op==='producer-artifact'){
