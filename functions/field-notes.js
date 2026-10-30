@@ -1,5 +1,6 @@
 'use strict';
 const {fieldNote,id,digest}=require('./newsroom-record');
+const {preserveEvidenceContext}=require('./evidence-context');
 const MAX_CHUNK=512*1024,MAX_PARTS=64;
 function createFieldNotes({read,write,bucket,root}){
  return async function handle(body){
@@ -7,10 +8,10 @@ function createFieldNotes({read,write,bucket,root}){
   const name=`field-notes/${body.id}.json`, current=await read(name);
   if(body.op==='field-get')return {note:current?.data||null};
   if(body.op==='field-save'){
-   const value=fieldNote({...body.note,id:body.id});
+   const value=fieldNote({...preserveEvidenceContext(body.note,current?.data),id:body.id});
    for(const key of ['evidence','markers','kind'])if(body.note?.[key]===undefined&&current?.data[key])value[key]=current.data[key];
    if(current&&current.data.revision>=value.revision){
-    if(current.data.revision===value.revision&&['title','transcript','draft','notes','processRequested','duration','kind','relatedIDs','evidence','markers'].every(k=>JSON.stringify(current.data[k]??(k==='kind'?'recording':['relatedIDs','evidence','markers'].includes(k)?[]:null))===JSON.stringify(value[k]??null)))return {note:current.data};
+    if(current.data.revision===value.revision&&['title','transcript','draft','notes','processRequested','duration','kind','relatedIDs','evidence','markers','dismissedEvidenceIDs'].every(k=>JSON.stringify(current.data[k]??(k==='kind'?'recording':['relatedIDs','evidence','markers','dismissedEvidenceIDs'].includes(k)?[]:null))===JSON.stringify(value[k]??null)))return {note:current.data};
     throw Object.assign(Error('A newer note is saved. Refresh before editing.'),{code:409});
    }
    if(body.expectedRevision!==undefined&&body.expectedRevision!==(current?.data.revision||0))throw Object.assign(Error('This recording changed on another device. Refresh before editing; your local draft is still saved.'),{code:409});

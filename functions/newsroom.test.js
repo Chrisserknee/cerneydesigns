@@ -34,3 +34,22 @@ test('evidence links and marker offsets are normalized without trusting source t
 test('note metadata cannot claim a successful duplicate save if its evidence changed',async()=>{
  const {handler}=fixture();await handler({op:'field-save',id,note:base});await assert.rejects(handler({op:'field-save',id,note:{...base,relatedIDs:['b'.repeat(64)]}}),e=>e.code===409);
 });
+test('connected story provenance and dismissals survive old clients without restoring removed evidence',async()=>{
+ const {handler,records}=fixture();const sourceID='b'.repeat(64),context={location:'Salinas',eventAt:'2026-10-30T10:00:00.000Z',textFingerprint:'c'.repeat(64),questions:['When did it happen?']};
+ const evidence=[{id:sourceID,title:'Laurel Natividad crash',excerpt:'Unconfirmed report',url:null,kind:'Google Voice',receivedAt:'2026-10-30T11:00:00Z',context}];
+ await handler({op:'field-save',id,note:{...base,evidence,dismissedEvidenceIDs:['d'.repeat(64)]},expectedRevision:0});
+ const oldEvidence=evidence.map(({context,...item})=>item);
+ const next=await handler({op:'field-save',id,note:{...base,revision:2,evidence:oldEvidence},expectedRevision:1});
+ assert.deepEqual(next.note.evidence[0].context,context);assert.deepEqual(next.note.dismissedEvidenceIDs,['d'.repeat(64)]);
+ await handler({op:'field-save',id,note:{...base,revision:2,evidence:oldEvidence},expectedRevision:1});
+ await assert.rejects(handler({op:'field-save',id,note:{...base,revision:2,evidence:oldEvidence,dismissedEvidenceIDs:[]},expectedRevision:2}),e=>e.code===409);
+ const removed=await handler({op:'field-save',id,note:{...base,revision:3,evidence:[],dismissedEvidenceIDs:[]},expectedRevision:2});
+ assert.deepEqual(removed.note.evidence,[]);assert.deepEqual(removed.note.dismissedEvidenceIDs,[]);
+});
+test('connected story metadata rejects unsafe values and bounds stored data',()=>{
+ const {evidenceContext,dismissedIDs}=require('./evidence-context');
+ const normalized=evidenceContext({location:'A'.repeat(1000),eventAt:'yesterday',mediaFingerprint:'../secret',textFingerprint:'a'.repeat(64),verified:true,questions:Array(40).fill('same'),contradictions:['check'],extra:'ignore'});
+ assert.equal(normalized.location.length,500);assert.equal(normalized.eventAt,undefined);assert.equal(normalized.mediaFingerprint,undefined);assert.equal(normalized.verified,undefined);assert.equal(normalized.extra,undefined);assert.deepEqual(normalized.questions,['same']);
+ assert.deepEqual(dismissedIDs(['../secret','a'.repeat(64),'a'.repeat(64)]),['a'.repeat(64)]);
+ assert.equal(dismissedIDs(Array.from({length:230},(_,i)=>i.toString(16).padStart(64,'0'))).length,200);
+});
