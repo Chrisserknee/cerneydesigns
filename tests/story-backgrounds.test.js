@@ -51,7 +51,7 @@ test('images load only on request and repeat exports reuse public artwork',async
  delete global.Image;
 });
 function recordingCanvas(){
- const calls=[],ctx={font:'',fillStyle:'',measureText(t){return {width:t.length*(Number(this.font.match(/(\d+)px/)?.[1])||20)*.52};},fillRect(...args){calls.push(['rect',this.fillStyle,...args]);},strokeRect(){},beginPath(){},moveTo(){},lineTo(){},stroke(){},save(){},restore(){},drawImage(...args){calls.push(['image',...args]);},createLinearGradient(){return {addColorStop(){}};},fillText(t){calls.push(['text',t,this.fillStyle]);}};
+ const calls=[],ctx={font:'',fillStyle:'',measureText(t){return {width:t.length*(Number(this.font.match(/(\d+)px/)?.[1])||20)*.52};},fillRect(...args){calls.push(['rect',this.fillStyle,...args]);},strokeRect(){},closePath(){},fill(){},clip(){},beginPath(){},moveTo(){},lineTo(){},stroke(){},save(){},restore(){},drawImage(...args){calls.push(['image',...args]);},createLinearGradient(){return {addColorStop(){}};},fillText(t){calls.push(['text',t,this.fillStyle]);}};
  return {canvas:{getContext:()=>ctx},calls};
 }
 test('news graphics add labeled timing while keeping private source notes off the image',()=>{

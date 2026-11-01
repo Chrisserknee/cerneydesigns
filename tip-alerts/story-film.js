@@ -8,7 +8,8 @@
   let timer;const timeout=new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('Film assets took too long to load.')),10000);});
   resources=Promise.race([timeout,Promise.all([
    new FontFace('Cerney News','url(/tip-alerts/fonts/BarlowSemiCondensed-Bold.ttf)',{weight:'700'}).load().then(font=>document.fonts.add(font)),
-   new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=()=>reject(Error('Film texture could not load.'));image.src='/tip-alerts/film/grain-v1.png';})
+   new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=()=>reject(Error('Film texture could not load.'));image.src='/tip-alerts/film/grain-v1.png';}),
+   new FontFace('Cerney Digital','url(/tip-alerts/fonts/DSEG14Classic-Regular.ttf)',{weight:'400'}).load().then(font=>document.fonts.add(font))
   ]).then(([,grain])=>({grain}))]).finally(()=>clearTimeout(timer)).catch(error=>{resources=null;throw error;});
   return resources;
  }
