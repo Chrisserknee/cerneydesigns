@@ -21,9 +21,9 @@
  function haloAlpha(rgba,w,h){
   const mask=new Float32Array(w*h);
   for(let i=0;i<mask.length;i++){const p=i*4,light=(rgba[p]*.2126+rgba[p+1]*.7152+rgba[p+2]*.0722)/255,t=Math.max(0,Math.min(1,(light-.56)/.34));mask[i]=t*t*(3-2*t);}
-  let glow=mask;for(const radius of [2,4,6])glow=blur(glow,w,h,radius);
+  let glow=mask;for(const radius of [2,5,9])glow=blur(glow,w,h,radius);
   // Glow extends outside bright areas. Uniform bright regions do not get orange fog.
-  return Uint8ClampedArray.from(glow,(value,i)=>Math.max(0,value-mask[i])*.65*255);
+  return Uint8ClampedArray.from(glow,(value,i)=>Math.max(0,value-mask[i])*.88*255);
  }
  function halation(image){
   if(masks.has(image))return masks.get(image);
@@ -36,9 +36,15 @@
  function paint(c,art,film){
   if(!film)return;
   c.save();
-  if(art?.images?.[0]){c.globalCompositeOperation='screen';c.globalAlpha=.55;c.drawImage(halation(art.images[0]),0,0,1080,1920);}
+  if(art?.images?.[0]){c.globalCompositeOperation='screen';c.globalAlpha=.78;c.drawImage(halation(art.images[0]),0,0,1080,1920);}
+  // A soft edge falloff and fine raster lines recall a field monitor, below the copy.
+  c.globalCompositeOperation='source-over';c.globalAlpha=1;
+  const vignette=c.createRadialGradient(540,900,280,540,900,1120);
+  vignette.addColorStop(0,'rgba(0,0,0,0)');vignette.addColorStop(1,'rgba(0,0,0,.30)');
+  c.fillStyle=vignette;c.fillRect(0,0,1080,1920);
+  c.fillStyle='rgba(0,0,0,.065)';for(let y=0;y<1920;y+=6)c.fillRect(0,y,1080,1);
   // Shared full-frame texture is composited before typography: copy stays clean.
-  c.globalCompositeOperation='soft-light';c.globalAlpha=.46;c.drawImage(film.grain,0,0,1080,1920);c.restore();
+  c.globalCompositeOperation='soft-light';c.globalAlpha=.50;c.drawImage(film.grain,0,0,1080,1920);c.restore();
  }
  root.CerneyStoryFilm={FONT,load,paint,haloAlpha};
  if(typeof module!=='undefined')module.exports=root.CerneyStoryFilm;

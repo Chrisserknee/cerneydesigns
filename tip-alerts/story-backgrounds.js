@@ -53,7 +53,7 @@
   ctx.save();cover(ctx,art.images[0]);ctx.globalCompositeOperation='soft-light';ctx.globalAlpha=.72;cover(ctx,art.images[1]);
   if(art.images[2]){ctx.globalCompositeOperation='screen';ctx.globalAlpha=.40;cover(ctx,art.images[2]);}
   ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1;
-  const shade=ctx.createLinearGradient(0,0,0,1920);for(const [stop,alpha]of [[0,.60],[.28,.78],[.70,.74],[1,.48]])shade.addColorStop(stop,'rgba(15,43,61,'+alpha+')');ctx.fillStyle=shade;ctx.fillRect(0,0,1080,1920);ctx.restore();
+  const shade=ctx.createLinearGradient(0,0,0,1920);for(const [stop,alpha]of [[0,.72],[.28,.82],[.70,.80],[1,.68]])shade.addColorStop(stop,'rgba(5,12,19,'+alpha+')');ctx.fillStyle=shade;ctx.fillRect(0,0,1080,1920);ctx.restore();
  }
  root.CerneyStoryBackgrounds={catalog,styles,normalize,match,suggested,validated,paths,load,paint};
  if(typeof module!=='undefined')module.exports=root.CerneyStoryBackgrounds;

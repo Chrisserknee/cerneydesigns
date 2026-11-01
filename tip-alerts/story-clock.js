@@ -12,6 +12,11 @@
  function draw(c,story){
   c.save();
   function text(value,x,y,size,color,mono=false){c.fillStyle=color;c.font=`600 ${size}px ${mono?'Menlo, Consolas, monospace':'Arial, sans-serif'}`;c.fillText(value,x,y+size);}
+  // Static viewfinder marks give a field-report feel without implying a live feed.
+  c.fillStyle='rgba(196,211,221,.32)';
+  for(const [x,y,dx,dy]of [[62,204,1,1],[1018,204,-1,1],[62,1700,1,-1],[1018,1700,-1,-1]]){
+   c.fillRect(dx>0?x:x-26,y,26,2);c.fillRect(x,dy>0?y:y-26,2,26);
+  }
   c.fillStyle=RED;c.fillRect(86,242,38,6);
   text(story.basis==='demo'?'DESIGN EXAMPLE · NO REAL INCIDENT':'LOCAL REPORT',142,228,28,'#fff');
   c.fillStyle='rgba(11,20,29,.90)';c.fillRect(86,320,908,196);c.strokeStyle='rgba(255,83,83,.55)';c.lineWidth=1;c.strokeRect(86,320,908,196);c.fillStyle=RED;c.fillRect(86,320,4,196);
