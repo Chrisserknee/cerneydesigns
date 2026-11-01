@@ -1,6 +1,7 @@
 'use strict';
 (function(root){
  const ID=/^[a-f0-9]{64}$/;
+ const clock=typeof module!=='undefined'?require('./story-clock'):root.CerneyStoryClock;
  const TEXT_SCALE=0.70; // Shrink fitted copy, including long headlines, by 30%.
  const CTA='Send photos or video to me.';
  function lines(ctx,text,maxWidth){const words=String(text||'').trim().split(/\s+/),out=[];let line='';for(const word of words){const next=line?line+' '+word:word;if(ctx.measureText(next).width>maxWidth&&line){out.push(line);line=word;}else line=next;}if(line)out.push(line);return out;}
@@ -11,15 +12,14 @@
   c.fillStyle='#132f46';c.fillRect(0,0,1080,1920);
   if(art?.images?.length)root.CerneyStoryBackgrounds.paint(c,art);
   const accent=art?.style.color||'#ea8b77';
-  if(story.basis==='demo'){c.fillStyle=accent;c.font=`700 ${25*TEXT_SCALE}px Arial`;c.fillText('DESIGN EXAMPLE · NO REAL INCIDENT',88,320);}
+  clock.draw(c,story);
   function block(text,y,width,size,min,maxLines,color,weight='700'){
    const f=fit(c,text,width,size,min,maxLines);f.size*=TEXT_SCALE;c.font=`${weight} ${f.size}px Arial, sans-serif`;f.lines=lines(c,text,width);c.fillStyle=color;
    for(const [i,line] of f.lines.entries())c.fillText(line,88,y+i*f.size*1.17);
    return y+(f.lines.length-1)*f.size*1.17;
   }
-  block(story.headline,580,904,120,66,4,'#ffffff');
-  c.fillStyle=accent;c.fillRect(88,1190,180,7);
-  block(CTA,1350,904,52,44,2,'#ffffff','400');
+  block(story.headline,674,904,120,55,5,'#ffffff');
+  block(story.outreachCallToAction??CTA,1275,904,64,40,3,'#ffffff','600');
   c.font=`700 ${56*TEXT_SCALE}px Arial`;c.fillStyle=accent;c.fillText('chriscerney.org/upload',88,1550);
   return canvas;
  }
@@ -29,7 +29,7 @@
  function clear(){signature='';selected='';for(const item of cards.values())item.node.dispose();cards.clear();section?.remove();section=null;}
  function card(story){
   const box=el('details',null,'witness-card');box.id='witness-'+story.id;
-  const summary=el('summary');summary.append(el('span',story.headline),el('small',story.basis==='demo'?'Example · No alert sent':story.sources.length+' source'+(story.sources.length===1?'':'s')));box.append(summary);
+  const summary=el('summary');const t=clock.timing(story);summary.append(el('span',story.headline),el('small',story.basis==='demo'?'Example · No alert sent':t.label.toLowerCase()+' · '+t.digits+' '+t.period+' · '+t.dateLine+' '+t.zone));box.append(summary);
   const editor=el('div',null,'witness-editor'),preview=el('img',null,'witness-preview');preview.alt='Instagram Story preview: '+story.headline;
   const form=el('div',null,'witness-form'),backgrounds=root.CerneyStoryBackgrounds;
   const look=backgrounds?.suggested(story);

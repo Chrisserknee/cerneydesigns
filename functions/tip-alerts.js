@@ -1,5 +1,5 @@
 'use strict';
-const {storyRequest,storyMonitor}=require('./story-request-record');
+const {storyRequest,storyMonitor,withReportReceipt}=require('./story-request-record');
 const {incidentRecord}=require('./incident-record');
 const {withDetails,monitorHealth}=require('./newsroom-details');
 const { randomBytes, randomUUID } = require('node:crypto');
@@ -352,7 +352,8 @@ async function handleApi(req, res) {
                 .sort((a,b)=>Date.parse(b.receivedAt)-Date.parse(a.receivedAt));
             const byId=new Map(reports.map(r=>[r.id,r]));
             const deliveries=new Map(deliveryData.map(d=>[d.id,d]));
-            const storyRequests=stories.map(d=>storyRequest(d)).filter(Boolean)
+            const receiptTips=new Map(tipData.map(t=>[t.id,t]));
+            const storyRequests=stories.map(d=>storyRequest(withReportReceipt(d,receiptTips))).filter(Boolean)
                 .sort((a,b)=>Date.parse(b.createdAt)-Date.parse(a.createdAt)).slice(0,60);
             return res.json({authenticated:true,expiresAt:device.expiresAt,
                 monitor:monitorHealth(monitorData?.data),storyRequests,storyRequestMonitor:storyMonitor(storyMonitorData?.data),voiceIntakeMonitor:voiceMonitor(voiceMonitorData?.data),

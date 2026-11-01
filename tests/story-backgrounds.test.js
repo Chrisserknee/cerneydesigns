@@ -54,13 +54,14 @@ function recordingCanvas(){
  const calls=[],ctx={font:'',fillStyle:'',measureText(t){return {width:t.length*(Number(this.font.match(/(\d+)px/)?.[1])||20)*.52};},fillRect(...args){calls.push(['rect',this.fillStyle,...args]);},strokeRect(){},beginPath(){},moveTo(){},lineTo(){},stroke(){},save(){},restore(){},drawImage(...args){calls.push(['image',...args]);},createLinearGradient(){return {addColorStop(){}};},fillText(t){calls.push(['text',t,this.fillStyle]);}};
  return {canvas:{getContext:()=>ctx},calls};
 }
-test('real story exports contain only question, first-person CTA and upload URL',()=>{
+test('news graphics add labeled timing while keeping private source notes off the image',()=>{
  const {canvas,calls}=recordingCanvas();
  const look=backgrounds.validated({locationID:'monterey',urgency:'developing'}),image={naturalWidth:1080,naturalHeight:1920};
  storyImages.render(canvas,{headline:'Were you on Laureles Grade?',question:'PRIVATE QUESTION',context:'PRIVATE SOURCE CONTEXT',basis:'reported'},{...look,images:[image,image]});
  assert.equal(canvas.width,1080);assert.equal(canvas.height,1920);
  assert.equal(calls.filter(x=>x[0]==='image').length,2);
- assert.deepEqual(calls.filter(x=>x[0]==='text').map(x=>x[1]).join(' '),'Were you on Laureles Grade? Send photos or video to me. chriscerney.org/upload');
+ const copy=calls.filter(x=>x[0]==='text').map(x=>x[1]).join(' ');
+ assert.match(copy,/LOCAL REPORT/);assert.match(copy,/DRAFT PREPARED/);assert.match(copy,/TIME UNAVAILABLE/);assert.match(copy,/Were you on Laureles Grade/);assert.match(copy,/Send photos or video to me/);assert.match(copy,/chriscerney.org\/upload/);assert.doesNotMatch(copy,/PRIVATE/);
 });
 test('demo exports remain labeled, while private notes never enter the image',()=>{
  const {canvas,calls}=recordingCanvas();

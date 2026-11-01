@@ -1,6 +1,16 @@
 'use strict';
 const ID=/^[a-f0-9]{64}$/;
 const clean=(v,max)=>typeof v==='string' && v.length<=max ? v.replace(/[\u0000-\u001f\u007f]/g,' ').trim() : '';
+function arrival(value,now){
+ if(typeof value!=='string'||!/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?(?:Z|[+-]\d\d:\d\d)$/.test(value))return null;
+ const time=Date.parse(value);return Number.isFinite(time)&&time<=now+60000?new Date(time).toISOString():null;
+}
+// Reuse already-read inbox metadata; no extra email or storage requests.
+function withReportReceipt(data,tips,now=Date.now()){
+ if(!data)return data;
+ const times=[data.reportReceivedAt,...(Array.isArray(data.sources)?data.sources:[]).flatMap(s=>[s.receivedAt,tips?.get(s.tipId)?.receivedAt])].map(x=>arrival(x,now)).filter(Boolean).sort();
+ return {...data,reportReceivedAt:times[0]||null};
+}
 function storyRequest(data,now=Date.now()) {
  if(!data || data.version!==1 || !ID.test(data.id||'') || data.state!=='draft'
    || !Number.isSafeInteger(data.revision) || data.revision<1 || data.revision>1000
@@ -14,6 +24,7 @@ function storyRequest(data,now=Date.now()) {
  const sources=data.sources.map(s=>({label:clean(s.label,100),kind:clean(s.kind,30),tipId:ID.test(s.tipId||'')?s.tipId:null}));
  if(sources.some(s=>!s.label))return null;
  return {version:1,id:data.id,state:'draft',revision:data.revision,createdAt:data.createdAt,updatedAt:data.updatedAt,expiresAt:data.expiresAt,
+  reportReceivedAt:withReportReceipt(data,null,now).reportReceivedAt,
   backgroundID:data.backgroundID==='natividad'?'natividad':null,
   headline:clean(data.headline,100),question:clean(data.question,260),context:clean(data.context,200),location:clean(data.location,120),
   timeLabel:clean(data.timeLabel,70),basis:data.basis,reviewNote:clean(data.reviewNote,800),sources,
@@ -27,4 +38,4 @@ function storyMonitor(data){
  return {checkedAt:data.checkedAt,startedAt:data.startedAt,status:Date.now()-Date.parse(data.checkedAt)>180000?'attention':['healthy','attention'].includes(data.status)?data.status:'unknown',
   pending:count(data.pending),reviewCount:count(data.reviewCount),reviewTipIDs:(Array.isArray(data.reviewTipIDs)?data.reviewTipIDs:[]).filter(x=>ID.test(x)).slice(0,30),drafts:count(data.drafts),held:count(data.held),lastCrossCheckAt:Number.isFinite(Date.parse(data.lastCrossCheckAt))?data.lastCrossCheckAt:null};
 }
-module.exports={storyRequest,storyMonitor};
+module.exports={storyRequest,storyMonitor,withReportReceipt};
