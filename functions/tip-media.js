@@ -34,6 +34,8 @@ function thumbnailURL(value){
 }
 async function fetchThumbnail(url,client){
     const u=thumbnailURL(url); if(!u)throw Error('Unsupported preview host');
+    // Drive defaults to 220 pixels; 480 keeps an 84-point Retina crop crisp.
+    u.pathname=u.pathname.replace(/=s[0-9]+$/, '=s480');
     // Use only Drive's short-lived URL. Never accept a caller URL or follow a credential redirect.
     const headers=await client.getRequestHeaders(u.href);
     const response=await fetch(u,{headers,redirect:'error',signal:AbortSignal.timeout(15000)});
@@ -69,9 +71,9 @@ function createTipMedia({read,write,bucket,preview=drivePreview}){
         if(source.metadata?.processingStatus==='rejected')return {media:null};
         let cached=await read(`media-previews/${tip.id}.json`),record=cached?.data;
         if(record?.version!==descriptor.version)record=null;
-        if(!record?.image && tip.sourceKind!=='google_voice' && (!record?.retryAt || Date.parse(record.retryAt)<=Date.now())){
+        if((!record?.image || record.renderVersion!==2) && tip.sourceKind!=='google_voice' && (!record?.retryAt || Date.parse(record.retryAt)<=Date.now())){
             let found;try{found=await preview(tip);}catch{/* transient upstream issue: retain the attachment indicator */}
-            record={...descriptor,...(found?{count:found.count,kind:found.kind}:{}),retryAt:new Date(Date.now()+10*60000).toISOString()};
+            record={...descriptor,renderVersion:2,...(found?{count:found.count,kind:found.kind}:{}),retryAt:new Date(Date.now()+10*60000).toISOString()};
             if(found?.bytes){
                 const info=imageInfo(found.bytes);
                 if(info){
