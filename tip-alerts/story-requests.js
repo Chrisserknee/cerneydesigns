@@ -2,23 +2,25 @@
 (function(root){
  const ID=/^[a-f0-9]{64}$/;
  const clock=typeof module!=='undefined'?require('./story-clock'):root.CerneyStoryClock;
+ const film=typeof module!=='undefined'?require('./story-film'):root.CerneyStoryFilm;
  const TEXT_SCALE=0.70; // Shrink fitted copy, including long headlines, by 30%.
  const CTA='Send photos or video to me.';
  function lines(ctx,text,maxWidth){const words=String(text||'').trim().split(/\s+/),out=[];let line='';for(const word of words){const next=line?line+' '+word:word;if(ctx.measureText(next).width>maxWidth&&line){out.push(line);line=word;}else line=next;}if(line)out.push(line);return out;}
- function fit(ctx,text,width,size,min,maxLines){let result;for(let n=size;n>=min;n-=2){ctx.font=`700 ${n}px Arial, sans-serif`;result=lines(ctx,text,width);if(result.length<=maxLines&&result.every(l=>ctx.measureText(l).width<=width))return {lines:result,size:n};}throw Error('That text is too long for the story. Shorten it and try again.');}
- function render(canvas,story,art=null){
+ function fit(ctx,text,width,size,min,maxLines,family='Arial, sans-serif'){let result;for(let n=size;n>=min;n-=2){ctx.font=`700 ${n}px ${family}`;result=lines(ctx,text,width);if(result.length<=maxLines&&result.every(l=>ctx.measureText(l).width<=width))return {lines:result,size:n};}throw Error('That text is too long for the story. Shorten it and try again.');}
+ function render(canvas,story,art=null,finish=null){
   if(!String(story.headline||'').trim())throw Error('Add a short question before sharing this story.');
   canvas.width=1080;canvas.height=1920;const c=canvas.getContext('2d');
   c.fillStyle='#132f46';c.fillRect(0,0,1080,1920);
   if(art?.images?.length)root.CerneyStoryBackgrounds.paint(c,art);
+  film.paint(c,art,finish);
   const accent=art?.style.color||'#ea8b77';
   clock.draw(c,story);
-  function block(text,y,width,size,min,maxLines,color,weight='700'){
-   const f=fit(c,text,width,size,min,maxLines);f.size*=TEXT_SCALE;c.font=`${weight} ${f.size}px Arial, sans-serif`;f.lines=lines(c,text,width);c.fillStyle=color;
+  function block(text,y,width,size,min,maxLines,color,weight='700',family='Arial, sans-serif'){
+   const f=fit(c,text,width,size,min,maxLines,family);f.size*=TEXT_SCALE;c.font=`${weight} ${f.size}px ${family}`;f.lines=lines(c,text,width);c.fillStyle=color;
    for(const [i,line] of f.lines.entries())c.fillText(line,88,y+i*f.size*1.17);
    return y+(f.lines.length-1)*f.size*1.17;
   }
-  block(story.headline,674,904,120,55,5,'#ffffff');
+  block(story.headline,674,904,120,55,5,'#ffffff','700',film.FONT);
   block(story.outreachCallToAction??CTA,1275,904,64,40,3,'#ffffff','600');
   c.font=`700 ${56*TEXT_SCALE}px Arial`;c.fillStyle=accent;c.fillText('chriscerney.org/upload',88,1550);
   return canvas;
@@ -39,9 +41,12 @@
   const share=el('button','Share to Instagram');share.type='button';share.disabled=true;
   async function prepare(){
    const current=++revision;file=null;share.disabled=true;status.textContent='Preparing image…';
-   try{let art=null,plain=false;if(backgrounds){try{art=await backgrounds.load(look);}catch{plain=true;art=backgrounds.validated(look);}}
+   try{let art=null,plain=false,finish=null;await Promise.all([
+    (async()=>{if(backgrounds){try{art=await backgrounds.load(look);}catch{plain=true;art=backgrounds.validated(look);}}})(),
+    film.load().then(value=>{finish=value;}).catch(()=>{})
+   ]);
     if(current!==revision||!box.isConnected)return;
-    const canvas=render(document.createElement('canvas'),story,art);const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));
+    const canvas=render(document.createElement('canvas'),story,art,finish);const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));
     if(current!==revision||!box.isConnected)return;if(!blob)throw Error('Could not prepare this image.');
     if(ownURL)URL.revokeObjectURL(ownURL);ownURL=URL.createObjectURL(blob);preview.src=ownURL;
     file=new File([blob],'cerney-story-'+story.id.slice(0,8)+'.png',{type:'image/png'});share.disabled=false;status.textContent=plain?'Background unavailable. A plain image is ready.':'Ready to share.';
