@@ -13,4 +13,7 @@ test('font license and full-resolution monochrome grain are bundled locally',()=
  const root=__dirname+'/../tip-alerts/';const png=fs.readFileSync(root+'film/grain-v1.png');assert.equal(png.readUInt32BE(16),1080);assert.equal(png.readUInt32BE(20),1920);assert.equal(png[25],0);
  assert.match(fs.readFileSync(root+'fonts/OFL.txt','utf8'),/SIL OPEN FONT LICENSE/);assert(fs.statSync(root+'fonts/BarlowSemiCondensed-Bold.ttf').size>10000);
  const html=fs.readFileSync(root+'index.html','utf8');assert(html.indexOf('story-film.js')<html.indexOf('story-requests.js'));
+ const config=JSON.parse(fs.readFileSync(__dirname+'/../vercel.json','utf8')),headers=config.headers.find(h=>h.source==='/tip-alerts/(.*)').headers;
+ const policy=headers.find(h=>h.key==='Content-Security-Policy').value;
+ assert.equal(policy.split(';').map(x=>x.trim()).find(x=>x.startsWith('font-src ')),"font-src 'self'");
 });
