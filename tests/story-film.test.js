@@ -16,4 +16,6 @@ test('font license and full-resolution monochrome grain are bundled locally',()=
  const config=JSON.parse(fs.readFileSync(__dirname+'/../vercel.json','utf8')),headers=config.headers.find(h=>h.source==='/tip-alerts/(.*)').headers;
  const policy=headers.find(h=>h.key==='Content-Security-Policy').value;
  assert.equal(policy.split(';').map(x=>x.trim()).find(x=>x.startsWith('font-src ')),"font-src 'self'");
+ assert.equal(headers.find(h=>h.key==='Cache-Control').value,'no-store');
+ for(const folder of ['fonts','film'])assert.equal(config.headers.find(h=>h.source===`/tip-alerts/${folder}/(.*)`).headers.find(h=>h.key==='Cache-Control').value,'public, max-age=31536000, immutable');
 });

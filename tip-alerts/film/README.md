@@ -9,3 +9,5 @@ Halation is calculated from a quarter-resolution copy of the selected background
 Headline font: Barlow Semi Condensed Bold, bundled from the [Google Fonts repository](https://github.com/google/fonts/tree/main/ofl/barlowsemicondensed). License is retained in `../fonts/OFL.txt`. Font SHA-256: `5bd6757e459a110da81b44532f0f43058e2dab2401688abca84f2fdbde193cbb`.
 
 These filters do not establish whether an existing background was AI-generated and do not promise any platform-label outcome.
+
+The public font and film asset folders use long-lived caching. Use new filenames when changing binary content. Authenticated inbox HTML and data retain their existing no-store policy.
