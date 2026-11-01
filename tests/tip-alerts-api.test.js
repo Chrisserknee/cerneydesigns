@@ -110,3 +110,11 @@ test('tracker search and edits preserve conflict guards without forwarding sourc
  const read=proxy(false,{});await read.run(req({op:'producer-media-read',id:'a'.repeat(64),assetID:'b'.repeat(64),index:1,path:'forged'},cookie),read.res);assert.equal(read.res.code,200);assert.equal(read.calls[0].body.path,undefined);
  const denied=proxy();await denied.run(req({op:'producer-media-read',id:'a'.repeat(64),assetID:'b'.repeat(64),index:0}),denied.res);assert.equal(denied.res.code,401);
 });
+
+test('incoming attachment previews require pairing and cannot proxy caller URLs',async()=>{
+ const p=proxy(false,{media:null}),expected={op:'tip-media',id:'a'.repeat(64),mediaVersion:'b'.repeat(64)};
+ await p.run(req(expected),p.res);assert.equal(p.res.code,401);assert.equal(p.calls.length,0);
+ await p.run(req({...expected,url:'https://evil.test/private',path:'private',token:'attacker'},{cookie:'cc_tip_device='+'x'.repeat(43)}),p.res);
+ assert.equal(p.res.code,200);assert.deepEqual(JSON.parse(JSON.stringify(p.calls[0].body)),{...expected,token:'x'.repeat(43)});
+ assert.equal(p.res.headers['Cache-Control'],'no-store');
+});

@@ -16,6 +16,7 @@ const { SITE, hash, activeDevice, validSubscription, tipRecord, retryTime, notif
 const {sourceContext,displayContext}=require('./tip-inbox-context');
 const {thumbnailDescriptor,requestedThumbnail,sameThumbnail,verifiedThumbnailBytes,MAX_BYTES}=require('./tip-thumbnail');
 const ROOT = '_tipalerts/v1/';
+const tipMedia=require('./tip-media').createTipMedia({read,write,bucket:()=>bucket()});
 const {noteMetadata,noteSummary}=require('./field-note-index');
 const {researchRecord}=require('./newsroom-record');
 const fieldHandler=require('./field-notes').createFieldNotes({read,write,bucket:()=>bucket(),root:ROOT});
@@ -275,6 +276,7 @@ async function handleApi(req, res) {
         }
         const device = await authenticate(body.token);
         if (!device) return res.status(401).json({error:'Sign in to connect this device.'});
+        if(body.op==='tip-media')return res.json(await tipMedia(body));
         if(body.op==='scanner')return res.json(require('./scanner-feed').scannerFeed((await read('scanner/feed.json'))?.data));
         if(String(body.op||'').startsWith('tracker-'))return res.json(await tracker.handle(body));
         if(String(body.op||'').startsWith('producer-'))return res.json(await producerHandler(body,device));

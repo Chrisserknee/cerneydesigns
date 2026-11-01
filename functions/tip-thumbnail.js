@@ -66,4 +66,4 @@ function verifiedThumbnailBytes(bytes,thumbnail){
     const size=jpegDimensions(bytes);
     return !!size && size.width===thumbnail.width && size.height===thumbnail.height;
 }
-module.exports={thumbnailDescriptor,requestedThumbnail,sameThumbnail,verifiedThumbnailBytes,MAX_BYTES};
+module.exports={thumbnailDescriptor,requestedThumbnail,sameThumbnail,verifiedThumbnailBytes,jpegDimensions,MAX_BYTES};

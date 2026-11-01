@@ -1,5 +1,6 @@
 'use strict';
 const {thumbnailDescriptor}=require('./tip-thumbnail');
+const {mediaDescriptor}=require('./tip-media');
 const {reportDelivery}=require('./report-delivery');
 const {reportCopy}=require('./report-copy');
 // Only descriptive fields enter the private inbox. Never forward the manifest,
@@ -18,7 +19,7 @@ function sourceContext(initial={}, followup) {
 const states=new Set(['queued','analyzing','awaiting_editor','editing','rendering','qc_pending','ready','approved','needs_review','held','failed','declined','paused']);
 function displayContext(tip, report, delivery) {
     // Capture the source text and original folder before any report enrichment.
-    const result={...tip,title:tip.sourceTitle || '',summary:tip.sourceSummary || '',location:tip.sourceLocation || '',contextSource:tip.sourceSummary?'tipster':'pending',reportComplete:false,
+    const result={...tip,media:mediaDescriptor(tip),title:tip.sourceTitle || '',summary:tip.sourceSummary || '',location:tip.sourceLocation || '',contextSource:tip.sourceSummary?'tipster':'pending',reportComplete:false,
         submission:{text:tip.sourceDescription ?? tip.sourceSummary ?? '',location:tip.sourceLocation || '',timing:tip.sourceTiming || '',driveUrl:tip.driveUrl || null,complete:typeof tip.sourceDescription==='string'}};
     if (!report || report.version!==1 || report.source!==tip.path || report.id!==tip.id
         || (tip.sourceGeneration && String(report.sourceGeneration)!==String(tip.sourceGeneration))) return result;
