@@ -99,7 +99,8 @@ async function inboxDocuments(prefix='tips/') {
     const names = new Set(files.map(f=>f.name));
     for (const name of inboxRecords.keys()) if (name.startsWith(ROOT+prefix) && !names.has(name)) inboxRecords.delete(name);
     const records = await Promise.all(files.map(async file=>{
-        const generation=file.metadata?.generation;
+        // Partial-field listings return plain objects; full listings return File wrappers.
+        const generation=file.generation ?? file.metadata?.generation;
         const cached=inboxRecords.get(file.name);
         if (generation && cached?.generation===generation) return cached.data;
         return readInboxRecord(JSON.stringify([file.name,generation || null]), async () => {
