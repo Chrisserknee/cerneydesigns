@@ -28,6 +28,12 @@ test('story retry preserves completed media and finalizes the original submissio
     assert.equal(c.manifests[1].body.fileCount, 1); assert.equal(c.manifests[1].body.totalBytes, 100);
     assert.equal(c.elements.get('successScreen').hidden, false);
 });
+test('story intake shares the 2 GB file boundary',()=>{
+ const c=client();c.add({name:'original.mov',size:2*1024**3,type:'video/quicktime'});
+ assert.equal(c.run('selectedFiles.length'),1);
+ const tooLarge=client();tooLarge.add({name:'oversize.mov',size:2*1024**3+1,type:'video/quicktime'});
+ assert.equal(tooLarge.run('selectedFiles.length'),0);
+});
 test('empty story media is excluded from the manifest', async () => {
     const c = client(); c.add({ name: 'empty.mov', size: 0, type: 'video/quicktime' }); await c.submit();
     assert.equal(c.uploads.length, 0); assert.equal(c.manifests[0].body.fileCount, 0);

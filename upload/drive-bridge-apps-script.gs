@@ -12,7 +12,7 @@
 const PARENT_FOLDER_ID = 'SET_EXISTING_TIPS_FOLDER_ID';
 const CHUNK_SIZE = 5 * 1024 * 1024; // Bound Apps Script byte-array memory and request time.
 const MAX_FILES = 10;
-const MAX_TOTAL_BYTES = 750 * 1024 * 1024;
+const MAX_TOTAL_BYTES = 4 * 1024 * 1024 * 1024;
 const MAX_RETRIES = 4;
 const SOFT_RUNTIME_LIMIT_MS = 3 * 60 * 1000;
 const COMPLETION_FILE = '_DRIVE_COPY_COMPLETE.json';

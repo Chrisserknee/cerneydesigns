@@ -11,6 +11,13 @@ process.env.FIREBASE_CONFIG = JSON.stringify({
 });
 
 const helpers = require('./tipline-helpers');
+test('delivery validation accepts two full 2 GB files and rejects either exceeded boundary',()=>{
+    const size=2*1024**3;
+    const files=[1,2].map(i=>({name:`0${i}_clip.mov`,sizeBytes:size,mimeType:'video/quicktime'}));
+    assert.deepEqual(helpers.validateSubmissionForProcessing({fileCount:2,totalBytes:2*size},files),[]);
+    assert.ok(helpers.validateSubmissionForProcessing({fileCount:1,totalBytes:size+1},[{...files[0],sizeBytes:size+1}]).length);
+    assert.ok(helpers.validateSubmissionForProcessing({fileCount:3,totalBytes:2*size+1},[...files,{name:'03_clip.mov',sizeBytes:1,mimeType:'video/quicktime'}]).length);
+});
 
 test('manifest map preserves unique stored names', () => {
     const manifest = helpers.buildManifestMap({

@@ -26,8 +26,8 @@ const app = initializeApp(firebaseConfig);
 const storage = getStorage(app);
 
 // Per-file hard cap. Storage rules enforce the same limit server-side.
-const MAX_FILE_BYTES = 500 * 1024 * 1024; // 500 MB
-const MAX_TOTAL_BYTES = 750 * 1024 * 1024; // 750 MB per submission
+const MAX_FILE_BYTES = 2 * 1024 ** 3; // 2 GB
+const MAX_TOTAL_BYTES = 4 * 1024 ** 3; // 4 GB per submission
 const MAX_FILES_PER_SUBMISSION = 10;
 const ALLOWED_CONTENT_TYPES = new Set([
     'application/pdf', 'image/avif', 'image/bmp', 'image/gif', 'image/heic',
@@ -142,7 +142,7 @@ function addFiles(files) {
             continue;
         }
         if (f.size > MAX_FILE_BYTES) {
-            rejected.push(`${f.name} (too large)`);
+            rejected.push(`${f.name} (over the 2 GB file limit)`);
             continue;
         }
         if (!getAllowedContentType(f)) {
@@ -155,7 +155,7 @@ function addFiles(files) {
         }
         const nextTotal = batch.reduce((sum, file) => sum + file.size, 0) + f.size;
         if (nextTotal > MAX_TOTAL_BYTES) {
-            rejected.push(`${f.name} (submission total too large)`);
+            rejected.push(`${f.name} (over the 4 GB submission limit)`);
             continue;
         }
         if (!batch.some(s => s.name === f.name && s.size === f.size && s.lastModified === f.lastModified)) batch.push(f);

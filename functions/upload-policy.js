@@ -7,10 +7,10 @@ function filesForGrant(body){
  if(!SESSION.test(body.session||'')||!Array.isArray(body.files)||body.files.length>10||(!body.files.length&&!body.session.startsWith('submit-story_')))throw Error('INVALID_BATCH');
  const files={};let total=0;
  for(const [i,f]of body.files.entries()){
-  if(!f||typeof f.name!=='string'||f.name.length>48||!f.name.startsWith(String(i+1).padStart(2,'0')+'_')||!/^\d{2}_[A-Za-z0-9_.() -]+\.(?:pdf|avif|bmp|gif|heic|heif|jpe?g|png|tiff?|webp|3gp|3g2|mp4|mpeg|mpg|mov|webm|m4v|avi)$/i.test(f.name)||!TYPES.has(f.type)||!Number.isSafeInteger(f.size)||f.size<1||f.size>500*MB||files[f.name])throw Error('INVALID_BATCH');
+  if(!f||typeof f.name!=='string'||f.name.length>48||!f.name.startsWith(String(i+1).padStart(2,'0')+'_')||!/^\d{2}_[A-Za-z0-9_.() -]+\.(?:pdf|avif|bmp|gif|heic|heif|jpe?g|png|tiff?|webp|3gp|3g2|mp4|mpeg|mpg|mov|webm|m4v|avi)$/i.test(f.name)||!TYPES.has(f.type)||!Number.isSafeInteger(f.size)||f.size<1||f.size>2*1024*MB||files[f.name])throw Error('INVALID_BATCH');
   files[f.name]=f.size;total+=f.size;
  }
- if(total>750*MB)throw Error('INVALID_BATCH');
+ if(total>4*1024*MB)throw Error('INVALID_BATCH');
  return {files,total,digest:createHash('sha256').update(JSON.stringify(body.files)).digest('hex')};
 }
 // Pure decision function; the caller commits this state with a generation CAS.

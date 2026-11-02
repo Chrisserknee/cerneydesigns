@@ -19,8 +19,8 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const storage = getStorage(app);
 
-const MAX_FILE_BYTES = 500 * 1024 * 1024;
-const MAX_TOTAL_BYTES = 750 * 1024 * 1024;
+const MAX_FILE_BYTES = 2 * 1024 ** 3;
+const MAX_TOTAL_BYTES = 4 * 1024 ** 3;
 const MAX_FILES_PER_SUBMISSION = 10;
 const ALLOWED_CONTENT_TYPES = new Set([
     'application/pdf', 'image/avif', 'image/bmp', 'image/gif', 'image/heic',

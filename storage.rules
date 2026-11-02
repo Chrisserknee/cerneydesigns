@@ -55,7 +55,7 @@ service firebase.storage {
     function isTipMedia(fileName) {
       return fileName.matches('^(0[1-9]|10)_[A-Za-z0-9_.() -]{1,160}$')
         && request.resource.size > 0
-        && request.resource.size <= 500 * 1024 * 1024
+        && request.resource.size <= 2 * 1024 * 1024 * 1024
         && isAllowedMediaType()
         && hasSafeClientMetadata();
     }

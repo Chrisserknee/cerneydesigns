@@ -1,5 +1,5 @@
-const MAX_FILE_BYTES = 500 * 1024 * 1024;
-const MAX_TOTAL_BYTES = 750 * 1024 * 1024;
+const MAX_FILE_BYTES = 2 * 1024 ** 3;
+const MAX_TOTAL_BYTES = 4 * 1024 ** 3;
 const MAX_FILES = 10;
 const ALLOWED_CONTENT_TYPES = new Set([
     'application/pdf',

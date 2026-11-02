@@ -27,7 +27,7 @@ function client({ failManifest = false, failContext = false, holdUploads = false
         crypto: require('node:crypto').webcrypto, TextEncoder, Blob, setTimeout, alert() {},
         console: { error() {} }, initializeApp() {}, async authorizeUpload() {}, getStorage() {}, ref: (_, path) => path,
         uploadBytesResumable(path, file, metadata) {
-            uploads.push({ path, metadata });
+            uploads.push({ path, metadata, file });
             return { cancel() {}, on(_, progress, error, done) { tasks.push({progress,error,done}); if(!holdUploads) queueMicrotask(done); } };
         },
         async uploadBytes(path, blob, metadata) {
@@ -173,6 +173,22 @@ test('failed optional context retry retains details and never resends media or i
 });
 
 const wait = () => new Promise(resolve => setTimeout(resolve, 12));
+test('two 2 GB original files stream unchanged in one 4 GB submission', async () => {
+    const c = client({holdUploads:true});
+    const files = [1,2].map(i => ({name:`original-${i}.mov`,size:2*1024**3,type:'video/quicktime',lastModified:i,
+        arrayBuffer(){throw Error('Do not preload original video');}}));
+    c.choose(files); await wait();
+    assert.equal(c.uploads.length,2);
+    assert.equal(c.uploads[0].file,files[0]); assert.equal(c.uploads[1].file,files[1]);
+    c.tasks.forEach(task => task.done()); await c.flush();
+    assert.equal(c.manifests[0].data.totalBytes,4*1024**3);
+    c.elements.get('skipDetails').handlers.click(); await wait();
+});
+test('a selection above 4 GB is rejected before any file uploads', async () => {
+    const c=client();
+    c.choose([1,2,3].map(i=>({name:`clip-${i}.mov`,size:i===3?1:2*1024**3,type:'video/quicktime'})));
+    await wait();assert.equal(c.uploads.length,0);assert.match(c.elements.get('selectionNotice').textContent,/4 GB submission limit/);
+});
 test('choosing five large videos starts automatically, yields first, and streams only two at a time', async () => {
     const c = client({holdUploads:true});
     const files = Array.from({length:5}, (_,i) => ({name:`clip-${i+1}.mov`,size:100*1024*1024,type:'video/quicktime',lastModified:i,
@@ -201,7 +217,7 @@ test('cancelled picker does not upload and drag-and-drop also starts automatical
     assert.equal(c.uploads.length,1);assert.equal(c.manifests.length,1);c.elements.get('skipDetails').handlers.click();await wait();
 });
 test('invalid batch is explained inline and never silently uploads only some selected videos', async () => {
-    const c=client();c.choose([{name:'valid.mov',size:100,type:'video/quicktime'},{name:'large.mov',size:501*1024*1024,type:'video/quicktime'}]);await wait();
+    const c=client();c.choose([{name:'valid.mov',size:100,type:'video/quicktime'},{name:'large.mov',size:2*1024**3+1,type:'video/quicktime'}]);await wait();
     assert.equal(c.uploads.length,0);assert.equal(c.elements.get('selectionNotice').hidden,false);assert.match(c.elements.get('selectionNotice').textContent,/Nothing has been sent.*[\s\S]*large.mov/);
     c.choose([{name:'valid.mov',size:100,type:'video/quicktime'}]);await c.flush();assert.equal(c.uploads.length,1);assert.equal(c.elements.get('selectionNotice').hidden,true);c.elements.get('skipDetails').handlers.click();await wait();
 });

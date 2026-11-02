@@ -7,6 +7,14 @@ function bridge(extra = {}) {
     vm.runInContext(fs.readFileSync(__dirname + '/../upload/drive-bridge-apps-script.gs', 'utf8'), context);
     return context;
 }
+test('Drive bridge accepts a 4 GB delivery and rejects one byte more',()=>{
+    const c=bridge({LockService:{getScriptLock:()=>({tryLock:()=>true,releaseLock(){}})}});
+    c.verifyToken_=()=>{};c.getOrCreateSessionFolder_=()=>({});c.prepareTransfers_=()=>({ok:true});c.json_=x=>x;
+    const payload={action:'prepare',sessionLabel:'test',files:[1,2].map(i=>({name:`0${i}_clip.mov`,sizeBytes:2*1024**3}))};
+    assert.equal(c.doPost({postData:{contents:JSON.stringify(payload)}}).ok,true);
+    payload.files.push({name:'03_clip.mov',sizeBytes:1});
+    assert.match(c.doPost({postData:{contents:JSON.stringify(payload)}}).error,/too large/);
+});
 test('an interrupted Drive copy resumes at the server offset and clears its saved session only after verification', () => {
     let created = 0, deleted = 0, range;
     const properties = { getProperty: () => JSON.stringify({ uploadUrl: 'https://www.googleapis.com/upload/test' }), setProperty() {}, deleteProperty() { deleted++; } };
