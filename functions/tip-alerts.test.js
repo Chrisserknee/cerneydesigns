@@ -137,7 +137,7 @@ test('remote disconnect leaves the current phone connected and invalidates the o
 test('inbox reuses listing generations, refreshes changed tips, and removes deleted tips',async()=>{
  const name='_tipalerts/v1/tips/'+tip.id+'.json';const h=harness({initial:{[name]:tip}});
  assert.equal((await h.inboxDocuments()).length,1);
- assert.deepEqual(h.counts,{metadata:0,downloads:1});
+ assert.deepEqual(h.counts,{metadata:1,downloads:1});
  await h.inboxDocuments();assert.equal(h.counts.downloads,1);
  h.files.set(name,{generation:2,data:{...tip,status:'ready',driveUrl:'https://drive.google.com/drive/folders/new'}});
  assert.equal((await h.inboxDocuments())[0].status,'ready');assert.equal(h.counts.downloads,2);
@@ -271,4 +271,14 @@ test('conditional refresh checks fresh records and revocation before returning a
  c.files.delete(tipPath);const removed=(await call(changed.contentRevision)).body;assert.equal(removed.tips.length,0);assert.equal(removed.unchanged,undefined);
  c.files.set(devicePath,{generation:2,data:{...device,revokedAt:new Date().toISOString()}});
  const revoked=await call(removed.contentRevision);assert.equal(revoked.code,401);assert.equal(revoked.body.unchanged,undefined);
+});
+
+test('a cold inbox validates every saved-cache generation against the live catalog',async()=>{
+ const name='_tipalerts/v1/tips/'+tip.id+'.json',warm='_tipalerts/v1/inbox-cache/records-v1.json';let originalReads=0;
+ const c=harness({onDownload:async file=>{if(file===name)originalReads++;}});
+ c.files.set(name,{generation:'12',data:tip});c.files.set(warm,{generation:'2',data:{version:1,entries:[[name,{generation:'12',data:tip}]]}});
+ assert.equal((await c.inboxDocuments())[0].id,tip.id);assert.equal(originalReads,0);
+ c.files.set(name,{generation:'13',data:{...tip,status:'ready'}});
+ assert.equal((await c.inboxDocuments())[0].status,'ready');assert.equal(originalReads,1);
+ c.files.delete(name);assert.equal((await c.inboxDocuments()).length,0);
 });

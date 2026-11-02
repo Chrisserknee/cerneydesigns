@@ -92,8 +92,19 @@ async function documents(prefix) {
 // record, and every inbox refresh lists storage generations to detect changes.
 const inboxRecords = new (require('./inbox-record-cache').InboxRecordCache)();
 const readInboxRecord = require('./inbox-read-pool').createReadPool();
+const warmInboxCache=require('./inbox-warm-cache').createWarmCache({cache:inboxRecords,
+    read:async()=>{
+        const name=ROOT+'inbox-cache/records-v1.json';
+        const [meta]=await bucket().file(name).getMetadata();
+        if(Number(meta.size)>12*1024*1024)return null;
+        const [bytes]=await bucket().file(name,{generation:meta.generation}).download();
+        return JSON.parse(bytes.toString());
+    },
+    write:data=>write('inbox-cache/records-v1.json',data),
+});
 async function inboxDocuments(prefix='tips/') {
-    const [listed] = await bucket().getFiles({prefix:ROOT + prefix,fields:'nextPageToken,items(name,generation)'});
+    const [listing]=await Promise.all([bucket().getFiles({prefix:ROOT + prefix,fields:'nextPageToken,items(name,generation)'}),warmInboxCache.hydrate()]);
+    const [listed]=listing;
     // Push receipts share deliveries/ but never contribute to the inbox.
     const files = prefix==='deliveries/' ? listed.filter(f=>/^[a-f0-9]{64}\.json$/.test(f.name.slice((ROOT+prefix).length))) : listed;
     const names = new Set(files.map(f=>f.name));
@@ -357,6 +368,7 @@ async function handleApi(req, res) {
             const receiptTips=new Map(tipData.map(t=>[t.id,t]));
             const storyRequests=stories.map(d=>storyRequest(withReportReceipt(d,receiptTips))).filter(Boolean)
                 .sort((a,b)=>Date.parse(b.createdAt)-Date.parse(a.createdAt)).slice(0,60);
+            await warmInboxCache.save();
             return res.json(require('./inbox-response').inboxResponse({storyRequests,
                 reports:incidentReports,tips:tips.map(t=>t.type==='incident'?withDetails(t,detailRecords.get(t.id)):displayContext(t,byId.get(t.id),deliveries.get(t.id))).map(publicTip)},
                 {authenticated:true,expiresAt:device.expiresAt,monitor:monitorHealth(monitorData?.data),storyRequestMonitor:storyMonitor(storyMonitorData?.data),voiceIntakeMonitor:voiceMonitor(voiceMonitorData?.data)},body.knownRevision));
