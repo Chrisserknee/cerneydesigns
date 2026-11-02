@@ -10,3 +10,16 @@ test('private attachments preserve source and verify bytes',async()=>{const call
 test('unknown reports and path traversal cannot read media',async()=>{await assert.rejects(handler()({op:'facebook-media-read',id:'../other',assetID:asset.id,index:0}),{code:400});await assert.rejects(handler({read:async()=>null})({op:'facebook-media-list',id:rid}),{code:404});});
 test('source mismatch, excessive size, unsafe names and part sums rejected',()=>{for(const patch of [{sourceURL:'https://www.facebook.com/another/'},{filename:'../source.png'},{bytes:201*1024*1024},{bytes:2},{origin:'unknown'}])assert.throws(()=>manifest({...data,assets:[{...asset,...patch}]},rid,[source]));});
 test('corrupted stored bytes fail closed',async()=>{const call=handler({bucket:()=>({file:()=>({getMetadata:async()=>[{size:bytes.length,generation:'1'}],download:async()=>[Buffer.from('corrupt')]})})});await assert.rejects(call({op:'facebook-media-read',id:rid,assetID:asset.id,index:0}),{code:409});});
+
+test('thumbnail reads use separate immutable bytes and preserve original chunks',async()=>{
+ const thumb={sha256:digest,bytes:bytes.length,mimeType:'image/jpeg'};
+ const withThumb={...data,assets:[{...asset,thumbnail:thumb}]};let storedPath;
+ const call=handler({read:async name=>name.startsWith('research/')?{data:{sources:[{url:source}]}}:{data:withThumb},bucket:()=>({file:(name)=>{storedPath=name;return {getMetadata:async()=>[{size:bytes.length,generation:'1'}],download:async()=>[bytes]};}})});
+ assert.deepEqual((await call({op:'facebook-media-list',id:rid})).assets[0].thumbnail,thumb);
+ await call({op:'facebook-media-read',id:rid,assetID:asset.id,index:0,thumbnail:true});assert(storedPath.endsWith('/thumbnail-'+digest));
+ await call({op:'facebook-media-read',id:rid,assetID:asset.id,index:0});assert(storedPath.endsWith('/0-'+digest));
+});
+test('unsafe thumbnail metadata is rejected and missing thumbnail does not expose original',async()=>{
+ for(const thumbnail of [{bytes:999999,sha256:digest,mimeType:'image/jpeg'},{bytes:7,sha256:'bad',mimeType:'image/jpeg'},{bytes:7,sha256:digest,mimeType:'video/mp4'}])assert.throws(()=>manifest({...data,assets:[{...asset,thumbnail}]},rid,[source]));
+ await assert.rejects(handler()({op:'facebook-media-read',id:rid,assetID:asset.id,index:0,thumbnail:true}),{code:404});
+});

@@ -15,7 +15,13 @@ function manifest(value,reportID,sources){
   let bytes=0;
   const parts=a.parts.map(p=>{if(!p||!id(p.sha256)||!Number.isSafeInteger(p.bytes)||p.bytes<=0||p.bytes>PART_BYTES)throw error('Invalid Facebook media part.');bytes+=p.bytes;return {sha256:p.sha256,bytes:p.bytes};});
   if(bytes!==a.bytes||typeof a.filename!=='string'||!a.filename||a.filename.length>180||/[\x00-\x1f/\\]/.test(a.filename))throw error('Invalid Facebook media size or name.');
-  return {id:a.id,filename:a.filename,mimeType:a.mimeType,bytes:a.bytes,sha256:a.sha256,parts,sourceURL:a.sourceURL,origin:a.origin};
+  let thumbnail;
+  if(a.thumbnail){
+   const t=a.thumbnail;
+   if(!id(t.sha256)||!Number.isSafeInteger(t.bytes)||t.bytes<=0||t.bytes>256*1024||t.mimeType!=='image/jpeg')throw error('Invalid media thumbnail.');
+   thumbnail={sha256:t.sha256,bytes:t.bytes,mimeType:t.mimeType};
+  }
+  return {id:a.id,filename:a.filename,mimeType:a.mimeType,bytes:a.bytes,sha256:a.sha256,parts,sourceURL:a.sourceURL,origin:a.origin,...(thumbnail?{thumbnail}:{})};
  });
 }
 function createFacebookMedia({read,bucket,root}){
@@ -28,9 +34,9 @@ function createFacebookMedia({read,bucket,root}){
   const assets=stored?manifest(stored,body.id,sources):[];
   if(body.op==='facebook-media-list')return {assets};
   if(body.op!=='facebook-media-read'||!id(body.assetID)||!Number.isInteger(body.index)||body.index<0)throw error('Invalid media request.');
-  const asset=assets.find(a=>a.id===body.assetID),part=asset?.parts[body.index];
+  const asset=assets.find(a=>a.id===body.assetID),part=body.thumbnail===true?asset?.thumbnail:asset?.parts[body.index];
   if(!part)throw error('Attachment not found.',404);
-  const path=`${root}facebook-media/${body.id}/${asset.id}/${body.index}-${part.sha256}`;
+  const path=`${root}facebook-media/${body.id}/${asset.id}/${body.thumbnail===true?'thumbnail':body.index}-${part.sha256}`;
   const [meta]=await bucket().file(path).getMetadata();
   if(Number(meta.size)!==part.bytes)throw error('Attachment size changed.',409);
   const [bytes]=await bucket().file(path,{generation:meta.generation}).download();

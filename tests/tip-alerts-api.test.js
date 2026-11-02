@@ -126,3 +126,10 @@ test('conditional inbox refresh accepts only a bounded revision and keeps authen
  const invalid=proxy();await invalid.run(req({op:'list',knownRevision:'not a digest'},{cookie:'cc_tip_device='+'x'.repeat(43)}),invalid.res);assert.equal(invalid.calls[0].body.knownRevision,undefined);
  const denied=proxy(false,{error:'Revoked'},401);await denied.run(req({op:'list',knownRevision:'a'.repeat(64)},{cookie:'cc_tip_device='+'x'.repeat(43)}),denied.res);assert.equal(denied.res.code,401);assert.equal(denied.res.headers['Set-Cookie'],undefined);
 });
+
+test('private Facebook thumbnails require pairing and cannot choose storage paths',async()=>{
+ const body={op:'facebook-media-read',id:'a'.repeat(64),assetID:'b'.repeat(64),index:0,thumbnail:true,path:'forged'};
+ const denied=proxy();await denied.run(req(body),denied.res);assert.equal(denied.res.code,401);assert.equal(denied.calls.length,0);
+ const p=proxy(false,{});await p.run(req(body,{cookie:'cc_tip_device='+'x'.repeat(43)}),p.res);
+ assert.equal(p.calls[0].body.thumbnail,true);assert.equal(p.calls[0].body.path,undefined);assert.equal(p.calls[0].body.token,'x'.repeat(43));
+});

@@ -26,7 +26,7 @@ module.exports = async (request, response) => {
         const token = readCookie(request,COOKIE);
         if (!/^[A-Za-z0-9_-]{43}$/.test(token)) return sendJson(response,401,{error:'Sign in to connect this device.'});
         payload = {op:body.op,token,...(body.op === 'subscribe' ? {subscription:body.subscription} : {}),...(['tip','revoke-device','thumbnail','tip-media'].includes(body.op) ? {id:body.id} : {})};
-        if(String(body.op).startsWith('facebook-media-'))Object.assign(payload,{id:body.id,assetID:body.assetID,index:body.index});
+        if(String(body.op).startsWith('facebook-media-'))Object.assign(payload,{id:body.id,assetID:body.assetID,index:body.index,thumbnail:body.thumbnail===true});
         if(String(body.op).startsWith('field-'))Object.assign(payload,{id:body.id,note:body.note,expectedRevision:body.expectedRevision,index:body.index,sha256:body.sha256,base64:body.base64,parts:body.parts,mimeType:body.mimeType});
         if(String(body.op).startsWith('producer-'))for(const key of ['id','requestID','title','text','preferences','sourceRefs','assetIDs','assetID','index','sha256','base64','parts','mimeType','filename','bytes','cursor','artifactID','checksumMode'])if(body[key]!==undefined)payload[key]=body[key];
         if(String(body.op).startsWith('tracker-'))for(const key of ['id','cursor','itemID','status','query','filter','title','notes','pinned','expectedRevision'])if(body[key]!==undefined)payload[key]=body[key];
