@@ -118,3 +118,11 @@ test('incoming attachment previews require pairing and cannot proxy caller URLs'
  assert.equal(p.res.code,200);assert.deepEqual(JSON.parse(JSON.stringify(p.calls[0].body)),{...expected,token:'x'.repeat(43)});
  assert.equal(p.res.headers['Cache-Control'],'no-store');
 });
+
+test('conditional inbox refresh accepts only a bounded revision and keeps authentication fresh',async()=>{
+ const p=proxy(false,{unchanged:true,contentRevision:'a'.repeat(64)});
+ await p.run(req({op:'list',knownRevision:'a'.repeat(64),token:'attacker'},{cookie:'cc_tip_device='+'x'.repeat(43)}),p.res);
+ assert.equal(p.calls[0].body.knownRevision,'a'.repeat(64));assert.equal(p.calls[0].body.token,'x'.repeat(43));
+ const invalid=proxy();await invalid.run(req({op:'list',knownRevision:'not a digest'},{cookie:'cc_tip_device='+'x'.repeat(43)}),invalid.res);assert.equal(invalid.calls[0].body.knownRevision,undefined);
+ const denied=proxy(false,{error:'Revoked'},401);await denied.run(req({op:'list',knownRevision:'a'.repeat(64)},{cookie:'cc_tip_device='+'x'.repeat(43)}),denied.res);assert.equal(denied.res.code,401);assert.equal(denied.res.headers['Set-Cookie'],undefined);
+});

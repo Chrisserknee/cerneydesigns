@@ -1,8 +1,8 @@
 {
   "schema": 1,
-  "revision": 7,
-  "latestBuild": 33,
-  "releaseNote": "Adds private photo and video previews to tip cards and Google Voice conversations. Includes the latest digital-clock Story Outreach styling.",
+  "revision": 8,
+  "latestBuild": 34,
+  "releaseNote": "Faster refresh: lightweight updates when cards have not changed, independent photo/video previews, and refresh focused on the section you are viewing.",
   "outreach": [
     {
       "id": "shorter",

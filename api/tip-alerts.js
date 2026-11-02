@@ -29,6 +29,7 @@ module.exports = async (request, response) => {
         if(String(body.op).startsWith('field-'))Object.assign(payload,{id:body.id,note:body.note,expectedRevision:body.expectedRevision,index:body.index,sha256:body.sha256,base64:body.base64,parts:body.parts,mimeType:body.mimeType});
         if(String(body.op).startsWith('producer-'))for(const key of ['id','requestID','title','text','preferences','sourceRefs','assetIDs','assetID','index','sha256','base64','parts','mimeType','filename','bytes','cursor','artifactID','checksumMode'])if(body[key]!==undefined)payload[key]=body[key];
         if(String(body.op).startsWith('tracker-'))for(const key of ['id','cursor','itemID','status','query','filter','title','notes','pinned','expectedRevision'])if(body[key]!==undefined)payload[key]=body[key];
+        if (body.op === 'list' && /^[a-f0-9]{64}$/.test(body.knownRevision || '')) payload.knownRevision=body.knownRevision;
         if (body.op === 'tip-media') payload.mediaVersion=body.mediaVersion;
         if (body.op === 'thumbnail') Object.assign(payload,{generation:body.generation,sha256:body.sha256,revision:body.revision,contextVersion:body.contextVersion});
     }

@@ -90,10 +90,10 @@ async function documents(prefix) {
 }
 // Only tip summaries are cached. Every request still reads the current device
 // record, and every inbox refresh lists storage generations to detect changes.
-const inboxRecords = new Map();
+const inboxRecords = new (require('./inbox-record-cache').InboxRecordCache)();
 const readInboxRecord = require('./inbox-read-pool').createReadPool();
 async function inboxDocuments(prefix='tips/') {
-    const [listed] = await bucket().getFiles({prefix:ROOT + prefix});
+    const [listed] = await bucket().getFiles({prefix:ROOT + prefix,fields:'nextPageToken,items(name,generation)'});
     // Push receipts share deliveries/ but never contribute to the inbox.
     const files = prefix==='deliveries/' ? listed.filter(f=>/^[a-f0-9]{64}\.json$/.test(f.name.slice((ROOT+prefix).length))) : listed;
     const names = new Set(files.map(f=>f.name));
@@ -109,8 +109,7 @@ async function inboxDocuments(prefix='tips/') {
             try {
                 const [bytes]=await bucket().file(file.name,{generation}).download();
                 const data=JSON.parse(bytes.toString());
-                if (inboxRecords.size>=1000) inboxRecords.delete(inboxRecords.keys().next().value);
-                inboxRecords.set(file.name,{generation,data});
+                inboxRecords.set(file.name,{generation,data},bytes.length);
                 return data;
             } catch(e) {
                 // A record may have been replaced since the listing. Read the new
@@ -357,9 +356,9 @@ async function handleApi(req, res) {
             const receiptTips=new Map(tipData.map(t=>[t.id,t]));
             const storyRequests=stories.map(d=>storyRequest(withReportReceipt(d,receiptTips))).filter(Boolean)
                 .sort((a,b)=>Date.parse(b.createdAt)-Date.parse(a.createdAt)).slice(0,60);
-            return res.json({authenticated:true,expiresAt:device.expiresAt,
-                monitor:monitorHealth(monitorData?.data),storyRequests,storyRequestMonitor:storyMonitor(storyMonitorData?.data),voiceIntakeMonitor:voiceMonitor(voiceMonitorData?.data),
-                reports:incidentReports,tips:tips.map(t=>t.type==='incident'?withDetails(t,detailRecords.get(t.id)):displayContext(t,byId.get(t.id),deliveries.get(t.id))).map(publicTip)});
+            return res.json(require('./inbox-response').inboxResponse({storyRequests,
+                reports:incidentReports,tips:tips.map(t=>t.type==='incident'?withDetails(t,detailRecords.get(t.id)):displayContext(t,byId.get(t.id),deliveries.get(t.id))).map(publicTip)},
+                {authenticated:true,expiresAt:device.expiresAt,monitor:monitorHealth(monitorData?.data),storyRequestMonitor:storyMonitor(storyMonitorData?.data),voiceIntakeMonitor:voiceMonitor(voiceMonitorData?.data)},body.knownRevision));
         }
         if (body.op === 'test') {
             if (!device.subscription) return res.status(409).json({error:'Enable notifications on this device first.'});

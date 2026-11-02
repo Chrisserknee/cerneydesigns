@@ -259,3 +259,16 @@ test('simultaneous inbox sections share one download budget and retain every rec
  const lists=await Promise.all([...prefixes,...prefixes].map(prefix=>c.inboxDocuments(prefix)));
  assert(lists.every(items=>items.length===50));assert.equal(peak,16);assert.equal(c.counts.downloads,150);
 });
+
+test('conditional refresh checks fresh records and revocation before returning an unchanged result',async()=>{
+ const token='x'.repeat(43),devicePath='_tipalerts/v1/devices/'+h.hash(token)+'.json',tipPath='_tipalerts/v1/tips/'+tip.id+'.json';
+ const c=harness({initial:{[devicePath]:device,[tipPath]:tip}});
+ const call=async knownRevision=>{const res={set(){},status(n){this.code=n;return this;},json(body){this.body=body;}};await c.handleApi({method:'POST',is:()=>true,body:{op:'list',token,knownRevision}},res);return res;};
+ const initial=(await call()).body,unchanged=(await call(initial.contentRevision)).body;
+ assert.equal(unchanged.unchanged,true);assert.equal(unchanged.tips,undefined);
+ c.files.set(tipPath,{generation:2,data:{...tip,sourceTitle:'New facts',sourceSummary:'Updated information'}});
+ const changed=(await call(initial.contentRevision)).body;assert.equal(changed.tips[0].title,'New facts');assert.notEqual(changed.contentRevision,initial.contentRevision);
+ c.files.delete(tipPath);const removed=(await call(changed.contentRevision)).body;assert.equal(removed.tips.length,0);assert.equal(removed.unchanged,undefined);
+ c.files.set(devicePath,{generation:2,data:{...device,revokedAt:new Date().toISOString()}});
+ const revoked=await call(removed.contentRevision);assert.equal(revoked.code,401);assert.equal(revoked.body.unchanged,undefined);
+});
