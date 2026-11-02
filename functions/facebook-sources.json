@@ -1,0 +1,722 @@
+{
+  "version": 2,
+  "updatedAt": "2026-11-02",
+  "counties": [
+    "Monterey",
+    "Santa Cruz"
+  ],
+  "sources": [
+    {
+      "id": "central-coast-watchdog",
+      "name": "Central Coast Watchdog",
+      "county": "Monterey / Santa Cruz",
+      "kind": "community",
+      "channel": "facebook",
+      "url": "https://www.facebook.com/groups/1416333486418080/",
+      "officialURL": "",
+      "scopeNote": "Unverified community reports; preserve attribution.",
+      "aliases": [
+        "groups/1416333486418080"
+      ]
+    },
+    {
+      "id": "salinas-pd",
+      "name": "Salinas Police Department",
+      "county": "Monterey",
+      "kind": "agency",
+      "channel": "facebook",
+      "url": "https://www.facebook.com/SalinasPoliceDepartment/",
+      "officialURL": "https://salinaspd.org/",
+      "scopeNote": "Official public-safety news only.",
+      "referenceVerifiedAt": "2026-10-17",
+      "aliases": [
+        "salinaspolicedepartment"
+      ]
+    },
+    {
+      "id": "del-rey-oaks-pd",
+      "name": "Del Rey Oaks Police Department",
+      "county": "Monterey",
+      "kind": "agency",
+      "channel": "facebook",
+      "url": "https://www.facebook.com/delreyoakspd/",
+      "officialURL": "https://www.delreyoaks.org/police",
+      "scopeNote": "Official public-safety news only.",
+      "referenceVerifiedAt": "2026-10-17",
+      "aliases": [
+        "delreyoakspd"
+      ]
+    },
+    {
+      "id": "soledad-pd",
+      "name": "Soledad Police Department",
+      "county": "Monterey",
+      "kind": "agency",
+      "channel": "facebook",
+      "url": "https://www.facebook.com/SoledadPolice/",
+      "officialURL": "https://cityofsoledad.gov/community/police/index.php",
+      "scopeNote": "Official public-safety news only.",
+      "referenceVerifiedAt": "2026-10-17",
+      "aliases": [
+        "soledadpolice"
+      ]
+    },
+    {
+      "id": "santa-cruz-pd",
+      "name": "Santa Cruz Police",
+      "county": "Santa Cruz",
+      "kind": "agency",
+      "channel": "facebook",
+      "url": "https://www.facebook.com/santacruzpolice/",
+      "officialURL": "https://www.santacruzcountyca.gov/OR3/Response/LocalAgencySocialMedia.aspx",
+      "scopeNote": "Official public-safety news only.",
+      "referenceVerifiedAt": "2026-10-17",
+      "aliases": [
+        "santacruzpolice"
+      ]
+    },
+    {
+      "id": "santa-cruz-sheriff",
+      "name": "Santa Cruz County Sheriff's Office",
+      "county": "Santa Cruz",
+      "kind": "agency",
+      "channel": "facebook",
+      "url": "https://www.facebook.com/SantaCruzSheriffsOffice/",
+      "officialURL": "https://www.santacruzcountyca.gov/OR3/Response/LocalAgencySocialMedia.aspx",
+      "scopeNote": "Official public-safety news only.",
+      "referenceVerifiedAt": "2026-10-17",
+      "aliases": [
+        "santacruzsheriffsoffice"
+      ]
+    },
+    {
+      "id": "monterey-sheriff",
+      "name": "Monterey County Sheriff's Office",
+      "county": "Monterey",
+      "kind": "agency",
+      "channel": "facebook",
+      "url": "https://www.facebook.com/MontereyCountySheriffsOffice/",
+      "officialURL": "https://mcso.countyofmonterey.gov/",
+      "scopeNote": "Official public-safety news only.",
+      "referenceVerifiedAt": "2026-10-17",
+      "aliases": [
+        "montereycountysheriffsoffice"
+      ]
+    },
+    {
+      "id": "watsonville-pd",
+      "name": "Watsonville Police Department",
+      "county": "Santa Cruz",
+      "kind": "agency",
+      "channel": "facebook",
+      "url": "https://www.facebook.com/watsonvillepd/",
+      "officialURL": "https://www.santacruzcountyca.gov/OR3/Response/LocalAgencySocialMedia.aspx",
+      "scopeNote": "Official public-safety news only.",
+      "referenceVerifiedAt": "2026-10-17",
+      "aliases": [
+        "watsonvillepd"
+      ]
+    },
+    {
+      "id": "capitola-pd",
+      "name": "Capitola Police Department",
+      "county": "Santa Cruz",
+      "kind": "agency",
+      "channel": "facebook",
+      "url": "https://www.facebook.com/CapitolaPoliceDepartment/",
+      "officialURL": "https://www.cityofcapitola.org/police",
+      "scopeNote": "Official public-safety news only.",
+      "referenceVerifiedAt": "2026-10-17",
+      "aliases": [
+        "capitolapolicedepartment"
+      ]
+    },
+    {
+      "id": "scotts-valley-pd",
+      "name": "Scotts Valley Police Department",
+      "county": "Santa Cruz",
+      "kind": "agency",
+      "channel": "facebook",
+      "url": "https://www.facebook.com/ScottsValleyPD/",
+      "officialURL": "https://www.scottsvalleypd.com/",
+      "scopeNote": "Official public-safety news only.",
+      "referenceVerifiedAt": "2026-10-17",
+      "aliases": [
+        "scottsvalleypd"
+      ]
+    },
+    {
+      "id": "ucsc-pd",
+      "name": "UC Santa Cruz Police Department",
+      "county": "Santa Cruz",
+      "kind": "agency",
+      "channel": "facebook",
+      "url": "https://www.facebook.com/UCSCPD/",
+      "officialURL": "https://www.santacruzcountyca.gov/OR3/Response/LocalAgencySocialMedia.aspx",
+      "scopeNote": "Official public-safety news only.",
+      "referenceVerifiedAt": "2026-10-17",
+      "aliases": [
+        "ucscpd"
+      ]
+    },
+    {
+      "id": "monterey-pd",
+      "name": "Monterey Police Department",
+      "county": "Monterey",
+      "kind": "agency",
+      "channel": "facebook",
+      "url": "https://www.facebook.com/montereypolice/",
+      "officialURL": "https://monterey.gov/your_city_hall/departments/police/index.php",
+      "scopeNote": "Official public-safety news only.",
+      "referenceVerifiedAt": "2026-10-17",
+      "aliases": [
+        "montereypolice"
+      ]
+    },
+    {
+      "id": "seaside-fire-police",
+      "name": "Seaside Fire & Police",
+      "county": "Monterey",
+      "kind": "agency",
+      "channel": "facebook",
+      "url": "https://www.facebook.com/SafeSeaside/",
+      "officialURL": "https://www.facebook.com/SafeSeaside/",
+      "scopeNote": "Official public-safety news only.",
+      "referenceVerifiedAt": "2026-10-17",
+      "aliases": [
+        "safeseaside"
+      ]
+    },
+    {
+      "id": "marina-pd",
+      "name": "Marina Police Department",
+      "county": "Monterey",
+      "kind": "agency",
+      "channel": "facebook",
+      "url": "https://www.facebook.com/MarinaPolice/",
+      "officialURL": "https://www.cityofmarina.org/1480/Police-Department",
+      "scopeNote": "Official public-safety news only.",
+      "referenceVerifiedAt": "2026-10-17",
+      "aliases": [
+        "marinapolice"
+      ]
+    },
+    {
+      "id": "king-city-pd",
+      "name": "King City Police Department",
+      "county": "Monterey",
+      "kind": "agency",
+      "channel": "facebook",
+      "url": "https://www.facebook.com/people/King-City-Police-Department/100069127483397/",
+      "officialURL": "https://www.kingcity.com/m/newsflash/home/detail/29",
+      "scopeNote": "Official public-safety news only.",
+      "referenceVerifiedAt": "2026-10-17",
+      "aliases": [
+        "100069127483397"
+      ]
+    },
+    {
+      "id": "chp-monterey",
+      "name": "CHP - Monterey",
+      "county": "Monterey",
+      "kind": "agency",
+      "channel": "facebook",
+      "url": "https://www.facebook.com/CHPMontereyArea/",
+      "officialURL": "https://www.facebook.com/CHPMontereyArea/",
+      "scopeNote": "Official public-safety news only.",
+      "referenceVerifiedAt": "2026-10-17",
+      "aliases": [
+        "chpmontereyarea"
+      ]
+    },
+    {
+      "id": "chp-king-city",
+      "name": "CHP - King City",
+      "county": "Monterey",
+      "kind": "agency",
+      "channel": "facebook",
+      "url": "https://www.facebook.com/CHPKingCity/",
+      "officialURL": "https://www.facebook.com/CHPKingCity/",
+      "scopeNote": "Official public-safety news only.",
+      "referenceVerifiedAt": "2026-10-17",
+      "aliases": [
+        "chpkingcity"
+      ]
+    },
+    {
+      "id": "chp-santa-cruz",
+      "name": "CHP - Santa Cruz",
+      "county": "Santa Cruz",
+      "kind": "agency",
+      "channel": "facebook",
+      "url": "https://www.facebook.com/CHPSantaCruz/",
+      "officialURL": "https://www.facebook.com/CHPSantaCruz/",
+      "scopeNote": "Official public-safety news only.",
+      "referenceVerifiedAt": "2026-10-17",
+      "aliases": [
+        "chpsantacruz"
+      ]
+    },
+    {
+      "id": "calfire-beu",
+      "name": "CAL FIRE BEU",
+      "county": "Monterey",
+      "kind": "agency",
+      "channel": "facebook",
+      "url": "https://www.facebook.com/CALFIREBEU/",
+      "officialURL": "https://www.facebook.com/CALFIREBEU/",
+      "scopeNote": "Official public-safety news only.",
+      "referenceVerifiedAt": "2026-10-17",
+      "aliases": [
+        "calfirebeu"
+      ]
+    },
+    {
+      "id": "calfire-czu",
+      "name": "CAL FIRE CZU San Mateo-Santa Cruz Unit",
+      "county": "Santa Cruz",
+      "kind": "agency",
+      "channel": "facebook",
+      "url": "https://www.facebook.com/CALFIRECZUSanMateoSantaCruz/",
+      "officialURL": "https://www.santacruzcountyca.gov/OR3/Response/LocalAgencySocialMedia.aspx",
+      "scopeNote": "Official public-safety news only.",
+      "referenceVerifiedAt": "2026-10-17",
+      "aliases": [
+        "calfireczusanmateosantacruz"
+      ]
+    },
+    {
+      "id": "salinas-fire",
+      "name": "Salinas Fire Department",
+      "county": "Monterey",
+      "kind": "agency",
+      "channel": "facebook",
+      "url": "https://www.facebook.com/SalinasFireDepartment/",
+      "officialURL": "https://www.facebook.com/SalinasFireDepartment/",
+      "scopeNote": "Official public-safety news only.",
+      "referenceVerifiedAt": "2026-10-17",
+      "aliases": [
+        "salinasfiredepartment"
+      ]
+    },
+    {
+      "id": "marina-fire",
+      "name": "Marina Fire Department",
+      "county": "Monterey",
+      "kind": "agency",
+      "channel": "facebook",
+      "url": "https://www.facebook.com/marinafiredept/",
+      "officialURL": "https://www.cityofmarina.org/1481/Fire-Department",
+      "scopeNote": "Official public-safety news only.",
+      "referenceVerifiedAt": "2026-10-17",
+      "aliases": [
+        "marinafiredept"
+      ]
+    },
+    {
+      "id": "monterey-regional-fire",
+      "name": "Monterey County Regional Fire District",
+      "county": "Monterey",
+      "kind": "agency",
+      "channel": "facebook",
+      "url": "https://www.facebook.com/p/Monterey-County-Regional-Fire-District-100089205223433/",
+      "officialURL": "https://www.mcrfd.org/",
+      "scopeNote": "Official public-safety news only.",
+      "referenceVerifiedAt": "2026-10-17",
+      "aliases": [
+        "monterey-county-regional-fire-district-100089205223433",
+        "100089205223433"
+      ]
+    },
+    {
+      "id": "santa-cruz-fire",
+      "name": "Santa Cruz Fire Department",
+      "county": "Santa Cruz",
+      "kind": "agency",
+      "channel": "facebook",
+      "url": "https://www.facebook.com/SantaCruzFire/",
+      "officialURL": "https://www.facebook.com/SantaCruzFire/",
+      "scopeNote": "Official public-safety news only.",
+      "referenceVerifiedAt": "2026-10-17",
+      "aliases": [
+        "santacruzfire"
+      ]
+    },
+    {
+      "id": "central-fire",
+      "name": "Central Fire District of Santa Cruz County",
+      "county": "Santa Cruz",
+      "kind": "agency",
+      "channel": "facebook",
+      "url": "https://www.facebook.com/Centralfiredistrict/",
+      "officialURL": "https://www.santacruzcountyca.gov/OR3/Response/LocalAgencySocialMedia.aspx",
+      "scopeNote": "Official public-safety news only.",
+      "referenceVerifiedAt": "2026-10-17",
+      "aliases": [
+        "centralfiredistrict"
+      ]
+    },
+    {
+      "id": "watsonville-fire",
+      "name": "Watsonville Fire Department",
+      "county": "Santa Cruz",
+      "kind": "agency",
+      "channel": "facebook",
+      "url": "https://www.facebook.com/watsonvillefire/",
+      "officialURL": "https://www.santacruzcountyca.gov/OR3/Response/LocalAgencySocialMedia.aspx",
+      "scopeNote": "Official public-safety news only.",
+      "referenceVerifiedAt": "2026-10-17",
+      "aliases": [
+        "watsonvillefire"
+      ]
+    },
+    {
+      "id": "scotts-valley-fire",
+      "name": "Scotts Valley Fire District",
+      "county": "Santa Cruz",
+      "kind": "agency",
+      "channel": "facebook",
+      "url": "https://www.facebook.com/scottsvalleyfiredistrict/",
+      "officialURL": "https://www.santacruzcountyca.gov/OR3/Response/LocalAgencySocialMedia.aspx",
+      "scopeNote": "Official public-safety news only.",
+      "referenceVerifiedAt": "2026-10-17",
+      "aliases": [
+        "scottsvalleyfiredistrict"
+      ]
+    },
+    {
+      "id": "boulder-creek-fire",
+      "name": "Boulder Creek Volunteer Fire Department",
+      "county": "Santa Cruz",
+      "kind": "agency",
+      "channel": "facebook",
+      "url": "https://www.facebook.com/BoulderCreekFireDepartment/",
+      "officialURL": "https://www.santacruzcountyca.gov/OR3/Response/LocalAgencySocialMedia.aspx",
+      "scopeNote": "Official public-safety news only.",
+      "referenceVerifiedAt": "2026-10-17",
+      "aliases": [
+        "bouldercreekfiredepartment"
+      ]
+    },
+    {
+      "id": "felton-fire",
+      "name": "Felton Fire Protection District",
+      "county": "Santa Cruz",
+      "kind": "agency",
+      "channel": "facebook",
+      "url": "https://www.facebook.com/feltonfiredistrict/",
+      "officialURL": "https://www.santacruzcountyca.gov/OR3/Response/LocalAgencySocialMedia.aspx",
+      "scopeNote": "Official public-safety news only.",
+      "referenceVerifiedAt": "2026-10-17",
+      "aliases": [
+        "feltonfiredistrict"
+      ]
+    },
+    {
+      "id": "zayante-fire",
+      "name": "Zayante Fire Protection District",
+      "county": "Santa Cruz",
+      "kind": "agency",
+      "channel": "facebook",
+      "url": "https://www.facebook.com/zayantefire/",
+      "officialURL": "https://www.santacruzcountyca.gov/OR3/Response/LocalAgencySocialMedia.aspx",
+      "scopeNote": "Official public-safety news only.",
+      "referenceVerifiedAt": "2026-10-17",
+      "aliases": [
+        "zayantefire"
+      ]
+    },
+    {
+      "id": "carmel-pd",
+      "name": "Carmel-by-the-Sea Police Department",
+      "county": "Monterey",
+      "kind": "agency",
+      "channel": "facebook",
+      "url": "https://www.facebook.com/people/CarmelbytheSea-Police-Department/61573895579607/",
+      "officialURL": "https://ci.carmel.ca.us/police-fire",
+      "scopeNote": "Official agency news releases and incident footage; verify exact official author on first signed-in visit.",
+      "referenceVerifiedAt": "2026-10-20",
+      "aliases": [
+        "61573895579607"
+      ]
+    },
+    {
+      "id": "pacific-grove-pd",
+      "name": "Pacific Grove Police Department",
+      "county": "Monterey",
+      "kind": "agency",
+      "channel": "facebook",
+      "url": "https://www.facebook.com/pacificgrovepd/",
+      "officialURL": "https://www.cityofpacificgrove.gov/our_city/departments/police/index.php",
+      "scopeNote": "Official agency news releases and incident footage; verify exact official author on first signed-in visit.",
+      "referenceVerifiedAt": "2026-10-20",
+      "aliases": [
+        "pacificgrovepd"
+      ]
+    },
+    {
+      "id": "gonzales-pd",
+      "name": "Gonzales Police Department",
+      "county": "Monterey",
+      "kind": "agency",
+      "channel": "facebook",
+      "url": "https://www.facebook.com/GonzalesPoliceDepartment/",
+      "officialURL": "https://gonzalesca.gov/services/police",
+      "scopeNote": "Official agency news releases and incident footage; verify exact official author on first signed-in visit.",
+      "referenceVerifiedAt": "2026-10-20",
+      "aliases": [
+        "gonzalespolicedepartment"
+      ]
+    },
+    {
+      "id": "greenfield-pd",
+      "name": "Greenfield Police Department",
+      "county": "Monterey",
+      "kind": "agency",
+      "channel": "facebook",
+      "url": "https://www.facebook.com/greenfieldcapolice/",
+      "officialURL": "https://www.greenfieldca.gov/233/Police-Department",
+      "scopeNote": "Official agency news releases and incident footage; verify exact official author on first signed-in visit.",
+      "referenceVerifiedAt": "2026-10-20",
+      "aliases": [
+        "greenfieldcapolice"
+      ]
+    },
+    {
+      "id": "north-county-fire",
+      "name": "North County Fire Protection District of Monterey County",
+      "county": "Monterey",
+      "kind": "agency",
+      "channel": "facebook",
+      "url": "https://www.facebook.com/NCFPD/",
+      "officialURL": "https://www.ncfpd.org/",
+      "scopeNote": "Official agency news releases and incident footage; verify exact official author on first signed-in visit.",
+      "referenceVerifiedAt": "2026-10-20",
+      "aliases": [
+        "ncfpd"
+      ]
+    },
+    {
+      "id": "ben-lomond-fire",
+      "name": "Ben Lomond Fire Protection District",
+      "county": "Santa Cruz",
+      "kind": "agency",
+      "channel": "facebook",
+      "url": "https://www.facebook.com/BenLomondFireDepartment/",
+      "officialURL": "https://www.benlomondfd.com/",
+      "scopeNote": "Official agency news releases and incident footage; verify exact official author on first signed-in visit.",
+      "referenceVerifiedAt": "2026-10-20",
+      "aliases": [
+        "benlomondfiredepartment"
+      ]
+    },
+    {
+      "id": "sand-city-public-safety",
+      "name": "Sand City Police \u00b7 City channel",
+      "county": "Monterey",
+      "kind": "agency",
+      "channel": "facebook",
+      "url": "https://www.facebook.com/SandCityCA/",
+      "officialURL": "https://sandcity.org/",
+      "scopeNote": "Official city page; fallback for Sand City Police. Collect only attributed police/fire/public-safety releases, not ordinary city promotion.",
+      "referenceVerifiedAt": "2026-10-20",
+      "aliases": [
+        "sandcityca"
+      ]
+    },
+    {
+      "id": "csumb-public-safety",
+      "name": "CSUMB Police \u00b7 University channel",
+      "county": "Monterey",
+      "kind": "agency",
+      "channel": "facebook",
+      "url": "https://www.facebook.com/CSUMB/",
+      "officialURL": "https://csumb.edu/departments/police/",
+      "scopeNote": "Official university page linked from University Police; fallback only. Collect attributed UPD/emergency public-safety announcements, not ordinary university promotion.",
+      "referenceVerifiedAt": "2026-10-20",
+      "aliases": [
+        "csumb"
+      ]
+    },
+    {
+      "id": "monterey-city-fire",
+      "name": "Monterey Fire \u00b7 City channel",
+      "county": "Monterey",
+      "kind": "agency",
+      "channel": "facebook",
+      "url": "https://www.facebook.com/cityofmonterey/",
+      "officialURL": "https://monterey.gov/your_city_hall/departments/fire/",
+      "scopeNote": "Official city account linked by Fire Department. Collect attributed fire/public-safety releases; department serves Monterey, Pacific Grove and Carmel.",
+      "referenceVerifiedAt": "2026-10-20",
+      "aliases": [
+        "cityofmonterey"
+      ]
+    },
+    {
+      "id": "aromas-fire",
+      "name": "Aromas Tri-County Fire",
+      "county": "Monterey / Santa Cruz",
+      "kind": "agency",
+      "channel": "facebook",
+      "url": "https://www.facebook.com/AromasTriCountyFire/",
+      "officialURL": "https://www.atcfire.org/",
+      "referenceVerifiedAt": "2026-11-02",
+      "scopeNote": "Only attributed fire/public-safety incidents and material updates; exclude city promotion.",
+      "aliases": [
+        "aromastricountyfire"
+      ]
+    },
+    {
+      "id": "cachagua-fire",
+      "name": "Cachagua Fire",
+      "county": "Monterey",
+      "kind": "agency",
+      "channel": "facebook",
+      "url": "https://www.facebook.com/CachaguaFire/",
+      "officialURL": "https://www.cachaguafire.com/",
+      "referenceVerifiedAt": "2026-11-02",
+      "scopeNote": "Only attributed fire/public-safety incidents and material updates; exclude city promotion.",
+      "aliases": [
+        "cachaguafire"
+      ]
+    },
+    {
+      "id": "king-city-fire",
+      "name": "King City Fire \u00b7 City channel",
+      "county": "Monterey",
+      "kind": "agency",
+      "channel": "facebook",
+      "url": "https://www.facebook.com/cityofkingcityhall/",
+      "officialURL": "https://www.kingcity.com/185/Fire-Department",
+      "referenceVerifiedAt": "2026-11-02",
+      "scopeNote": "Only attributed fire/public-safety incidents and material updates; exclude city promotion.",
+      "aliases": [
+        "cityofkingcityhall"
+      ]
+    },
+    {
+      "id": "gonzales-fire",
+      "name": "Gonzales Fire Department",
+      "county": "Monterey",
+      "kind": "agency",
+      "channel": "facebook",
+      "url": "https://www.facebook.com/Gonzales-Fire-Department-186104568426631/",
+      "officialURL": "https://gonzalesca.gov/services/fire-department",
+      "referenceVerifiedAt": "2026-11-02",
+      "scopeNote": "Only attributed fire/public-safety incidents and material updates; exclude city promotion.",
+      "aliases": [
+        "gonzales-fire-department-186104568426631",
+        "186104568426631"
+      ]
+    },
+    {
+      "id": "greenfield-fire",
+      "name": "Greenfield Fire \u00b7 City channel",
+      "county": "Monterey",
+      "kind": "agency",
+      "channel": "facebook",
+      "url": "https://www.facebook.com/City-of-Greenfield-CA-332928756829522/",
+      "officialURL": "https://www.greenfieldca.gov/385/Greenfield-Fire",
+      "referenceVerifiedAt": "2026-11-02",
+      "scopeNote": "Only attributed fire/public-safety incidents and material updates; exclude city promotion.",
+      "aliases": [
+        "city-of-greenfield-ca-332928756829522",
+        "332928756829522"
+      ]
+    },
+    {
+      "id": "pebble-beach-fire",
+      "name": "Pebble Beach Fire Department",
+      "county": "Monterey",
+      "kind": "agency",
+      "channel": "facebook",
+      "url": "https://www.facebook.com/PBCSDCALFIRE/",
+      "officialURL": "https://www.pbcsd.org/fire-department",
+      "referenceVerifiedAt": "2026-11-02",
+      "scopeNote": "Fire and public-safety incident news only.",
+      "aliases": [
+        "pbcsdcalfire"
+      ]
+    },
+    {
+      "id": "soledad-fire",
+      "name": "Soledad Fire Department",
+      "county": "Monterey",
+      "kind": "agency",
+      "channel": "facebook",
+      "url": "https://www.facebook.com/SoledadFire/",
+      "officialURL": "https://www.cityofsoledad.gov/departments/fire.php",
+      "referenceVerifiedAt": "2026-11-02",
+      "scopeNote": "Significant incidents and material public-safety updates only.",
+      "aliases": [
+        "soledadfire"
+      ]
+    },
+    {
+      "id": "big-sur-fire",
+      "name": "Big Sur Fire",
+      "county": "Monterey",
+      "kind": "agency",
+      "channel": "facebook",
+      "url": "https://www.facebook.com/bigsurfire/",
+      "officialURL": "https://www.bigsurfire.org/",
+      "referenceVerifiedAt": "2026-11-02",
+      "scopeNote": "Significant incidents and material public-safety updates only.",
+      "aliases": [
+        "bigsurfire"
+      ]
+    },
+    {
+      "id": "mid-coast-fire",
+      "name": "Mid Coast Fire Brigade",
+      "county": "Monterey",
+      "kind": "agency",
+      "channel": "facebook",
+      "url": "https://www.facebook.com/MidCoastFire/",
+      "officialURL": "https://www.midcoastfirebrigade.org/",
+      "referenceVerifiedAt": "2026-11-02",
+      "scopeNote": "Significant incidents and material public-safety updates only.",
+      "aliases": [
+        "midcoastfire"
+      ]
+    },
+    {
+      "id": "cypress-fire",
+      "name": "Cypress Fire Protection District",
+      "county": "Monterey",
+      "kind": "agency",
+      "channel": "facebook",
+      "url": "https://www.facebook.com/CypressFireProtectionDistrict/",
+      "officialURL": "https://www.cypressfire.org/",
+      "referenceVerifiedAt": "2026-11-02",
+      "scopeNote": "Significant incidents and material public-safety updates only.",
+      "aliases": [
+        "cypressfireprotectiondistrict"
+      ]
+    },
+    {
+      "id": "south-monterey-fire",
+      "name": "South Monterey County Fire Protection District",
+      "county": "Monterey",
+      "kind": "agency",
+      "channel": "official_website",
+      "url": "https://smcfpd.specialdistrict.org/",
+      "officialURL": "https://smcfpd.specialdistrict.org/",
+      "referenceVerifiedAt": "2026-11-02",
+      "scopeNote": "Official website fallback: no verified Facebook channel located; check current incident/news updates only.",
+      "aliases": []
+    },
+    {
+      "id": "pajaro-valley-fire",
+      "name": "Pajaro Valley Fire Protection District",
+      "county": "Santa Cruz",
+      "kind": "agency",
+      "channel": "official_website",
+      "url": "https://www.pajarovalleyfire.com/",
+      "officialURL": "https://www.pajarovalleyfire.com/",
+      "referenceVerifiedAt": "2026-11-02",
+      "scopeNote": "Official website fallback: no verified Facebook channel located; check current incident/news updates only.",
+      "aliases": []
+    }
+  ]
+}

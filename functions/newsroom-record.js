@@ -1,6 +1,7 @@
 'use strict';
 const {createHash}=require('node:crypto');
 const {evidenceContext,dismissedIDs}=require('./evidence-context');
+const {facebookDetails}=require('./facebook-reports');
 const id=x=>typeof x==='string'&&/^[a-f0-9]{64}$/.test(x);
 const clean=(x,n)=>typeof x==='string'?x.trim().slice(0,n):'';
 function sourceURL(x){try{const u=new URL(x);return u.protocol==='https:'&&!u.username&&!u.password&&!u.port?u.href:null;}catch{return null;}}
@@ -9,7 +10,7 @@ function researchRecord(x){
  const kind=['facebook_group','email','official_email','public_page','official_statement'].includes(x.kind)?x.kind:'research';
  const sources=(Array.isArray(x.sources)?x.sources:[]).slice(0,30).map(s=>({label:clean(s.label,240),url:sourceURL(s.url),kind:clean(s.kind,40),excerpt:clean(s.excerpt,6000),publishedAt:clean(s.publishedAt,40)}));
  if(!clean(x.title,240)||!clean(x.summary,6000)||!sources.length)return null;
- return {version:1,id:x.id,revision:x.revision,kind,title:clean(x.title,240),summary:clean(x.summary,6000),whatChanged:clean(x.whatChanged,3000),location:clean(x.location,500),observedAt:x.observedAt,eventAt:Number.isFinite(Date.parse(x.eventAt))?x.eventAt:null,timeLabel:clean(x.timeLabel,600)||'Event time unconfirmed',priority:['urgent','important'].includes(x.priority)?x.priority:'routine',verification:'Source report · needs verification',sources,questions:(Array.isArray(x.questions)?x.questions:[]).filter(s=>typeof s==='string').slice(0,20).map(s=>clean(s,1000)),contradictions:(Array.isArray(x.contradictions)?x.contradictions:[]).filter(s=>typeof s==='string').slice(0,20).map(s=>clean(s,1000)),relatedJobIDs:(Array.isArray(x.relatedJobIDs)?x.relatedJobIDs:[]).filter(s=>/^[a-f0-9]{20}$/.test(s)),notify:x.notify===true,createdAt:x.createdAt||x.observedAt};
+ return {version:1,id:x.id,revision:x.revision,kind,facebook:facebookDetails(x),title:clean(x.title,240),summary:clean(x.summary,6000),whatChanged:clean(x.whatChanged,3000),location:clean(x.location,500),observedAt:x.observedAt,eventAt:Number.isFinite(Date.parse(x.eventAt))?x.eventAt:null,timeLabel:clean(x.timeLabel,600)||'Event time unconfirmed',priority:['urgent','important'].includes(x.priority)?x.priority:'routine',verification:'Source report · needs verification',sources,questions:(Array.isArray(x.questions)?x.questions:[]).filter(s=>typeof s==='string').slice(0,20).map(s=>clean(s,1000)),contradictions:(Array.isArray(x.contradictions)?x.contradictions:[]).filter(s=>typeof s==='string').slice(0,20).map(s=>clean(s,1000)),relatedJobIDs:(Array.isArray(x.relatedJobIDs)?x.relatedJobIDs:[]).filter(s=>/^[a-f0-9]{20}$/.test(s)),notify:x.notify===true,createdAt:x.createdAt||x.observedAt};
 }
 function fieldNote(x){
  if(!x||!id(x.id)||!Number.isInteger(x.revision)||x.revision<1)throw Object.assign(Error('Invalid note'),{code:400});

@@ -19,6 +19,7 @@ const ROOT = '_tipalerts/v1/';
 const tipMedia=require('./tip-media').createTipMedia({read,write,bucket:()=>bucket()});
 const {noteMetadata,noteSummary}=require('./field-note-index');
 const {researchRecord}=require('./newsroom-record');
+const {monitorStatus:facebookMonitorStatus}=require('./facebook-reports');
 const facebookMedia=require('./facebook-media').createFacebookMedia({read,bucket:()=>bucket(),root:ROOT});
 const fieldHandler=require('./field-notes').createFieldNotes({read,write,bucket:()=>bucket(),root:ROOT});
 const {threadMetadata,threadSummary,createProducerDesk}=require('./producer-desk');
@@ -295,8 +296,8 @@ async function handleApi(req, res) {
         if(String(body.op||'').startsWith('field-'))return res.json(await fieldHandler(body));
         if(['facebook-media-list','facebook-media-read'].includes(body.op))return res.json(await facebookMedia(body));
         if(body.op==='newsroom'){
-            const [records,notes,health]=await Promise.all([inboxDocuments('research/'),fieldSummaries(),read('research-monitor/status.json')]);
-            return res.json({alerts:records.map(researchRecord).filter(Boolean).filter(x=>Date.parse(x.observedAt)>Date.now()-30*86400000).sort((a,b)=>Date.parse(b.observedAt)-Date.parse(a.observedAt)).slice(0,200),notes,monitor:health?.data||null});
+            const [records,notes,health,facebookHealth]=await Promise.all([inboxDocuments('research/'),fieldSummaries(),read('research-monitor/status.json'),read('facebook-monitor/status.json')]);
+            return res.json({alerts:records.map(researchRecord).filter(Boolean).filter(x=>Date.parse(x.observedAt)>Date.now()-30*86400000).sort((a,b)=>Date.parse(b.observedAt)-Date.parse(a.observedAt)).slice(0,200),notes,monitor:health?.data||null,facebookMonitor:facebookMonitorStatus(facebookHealth?.data)});
         }
         if(body.op==='thumbnail'){
             if(!requestedThumbnail(body))return res.status(400).json({error:'Invalid thumbnail.'});

@@ -1,5 +1,6 @@
 'use strict';
 const {createHash}=require('node:crypto');
+const {approvedReport,safeURL}=require('./facebook-reports');
 const id=x=>typeof x==='string'&&/^[a-f0-9]{64}$/.test(x);
 const error=(message,code=400)=>Object.assign(new Error(message),{code});
 const GROUP='1416333486418080', PART_BYTES=1024*1024, MAX_BYTES=200*1024*1024;
@@ -11,7 +12,7 @@ function inGroup(value){try{return new URL(facebookURL(value)).pathname.startsWi
 function manifest(value,reportID,sources){
  if(!value||value.version!==1||value.reportID!==reportID||!Array.isArray(value.assets)||value.assets.length>12)throw error('Invalid Facebook media manifest.');
  return value.assets.map(a=>{
-  if(!a||!id(a.id)||!id(a.sha256)||!TYPES.has(a.mimeType)||!Number.isSafeInteger(a.bytes)||a.bytes<=0||a.bytes>MAX_BYTES||!Array.isArray(a.parts)||a.parts.length<1||a.parts.length>200||!['original','source_screenshot'].includes(a.origin)||!facebookURL(a.sourceURL)||!sources.includes(a.sourceURL))throw error('Invalid Facebook attachment.');
+  if(!a||!id(a.id)||!id(a.sha256)||!TYPES.has(a.mimeType)||!Number.isSafeInteger(a.bytes)||a.bytes<=0||a.bytes>MAX_BYTES||!Array.isArray(a.parts)||a.parts.length<1||a.parts.length>200||!['original','source_screenshot'].includes(a.origin)||!safeURL(a.sourceURL)||!sources.includes(a.sourceURL))throw error('Invalid Facebook attachment.');
   let bytes=0;
   const parts=a.parts.map(p=>{if(!p||!id(p.sha256)||!Number.isSafeInteger(p.bytes)||p.bytes<=0||p.bytes>PART_BYTES)throw error('Invalid Facebook media part.');bytes+=p.bytes;return {sha256:p.sha256,bytes:p.bytes};});
   if(bytes!==a.bytes||typeof a.filename!=='string'||!a.filename||a.filename.length>180||/[\x00-\x1f/\\]/.test(a.filename))throw error('Invalid Facebook media size or name.');
@@ -29,7 +30,7 @@ function createFacebookMedia({read,bucket,root}){
   if(!id(body.id))throw error('Invalid Facebook report.');
   const report=(await read('research/'+body.id+'.json'))?.data;
   const sources=(report?.sources||[]).map(s=>s.url);
-  if(!sources.some(inGroup))throw error('Facebook report not found.',404);
+  if(!approvedReport(report))throw error('Facebook report not found.',404);
   const stored=(await read('facebook-media/'+body.id+'/manifest.json'))?.data;
   const assets=stored?manifest(stored,body.id,sources):[];
   if(body.op==='facebook-media-list')return {assets};
