@@ -76,3 +76,15 @@ body:has(.business-dialog[open]) { overflow: hidden; }
 .business-tile-banner[src$="/redwood-reef-wellness.webp"] { transform: scale(1.4); filter: blur(3px); }
 .business-tile-banner[src$="/paint-store-buckets.png"] { transform: scale(1.4); filter: blur(9px); }
 .business-tile-banner[src$="/wholehearted-tattoo.jpg"] { object-position: center 30%; transform: scale(1.18); filter: blur(4px); }
+
+/* Short, gentle modal transitions; native dialog still owns focus and Escape. */
+@media (prefers-reduced-motion: no-preference) {
+ .business-dialog[open] { animation: business-dialog-in 240ms cubic-bezier(.2,.8,.2,1) both; }
+ .business-dialog[open]::backdrop { animation: business-backdrop-in 240ms ease-out both; }
+ .business-dialog[open].is-closing { animation: business-dialog-out 160ms ease-in both; }
+ .business-dialog[open].is-closing::backdrop { animation: business-backdrop-out 160ms ease-in both; }
+}
+@keyframes business-dialog-in { from { opacity: 0; transform: translateY(14px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes business-dialog-out { from { opacity: 1; transform: translateY(0) scale(1); } to { opacity: 0; transform: translateY(8px) scale(.99); } }
+@keyframes business-backdrop-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes business-backdrop-out { from { opacity: 1; } to { opacity: 0; } }

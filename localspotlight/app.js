@@ -193,6 +193,14 @@
     }
 
     const businessDialog = byId('businessDialog');
+    let dialogCloseTimer;
+    function closeBusiness() {
+        if (!businessDialog.open || businessDialog.classList.contains('is-closing')) return;
+        if (reducedMotion.matches) { businessDialog.close(); return; }
+        businessDialog.classList.add('is-closing');
+        // Keep the modal and focus trap active until its exit transition finishes.
+        dialogCloseTimer = setTimeout(() => businessDialog.close(), 180);
+    }
     function openBusiness(profile, index) {
         byId('businessDialogTitle').textContent = profile.businessName;
         byId('businessDialogContent').replaceChildren(businessCard(profile, index));
@@ -224,10 +232,15 @@
         return tile;
     }
     if (businessDialog) {
-        byId('closeBusinessDialog').addEventListener('click', () => businessDialog.close());
+        byId('closeBusinessDialog').addEventListener('click', closeBusiness);
+        businessDialog.addEventListener('cancel', event => { event.preventDefault(); closeBusiness(); });
+        businessDialog.addEventListener('close', () => {
+            clearTimeout(dialogCloseTimer);
+            businessDialog.classList.remove('is-closing');
+        });
         businessDialog.addEventListener('click', event => {
             const bounds = businessDialog.getBoundingClientRect();
-            if (event.target === businessDialog && (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom)) businessDialog.close();
+            if (event.target === businessDialog && (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom)) closeBusiness();
         });
     }
 
