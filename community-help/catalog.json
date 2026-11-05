@@ -28,7 +28,7 @@
     "sourceName": "Community Human Services",
     "sourceURL": "https://chservices.org/substance-abuse/outpatient-treatment/",
     "actionURL": "https://chservices.org/substance-abuse/outpatient-treatment/",
-    "details": "CHS offers outpatient substance-use treatment and assessments. Call Salinas at 831-237-7222 or Monterey at 831-383-7800 to start with an assessment. The provider accepts Medi-Cal and lists a sliding fee for private-pay clients. Confirm eligibility, costs and appointment availability directly; the page gives inconsistent adult/adolescent age language, so no age cutoff is asserted here.",
+    "details": "CHS offers outpatient substance-use treatment and assessments. Call Salinas at 831-237-7222 or Monterey at 831-383-7800 to start with an assessment. The provider accepts Medi-Cal and lists a sliding fee for private-pay clients. Ask which program serves your age group and confirm costs and appointment availability.",
     "evidence": "Read treatment page and https://chservices.org/contact/. Both list the same outpatient numbers. Conflicting age wording excluded; no immediate treatment slot promised.",
     "photoID": "monterey-laboratory",
     "state": "reviewed",
@@ -37,7 +37,7 @@
     "endsAt": null,
     "revision": 1,
     "publicPageURL": "https://www.chriscerney.org/community-help/#chs-recovery",
-    "reviewedFingerprint": "9c0554db998b6293"
+    "reviewedFingerprint": "a5090d9614339717"
   },
   {
     "id": "heap-bills",
@@ -248,7 +248,7 @@
     "sourceName": "Second Harvest Food Bank Santa Cruz County",
     "sourceURL": "https://www.thefoodbank.org/calfresh-program/",
     "actionURL": "https://www.thefoodbank.org/calfresh-program/",
-    "details": "Santa Cruz County residents can use the provider’s interest form or call 831-662-0991 to request help from its CalFresh outreach team. The interest form is a request for assistance, not an approved benefits application. Ask the team about current eligibility and required documents. Older income tables and immigration-category summaries are not reproduced here.",
+    "details": "Santa Cruz County residents can use the provider’s interest form or call 831-662-0991 to request help from its CalFresh outreach team. The interest form requests assistance; it does not approve benefits. Ask the team about current eligibility, required documents and next steps.",
     "evidence": "Provider page confirms outreach form and phone; no benefit amount, current legal eligibility rule or approval timeline is asserted.",
     "photoID": "santa-cruz-downtown",
     "state": "reviewed",
@@ -257,7 +257,7 @@
     "endsAt": null,
     "revision": 1,
     "publicPageURL": "https://www.chriscerney.org/community-help/#calfresh-application-help",
-    "reviewedFingerprint": "7c0d4c6e98d2dd1d"
+    "reviewedFingerprint": "98f17abc0adf510d"
   },
   {
     "id": "diaper-resources",
@@ -288,7 +288,7 @@
     "sourceName": "Watsonville Law Center",
     "sourceURL": "https://www.watsonvillelawcenter.org/services/",
     "actionURL": "https://www.watsonvillelawcenter.org/contact/",
-    "details": "The center offers free legal services for low-wage people and families, including wage and workplace issues. Read the Contact page before seeking help: most services require appointments and capacity is limited. Participants in its partner healthcare or CalWORKs programs can ask their provider or caseworker for a referral. The business-inquiry phone is not an intake line, and the current-client line is not offered here for new clients.",
+    "details": "The center offers free legal services for low-wage people and families, including wage and workplace issues. Read the Contact page’s new-client instructions: most services require appointments and capacity is limited. Participants in its partner healthcare or CalWORKs programs can ask their provider or caseworker for a referral. Case acceptance and a response are not guaranteed.",
     "evidence": "Services and https://www.watsonvillelawcenter.org/contact/ reviewed together. Contact restrictions and limited capacity retained; no representation or response promised.",
     "photoID": "santa-cruz-downtown",
     "state": "reviewed",
@@ -297,7 +297,7 @@
     "endsAt": null,
     "revision": 1,
     "publicPageURL": "https://www.chriscerney.org/community-help/#workers-legal-help",
-    "reviewedFingerprint": "6c9417cf2f261619"
+    "reviewedFingerprint": "9d14e63529ba6378"
   },
   {
     "id": "rental-housing-guidance",
