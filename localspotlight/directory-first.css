@@ -18,7 +18,7 @@
 .directory-first .directory-tools input, .directory-first .directory-tools select { height: 42px; }
 .directory-first .category-browser.is-enhanced { margin: 0; min-width: 0; }
 .directory-first .category-browser.is-enhanced .category-heading { display: none; }
-.directory-first .category-chips { display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 6px; padding: 0 0 6px; scrollbar-width: thin; }
+.directory-first .category-browser.is-enhanced .category-chips { display: flex; flex-wrap: wrap; overflow-x: visible; gap: 6px; padding: 0 0 6px; scrollbar-width: thin; }
 .directory-first .category-chip { flex: 0 0 auto; min-height: 38px; padding: 8px 11px; font-size: 11px; }
 .directory-first .directory-results-bar { margin: 8px 0 12px; }
 .directory-first .directory-grid:not(.is-text-view) { grid-template-columns: repeat(6,minmax(0,1fr)); gap: 12px; grid-auto-rows: 1fr; }
@@ -68,7 +68,7 @@ body:has(.business-dialog[open]) { overflow: hidden; }
  .directory-first .category-chip { min-height: 40px; }
  .business-tile-copy { padding: 10px; }
  .business-tile-name { font-size: 14px; }
- .directory-first .directory-sort { display: block; font-size: 10px; }
+ .directory-first .category-browser.is-enhanced .category-chips { display: grid; grid-template-rows: repeat(2, 44px); grid-auto-flow: column; grid-auto-columns: max-content; overflow-x: auto; padding: 2px 1px 6px; }
 }
 @media(prefers-reduced-motion:reduce) { .business-tile { transition: none; } }
 /* Preserve the existing soft crops in the compact tiles, including brand-free paint. */
