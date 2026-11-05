@@ -73,6 +73,7 @@
     function publicProfile(profile) {
         const source = profile && typeof profile === 'object' ? profile : {};
         return {
+            id: string(source.id, 100),
             businessName: string(source.businessName, 100), category: string(source.category, 100),
             city: string(source.city, 80), description: string(source.description, 400),
             website: string(source.website, 300), phone: string(source.phone, 40), logoUrl: string(source.logoUrl, 500), bannerUrl: string(source.bannerUrl, 500),
@@ -219,14 +220,15 @@
         const category = byId('categoryFilter').value;
         const city = byId('cityFilter').value;
         document.querySelectorAll('[data-category]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.category === category)));
-        const filtered = listings.filter((listing) => {
+        const filtered = window.CerneySelectsDailyOrder.order(listings).filter((listing) => {
             const searchable = `${listing.businessName} ${listing.city} ${listing.category} ${listing.description}`.toLocaleLowerCase();
             return matchesCategory(listing, category) && (!city || listing.city === city) && (!search || searchable.includes(search));
         });
-        // Featured placement is paused: every listing has the same presentation and alphabetical priority.
         const sortLabel = document.querySelector('.directory-sort');
-        if (sortLabel) sortLabel.textContent = 'Businesses A–Z';
-        filtered.sort((a, b) => a.businessName.localeCompare(b.businessName));
+        if (sortLabel) {
+            sortLabel.textContent = 'Rotates daily';
+            sortLabel.title = 'Every business takes a turn near the top. The order changes at midnight Pacific.';
+        }
         filteredCount = filtered.length;
         const pages = Math.max(1, Math.ceil(filtered.length / pageSize));
         page = Math.min(page, pages);
@@ -261,8 +263,8 @@
         const count = Number(byId('previewCount').value);
         pageSize = byId('previewShowAll').checked ? 100 : 20;
         mode = MODES.includes(byId('previewMode').value) ? byId('previewMode').value : 'logos';
-        // The vetted source order is intentionally varied; sorting applies only after selecting the count.
-        listings = allListings.slice(0, COUNTS.includes(count) ? count : 20).sort((a, b) => a.businessName.localeCompare(b.businessName));
+        // Keep the vetted sample order when selecting the preview size.
+        listings = allListings.slice(0, COUNTS.includes(count) ? count : 20);
         page = 1;
         populateCities();
         renderDirectory();
@@ -278,7 +280,7 @@
             allListings = data.listings.filter((item) => item && typeof item.businessName === 'string' && item.businessName.trim()).map(publicProfile);
             directoryLoaded = true;
             if (isPreview) applyPreview();
-            else { listings = allListings.sort((a, b) => a.businessName.localeCompare(b.businessName)); populateCities(); renderDirectory(); }
+            else { listings = allListings; populateCities(); renderDirectory(); }
         } catch {
             if (!directoryLoaded) {
                 byId('resultsCount').textContent = 'Listings could not be loaded.';

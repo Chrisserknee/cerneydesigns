@@ -19,9 +19,44 @@
 }
 .contact-phone-label { color: #b4cce2; font-size: .75rem; font-weight: 500; }
 .contact-phone-number { font-variant-numeric: tabular-nums; }
+/* Keep every contact control on one row, below the website link. */
+.directory-page .directory-card-body { container: listing-card / inline-size; }
+.directory-page .directory-card-bottom {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+}
+.directory-page .directory-card-bottom > .directory-site-link { grid-column: 1 / -1; grid-row: 1; }
+.directory-page .directory-card-bottom > .directory-phone { grid-column: 1; grid-row: 2; justify-self: start; }
+.directory-page .directory-card-bottom > .business-socials {
+    grid-column: 2;
+    grid-row: 2;
+    flex-wrap: nowrap;
+    gap: 6px;
+    margin-left: 0;
+}
+.directory-page .directory-card-bottom .business-social-link {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
+    padding: 10px;
+}
+.directory-page .directory-card-bottom .directory-phone {
+    min-height: 44px;
+    padding: 10px 6px;
+    font-size: .8rem;
+}
+.directory-page .directory-card-bottom .contact-phone-label { display: none; }
+@container listing-card (max-width: 280px) {
+    .directory-page .directory-card-bottom { gap: 4px; }
+    .directory-page .directory-card-bottom:has(.business-social-link:nth-child(3)) .directory-phone { padding-inline: 2px; font-size: .69rem; }
+    .directory-page .directory-card-bottom > .business-socials { gap: 2px; }
+}
 .directory-page .directory-card a.directory-phone:hover,
 .business-card .card-links a.card-phone:hover { background: #2a4259; border-color: #8db7dc; color: #fff; }
 @media (max-width: 600px) {
     .directory-page .directory-card-bottom .directory-phone,
     .business-card .card-links .card-phone { min-height: 46px; }
+    .directory-page .directory-card-bottom .business-social-link { height: 46px; min-height: 46px; }
 }
