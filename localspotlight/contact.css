@@ -60,3 +60,13 @@
     .business-card .card-links .card-phone { min-height: 46px; }
     .directory-page .directory-card-bottom .business-social-link { height: 46px; min-height: 46px; }
 }
+
+.directory-page .directory-card .directory-address { color: var(--blue, #8db7dc); font-size: .8rem; line-height: 1.45; overflow-wrap: anywhere; display: flex; align-items: center; min-height: 44px; margin-top: 4px; }
+.business-card .business-address { font-size: .84rem; line-height: 1.5; overflow-wrap: anywhere; margin-top: 8px; }
+/* A modest mobile trim; retain full descriptions and comfortable touch targets. */
+@media (max-width: 600px) {
+    .cerneyselects-site.directory-page .directory-grid:not(.is-text-view) { grid-auto-rows: auto; gap: 16px; }
+    .cerneyselects-site.directory-page .directory-card { padding: 18px; --listing-banner-height: 124px; }
+    .cerneyselects-site.directory-page .directory-card .directory-card-top { margin: -18px -18px 14px; padding: 12px 18px; }
+    .directory-page .directory-card-top.has-banner .directory-mark { height: 92px; }
+}

@@ -4,7 +4,7 @@
     const API = '/api/spotlight';
     const DRAFT_KEY = 'cc_spotlight_draft_v1';
     const REQUEST_KEY = 'cc_spotlight_request_v1';
-    const PUBLIC_FIELDS = ['businessName', 'category', 'city', 'description', 'website', 'phone', 'logoUrl', 'bannerSourceUrl', ...window.CerneySelectsSocials.platforms.map(item => item.field)];
+    const PUBLIC_FIELDS = ['businessName', 'category', 'city', 'description', 'website', 'phone', 'address', 'logoUrl', 'bannerSourceUrl', ...window.CerneySelectsSocials.platforms.map(item => item.field)];
     const categories = [
         'Food & Restaurants',
         'Drinks & Nightlife',
@@ -89,7 +89,7 @@
 
     function publicProfile(profile) {
         const source = profile && typeof profile === 'object' ? profile : {};
-        return Object.fromEntries(PUBLIC_FIELDS.map((field) => [field, string(source[field], field === 'description' ? 400 : ['logoUrl', 'bannerSourceUrl'].includes(field) ? 500 : (field === 'website' || field.endsWith('Url')) ? 300 : field === 'phone' ? 40 : field === 'city' ? 80 : 100)]));
+        return Object.fromEntries(PUBLIC_FIELDS.map((field) => [field, string(source[field], field === 'description' ? 400 : ['logoUrl', 'bannerSourceUrl'].includes(field) ? 500 : (field === 'website' || field.endsWith('Url')) ? 300 : field === 'address' ? 200 : field === 'phone' ? 40 : field === 'city' ? 80 : 100)]));
     }
 
     function businessCard(profile, preview = false, localLogoPreview = '') {
@@ -120,6 +120,7 @@
         card.append(node('p', 'business-category', safe.category || 'Your category'));
         card.append(node('h3', '', name));
         card.append(node('p', 'business-location', safe.city || 'Your community'));
+        if (safe.address) card.append(node('p', 'business-address', safe.address));
         card.append(node('p', 'business-description', safe.description || 'A little about your business, what you offer, and what makes you part of this community.'));
         const links = node('div', 'card-links');
         const href = websiteUrl(safe.website);

@@ -75,7 +75,7 @@
         return {
             id: string(source.id, 100),
             businessName: string(source.businessName, 100), category: string(source.category, 100),
-            city: string(source.city, 80), description: string(source.description, 400),
+            city: string(source.city, 80), address: string(source.address, 200), description: string(source.description, 400),
             website: string(source.website, 300), phone: string(source.phone, 40), logoUrl: string(source.logoUrl, 500), bannerUrl: string(source.bannerUrl, 500),
             ...Object.fromEntries(window.CerneySelectsSocials.platforms.map(({ field }) => [field, string(source[field], 300)])),
             logoBackdrop: isPreview && source.logoBackdrop === 'dark' ? 'dark' : '',
@@ -164,6 +164,11 @@
         }
         const body = node('div', 'directory-card-body');
         body.append(node('p', 'directory-card-category', profile.category || 'Local business'), businessName(profile), node('p', 'directory-city', profile.city));
+        if (profile.address) {
+            const address = link(profile.address + ' ↗', 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(profile.address), 'directory-address', profile.businessName);
+            address.setAttribute('aria-label', `View location for ${profile.businessName}: ${profile.address}`);
+            body.append(address);
+        }
         if (profile.description) body.append(node('p', 'directory-description', profile.description));
         const bottom = node('div', 'directory-card-bottom');
         const href = websiteUrl(profile.website);

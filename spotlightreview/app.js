@@ -42,6 +42,7 @@
         $('businessCity').textContent = text(profile.city);
         $('businessDescription').textContent = text(profile.description);
         $('customerEmail').textContent = text(data.customerEmail);
+        $('businessAddress').textContent = text(profile.address); $('addressRow').hidden = !profile.address;
         $('businessPhone').textContent = text(profile.phone); $('phoneRow').hidden = !profile.phone;
         const socials = window.CerneySelectsSocialLinks(profile, { labels: true });
         $('businessSocials').replaceChildren(...(socials ? [socials] : []));

@@ -89,3 +89,14 @@ test('adding social links to an already approved legacy listing cannot bypass re
  f.subscription.metadata.instagram_url='https://www.instagram.com/examplecoffee/';
  assert.equal((await f.service.directory()).listings.length,0);
 });
+
+test('address is reviewed before publication and later changes invalidate approval',async()=>{
+ const address='123 Test St, Suite 2, Monterey, CA 93940',f=application({address});
+ await f.service.webhook(f.event);const token=f.token();
+ assert.equal((await f.service.directory()).listings.length,0);
+ assert.equal((await f.core.review({token})).business.address,address);
+ await f.core.decide({token,decision:'approve',confirmed:true});
+ assert.equal((await f.service.directory()).listings[0].address,address);
+ f.subscription.metadata.business_address='456 Other St, Monterey, CA 93940';
+ assert.equal((await f.service.directory()).listings.length,0);
+});

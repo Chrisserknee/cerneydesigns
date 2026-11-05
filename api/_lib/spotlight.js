@@ -25,8 +25,8 @@ const CATEGORIES = Object.freeze([
     'Farms, Outdoors & Local Living',
 ]);
 const BASE_PUBLIC_FIELDS = ['businessName', 'category', 'city', 'description', 'website', 'phone', 'logoUrl'];
-const PUBLIC_FIELDS = [...BASE_PUBLIC_FIELDS, 'bannerSourceUrl', ...socials.platforms.map(item => item.field)];
-const META_FIELDS = { businessName: 'business_name', category: 'category', city: 'city', description: 'description', website: 'website', phone: 'phone', logoUrl: 'logo_url', bannerSourceUrl: 'banner_source_url', ...Object.fromEntries(socials.platforms.map(item => [item.field, item.metadata])) };
+const PUBLIC_FIELDS = [...BASE_PUBLIC_FIELDS, 'address', 'bannerSourceUrl', ...socials.platforms.map(item => item.field)];
+const META_FIELDS = { businessName: 'business_name', category: 'category', city: 'city', description: 'description', website: 'website', phone: 'phone', address: 'business_address', logoUrl: 'logo_url', bannerSourceUrl: 'banner_source_url', ...Object.fromEntries(socials.platforms.map(item => [item.field, item.metadata])) };
 const WEBHOOK_EVENTS = new Set(['checkout.session.completed', 'checkout.session.async_payment_succeeded', 'invoice.paid', 'invoice.payment_failed', 'customer.subscription.updated', 'customer.subscription.deleted', 'refund.created', 'refund.updated', 'refund.failed']);
 
 class SpotlightError extends Error {
@@ -71,13 +71,14 @@ function createStripe(settings = config()) {
 function validateProfile(input, requireEmail = false) {
     if (!input || typeof input !== 'object' || Array.isArray(input)) throw new SpotlightError('Enter your business details.');
     const profile = {};
-    for (const [name, max] of Object.entries({ businessName: 100, category: 50, city: 80, description: 400, website: 300, phone: 40, logoUrl: 500, bannerSourceUrl: 500 })) {
-        const raw = input[name] === undefined && ['phone', 'logoUrl', 'bannerSourceUrl'].includes(name) ? '' : input[name];
+    for (const [name, max] of Object.entries({ businessName: 100, category: 50, city: 80, description: 400, website: 300, phone: 40, address: 200, logoUrl: 500, bannerSourceUrl: 500 })) {
+        const raw = input[name] === undefined && ['phone', 'address', 'logoUrl', 'bannerSourceUrl'].includes(name) ? '' : input[name];
         if (typeof raw !== 'string') throw new SpotlightError(`Enter a valid ${name}.`);
         const value = (name === 'description' ? raw.replace(/\r\n|\r|\n/g, ' ') : raw).trim();
-        if ((!value && !['phone', 'logoUrl', 'bannerSourceUrl'].includes(name)) || value.length > max || /[\u0000-\u001f\u007f<>]/.test(value)) throw new SpotlightError(`Enter a valid ${name} (up to ${max} characters).`);
+        if ((!value && !['phone', 'address', 'logoUrl', 'bannerSourceUrl'].includes(name)) || value.length > max || /[\u0000-\u001f\u007f<>]/.test(value)) throw new SpotlightError(`Enter a valid ${name} (up to ${max} characters).`);
         profile[name] = value;
     }
+    if (!profile.address) delete profile.address;
     if (!CATEGORIES.includes(profile.category)) throw new SpotlightError('Choose a business category.');
     try {
         const url = new URL(profile.website);
@@ -184,13 +185,15 @@ function published(subscription, settings) {
 function publicListing(subscription) {
     const profile = readProfile(subscription.metadata);
     const listingId = crypto.createHash('sha256').update(`spotlight:${subscription.id}`).digest('hex').slice(0, 20);
+    const verifiedAddress = require('./spotlight-verified-addresses.json')[listingId];
+    const address = subscription.livemode && !profile.address && verifiedAddress?.profileHash === publicProfileHash(profile) ? verifiedAddress.address : '';
     const existingLogo = require('./spotlight-existing-logos.json')[listingId];
     const logo = subscription.livemode && !profile.logoUrl && existingLogo?.profileHash === publicProfileHash(profile) ? existingLogo.url : '';
     const existingBanner = require('./spotlight-existing-banners.json')[listingId];
     const fallback = subscription.livemode && !profile.bannerSourceUrl && existingBanner?.profileHash === publicProfileHash(profile) ? existingBanner.url : '';
     const image = (subscription.metadata.spotlight_banner_profile === publicProfileHash(profile)
         ? bannerUrl(subscription.metadata.spotlight_banner_url, subscription.livemode) : '') || fallback;
-    return { id: crypto.createHash('sha256').update(`spotlight:${subscription.id}`).digest('hex').slice(0, 20), ...profile, ...(logo ? { logoUrl: logo } : {}), ...(image ? { bannerUrl: image } : {}) };
+    return { id: listingId, ...profile, ...(address ? { address } : {}), ...(logo ? { logoUrl: logo } : {}), ...(image ? { bannerUrl: image } : {}) };
 }
 
 function createService(stripe, settings = config(), moderation = callModeration) {

@@ -28,6 +28,9 @@ function profileFrom(metadata) {
     FIELDS.forEach((key, index) => {
         if ((!profile[key] && !['phone', 'logoUrl'].includes(key)) || profile[key].length > maximums[index] || /[\u0000-\u001f\u007f<>]/.test(profile[key])) throw error('Business profile needs review.', 409, 'PROFILE_CHANGED');
     });
+    const address = metadata?.business_address;
+    if (address !== undefined && (typeof address !== 'string' || address.trim().length > 200 || /[\u0000-\u001f\u007f<>]/.test(address))) throw error('Business address needs review.', 409, 'PROFILE_CHANGED');
+    if (address?.trim()) profile.address = address.trim();
     const selectedBanner = metadata?.banner_source_url;
     if (selectedBanner) {
         if (typeof selectedBanner !== 'string' || selectedBanner.length > 500 || /[\u0000-\u001f\u007f<>]/.test(selectedBanner)) throw error('Banner needs review.', 409, 'PROFILE_CHANGED');
