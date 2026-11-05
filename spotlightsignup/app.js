@@ -120,8 +120,8 @@
         card.append(node('p', 'business-category', safe.category || 'Your category'));
         card.append(node('h3', '', name));
         card.append(node('p', 'business-location', safe.city || 'Your community'));
-        if (safe.address) card.append(node('p', 'business-address', safe.address));
         card.append(node('p', 'business-description', safe.description || 'A little about your business, what you offer, and what makes you part of this community.'));
+        if (safe.address) card.append(node('p', 'business-address', safe.address));
         const links = node('div', 'card-links');
         const href = websiteUrl(safe.website);
         if (href && !preview) {

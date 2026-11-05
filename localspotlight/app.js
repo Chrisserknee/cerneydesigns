@@ -164,12 +164,12 @@
         }
         const body = node('div', 'directory-card-body');
         body.append(node('p', 'directory-card-category', profile.category || 'Local business'), businessName(profile), node('p', 'directory-city', profile.city));
+        if (profile.description) body.append(node('p', 'directory-description', profile.description));
         if (profile.address) {
             const address = link(profile.address + ' ↗', 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(profile.address), 'directory-address', profile.businessName);
             address.setAttribute('aria-label', `View location for ${profile.businessName}: ${profile.address}`);
             body.append(address);
         }
-        if (profile.description) body.append(node('p', 'directory-description', profile.description));
         const bottom = node('div', 'directory-card-bottom');
         const href = websiteUrl(profile.website);
         if (href) bottom.append(link('Visit website ↗', href, 'directory-site-link', profile.businessName));
