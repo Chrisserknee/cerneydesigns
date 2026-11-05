@@ -31,14 +31,14 @@
     <script src="/localspotlight/social-ui.js" defer></script>
     <script src="/localspotlight/daily-order.js" defer></script>
     <script src="/localspotlight/app.js" defer></script>
-    <link rel="stylesheet" href="/localspotlight/compact-hero.css">
-    <script src="/localspotlight/hero-motion.js" defer></script>
+    <link rel="stylesheet" href="/localspotlight/directory-first.css">
 </head>
-<body class="cerneyselects-site directory-page">
+<body class="cerneyselects-site directory-page directory-first">
     <a class="skip-link" href="#main">Skip to content</a>
     <header class="site-header">
         <nav class="shell nav-inner" aria-label="Primary navigation">
             <a class="wordmark" href="https://cerneyselects.com/" aria-label="Cerney Selects home"><img class="nav-character" src="/localspotlight/hero-sticker.png?v=2" width="40" height="44" alt="" aria-hidden="true"><span>Cerney <strong>Selects</strong></span></a>
+            <a class="join-compact" href="/apply/">Join ↗</a>
             <button class="menu-toggle" id="menuToggle" type="button" aria-expanded="false" aria-controls="primaryLinks">Menu <span aria-hidden="true">☰</span></button>
             <div class="nav-links" id="primaryLinks">
                 <a href="/#businesses" aria-current="page">Explore businesses</a>
@@ -50,21 +50,7 @@
     </header>
 
     <main id="main" class="directory-main shell">
-        <header class="page-heading directory-heading">
-            <div class="spotlight-hero-copy">
-                <div class="spotlight-hero-kicker">
-                    <p class="directory-eyebrow">Turning up the local love.</p>
-                </div>
-                <h1><span>Cerney</span> <span>Selects</span></h1>
-                <img class="spotlight-hero-sticker" src="/localspotlight/hero-sticker.png?v=2" alt="Cerney Selects thumbs-up sticker illustration" width="1198" height="1313" decoding="async" fetchpriority="high">
-                <p class="spotlight-hero-intro">Good food. Great shops. People worth knowing.<br class="hero-copy-break"> Find your next favorite right here in Monterey County.</p>
-            </div>
-            <aside class="spotlight-owner-invitation" aria-label="List your business">
-                <h2>List your business.</h2>
-                <p>Reach local customers for $100 per month. Listings appear after review and approval.</p>
-                <a class="directory-feature-link" href="/apply/">Apply to join <span aria-hidden="true">↗</span></a>
-            </aside>
-        </header>
+        <header class="directory-intro"><h1>Discover local businesses.</h1><p>Monterey County &amp; nearby communities</p></header>
         <section id="businesses" aria-label="Local businesses" class="directory-browse">
             <div class="category-browser" id="categoryBrowser">
                 <div class="category-heading">
@@ -90,7 +76,7 @@
                 <div class="city-field"><label for="cityFilter" class="sr-only">Filter by city</label><select id="cityFilter"><option value="">All cities</option></select></div>
             </div>
             <div class="directory-results-bar"><p class="results-count" id="resultsCount" role="status" aria-live="polite">Loading Cerney Selects…</p><p class="directory-sort">Rotates daily</p></div>
-            <div class="business-grid directory-grid" id="businessGrid"></div>
+            <div class="business-grid directory-grid" id="businessGrid"><div class="business-tile-skeleton" aria-hidden="true"></div><div class="business-tile-skeleton" aria-hidden="true"></div><div class="business-tile-skeleton" aria-hidden="true"></div><div class="business-tile-skeleton" aria-hidden="true"></div><div class="business-tile-skeleton" aria-hidden="true"></div><div class="business-tile-skeleton" aria-hidden="true"></div><div class="business-tile-skeleton" aria-hidden="true"></div><div class="business-tile-skeleton" aria-hidden="true"></div><div class="business-tile-skeleton" aria-hidden="true"></div><div class="business-tile-skeleton" aria-hidden="true"></div><div class="business-tile-skeleton" aria-hidden="true"></div><div class="business-tile-skeleton" aria-hidden="true"></div></div>
             <div class="directory-empty" id="directoryEmpty" hidden>
                 <span class="directory-empty-mark" aria-hidden="true">↗</span>
                 <h2 id="emptyTitle">Be part of the first selects.</h2>
@@ -110,6 +96,10 @@
         </section>
         <noscript><p class="notice">Enable JavaScript to search the business directory. You can also <a href="/apply/">learn about listing your business</a> or <a href="mailto:cerneymedia@gmail.com">contact Chris by email</a>.</p></noscript>
     </main>
+    <dialog id="businessDialog" class="business-dialog" aria-labelledby="businessDialogTitle">
+        <div class="business-dialog-toolbar"><h2 id="businessDialogTitle" class="sr-only">Business details</h2><span>Paid business listing</span><button id="closeBusinessDialog" type="button" aria-label="Close business details" autofocus>Close ×</button></div>
+        <div id="businessDialogContent"></div>
+    </dialog>
     <footer class="site-footer"><div class="shell footer-inner"><a class="wordmark" href="https://cerneyselects.com/">Cerney <strong>Selects</strong></a><nav class="policy-links" aria-label="Site information"><a href="/privacy/">Privacy</a><a href="/terms/">Listing terms</a><a href="/apply/#manage">Manage billing / cancel</a><a class="button button-outline" href="mailto:cerneymedia@gmail.com?subject=Cerney%20Selects%20Support">Support</a></nav><span>© 2026 Chris Cerney</span></div></footer>
 </body>
 </html>

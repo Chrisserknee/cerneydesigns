@@ -4,7 +4,8 @@
     const API = '/api/spotlight';
     const PREVIEW_DATA = '/localspotlight/preview/businesses.json';
     const isPreview = document.body.dataset.designPreview === 'true' || /^\/localspotlight\/preview(?:\/|\/index\.html)?$/.test(window.location.pathname);
-    let pageSize = 20;
+    const compactDirectory = document.body.classList.contains('directory-first');
+    let pageSize = compactDirectory ? 48 : 20;
     const COUNTS = [10, 20, 30, 60, 80, 100];
     const MODES = ['logos', 'cards', 'text', 'mixed'];
     const byId = (id) => document.getElementById(id);
@@ -191,6 +192,45 @@
         return card;
     }
 
+    const businessDialog = byId('businessDialog');
+    function openBusiness(profile, index) {
+        byId('businessDialogTitle').textContent = profile.businessName;
+        byId('businessDialogContent').replaceChildren(businessCard(profile, index));
+        businessDialog.showModal();
+        businessDialog.scrollTop = 0;
+    }
+    function businessTile(profile, index) {
+        const tile = node('button', 'business-tile');
+        tile.type = 'button';
+        tile.setAttribute('aria-label', `View ${profile.businessName} details`);
+        tile.setAttribute('aria-haspopup', 'dialog');
+        const top = node('span', 'business-tile-art');
+        const src = logoUrl(profile.bannerUrl);
+        if (src) {
+            const banner = node('img', 'business-tile-banner');
+            banner.alt = ''; banner.loading = index < 12 ? 'eager' : 'lazy';
+            banner.decoding = 'async'; banner.referrerPolicy = 'no-referrer';
+            banner.src = src; banner.addEventListener('error', () => banner.remove(), { once: true });
+            top.append(banner);
+        }
+        const mark = businessMark(profile, true);
+        const logo = mark.querySelector('img');
+        if (logo && index < 12) logo.loading = 'eager';
+        top.append(mark);
+        const copy = node('span', 'business-tile-copy');
+        copy.append(node('span', 'business-tile-name', profile.businessName), node('span', 'business-tile-city', profile.city));
+        tile.append(top, copy);
+        tile.addEventListener('click', () => openBusiness(profile, index));
+        return tile;
+    }
+    if (businessDialog) {
+        byId('closeBusinessDialog').addEventListener('click', () => businessDialog.close());
+        businessDialog.addEventListener('click', event => {
+            const bounds = businessDialog.getBoundingClientRect();
+            if (event.target === businessDialog && (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom)) businessDialog.close();
+        });
+    }
+
     async function request() {
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), 25000);
@@ -240,7 +280,7 @@
         const offset = (page - 1) * pageSize;
         const visible = filtered.slice(offset, offset + pageSize);
         byId('businessGrid').classList.toggle('is-text-view', mode === 'text');
-        byId('businessGrid').replaceChildren(...visible.map((listing, index) => businessCard(listing, offset + index)));
+        byId('businessGrid').replaceChildren(...visible.map((listing, index) => (compactDirectory ? businessTile : businessCard)(listing, offset + index)));
         byId('directoryEmpty').hidden = Boolean(filtered.length);
         const noun = filtered.length === 1 ? 'business' : 'businesses';
         const suffix = isPreview ? ' · design examples' : '';
@@ -288,6 +328,7 @@
             else { listings = allListings; populateCities(); renderDirectory(); }
         } catch {
             if (!directoryLoaded) {
+                byId('businessGrid').replaceChildren();
                 byId('resultsCount').textContent = 'Listings could not be loaded.';
                 setEmpty('We couldn’t load the listings.', 'Please try again in a moment.', { retry: true });
             }

@@ -1,0 +1,78 @@
+/* Put business discovery first; full profiles open without leaving the directory. */
+.directory-first .shell { width: min(1320px, calc(100% - 48px)); }
+.directory-first .nav-inner { min-height: 60px; gap: 18px; }
+.directory-first .site-header .wordmark { font-size: 22px; gap: 8px; }
+.directory-first .nav-character { width: 28px; height: 32px; opacity: 1; visibility: visible; object-fit: contain; flex-shrink: 0; transform: none; }
+.directory-first .nav-links { margin-left: auto; gap: 22px; }
+.directory-first .nav-links a { font-size: 10px; }
+.directory-first .nav-links .nav-tipline { display: none; }
+.join-compact { order: 3; border: 1px solid #3d5770; color: #bad4e9; padding: 0 14px; min-height: 40px; display: inline-flex; align-items: center; font: 600 12px var(--font); text-decoration: none; white-space: nowrap; }
+.join-compact:hover { background: #213345; }
+.cerneyselects-site.directory-first .directory-main { padding-top: 20px; }
+.directory-intro { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.directory-intro h1 { font: 700 26px/1.1 'Barlow Condensed', sans-serif; letter-spacing: 0; margin: 0; }
+.directory-intro p { font-size: 12px; color: #9aa9b7; margin: 0; }
+.directory-first .directory-browse { display: flex; flex-direction: column; }
+.directory-first .directory-tools { order: -2; display: grid; grid-template-columns: minmax(0,1fr) 190px; gap: 10px; margin: 0 0 10px; }
+.directory-first .search-field { grid-column: auto; }
+.directory-first .directory-tools input, .directory-first .directory-tools select { height: 42px; }
+.directory-first .category-browser.is-enhanced { margin: 0; min-width: 0; }
+.directory-first .category-browser.is-enhanced .category-heading { display: none; }
+.directory-first .category-chips { display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 6px; padding: 0 0 6px; scrollbar-width: thin; }
+.directory-first .category-chip { flex: 0 0 auto; min-height: 38px; padding: 8px 11px; font-size: 11px; }
+.directory-first .directory-results-bar { margin: 8px 0 12px; }
+.directory-first .directory-grid:not(.is-text-view) { grid-template-columns: repeat(6,minmax(0,1fr)); gap: 12px; grid-auto-rows: 1fr; }
+.business-tile { appearance: none; display: flex; flex-direction: column; min-width: 0; padding: 0; border: 1px solid #2e4151; background: #16232e; color: #e9eef3; text-align: left; cursor: pointer; font: inherit; overflow: hidden; transition: border-color .15s, background .15s; }
+.business-tile:hover { border-color: #8bb0ce; background: #1c2d3a; }
+.business-tile:focus-visible { outline: 3px solid #a5cce9; outline-offset: 3px; }
+.business-tile-art { position: relative; isolation: isolate; display: grid; place-items: center; height: 76px; width: 100%; background: linear-gradient(135deg,#31495d,#223240); overflow: hidden; }
+.business-tile-banner { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -2; }
+.business-tile-art::after { content: ''; position: absolute; inset: 0; background: #07152226; z-index: -1; }
+.directory-first .business-tile .directory-mark { margin: 0; width: 64px; height: 54px; min-width: 0; max-width: 90%; padding: 5px; background: white; color: #24394a; display: grid; place-items: center; font-size: 18px; box-shadow: 0 2px 8px #0002; }
+.directory-first .business-tile .directory-mark img { display: block; max-width: 100%; max-height: 44px; width: 100%; height: 100%; object-fit: contain; }
+.business-tile-copy { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 5px; }
+.business-tile-name { font: 650 15px/1.25 'Inter',sans-serif; overflow-wrap: anywhere; }
+.business-tile-city { color: #aab9c5; font-size: 11px; line-height: 1.4; }
+.business-tile-skeleton { height: 158px; border: 1px solid #263c4e; background: linear-gradient(#223443 76px,#15212b 76px); }
+.directory-first .selects-about { margin-top: 40px; padding-top: 28px; }
+.business-dialog { width: min(560px,calc(100% - 24px)); max-height: calc(100dvh - 32px); padding: 0; border: 1px solid #526a7d; background: #16232e; color: #e9eef3; margin: auto; overscroll-behavior: contain; }
+.business-dialog::backdrop { background: #030a12c9; backdrop-filter: blur(5px); }
+body:has(.business-dialog[open]) { overflow: hidden; }
+.business-dialog-toolbar { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; position: sticky; top: 0; background: #101c27; z-index: 2; }
+.business-dialog-toolbar>span { font-size: 11px; color: #aab9c5; }
+.business-dialog-toolbar button { min-height: 44px; padding: 8px 12px; border: 1px solid #526a7d; background: transparent; color: #eef5fa; cursor: pointer; font: 600 13px var(--font); }
+.directory-first .business-dialog .directory-card { border: 0; margin: 0; }
+@media(max-width:1100px) { .directory-first .directory-grid:not(.is-text-view) { grid-template-columns: repeat(4,minmax(0,1fr)); } }
+@media(max-width:800px) {
+ .directory-first .nav-inner { gap: 10px; }
+ .directory-first .menu-toggle { order: 4; padding: 0 10px; min-height: 40px; font-size: 12px; }
+ .directory-first .join-compact { margin-left: auto; }
+ .directory-first .nav-links { order: 5; margin: 0; }
+ .directory-intro p { display: none; }
+}
+@media(max-width:600px) {
+ .directory-first .shell { width: calc(100% - 24px); }
+ .directory-first .nav-inner { min-height: 56px; gap: 6px; }
+ .directory-first .site-header .wordmark { font-size: 18px; gap: 5px; }
+ .directory-first .nav-character { width: 23px; height: 28px; }
+ .directory-first .join-compact { padding: 0 10px; }
+ .directory-first .menu-toggle { font-size: 0; padding: 0 10px; }
+ .directory-first .menu-toggle span { font-size: 17px; }
+ .cerneyselects-site.directory-first .directory-main { padding-top: 14px; }
+ .directory-intro { margin-bottom: 12px; }
+ .directory-intro h1 { font-size: 24px; }
+ .directory-first .directory-tools { grid-template-columns: minmax(0,1fr) 112px; gap: 6px; }
+ .directory-first .directory-tools input { padding-left: 32px; font-size: 16px; }
+ .directory-first .directory-tools select { font-size: 13px; padding: 0 6px; }
+ .directory-first .directory-grid:not(.is-text-view) { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
+ .directory-first .category-chip { min-height: 40px; }
+ .business-tile-copy { padding: 10px; }
+ .business-tile-name { font-size: 14px; }
+ .directory-first .directory-sort { display: block; font-size: 10px; }
+}
+@media(prefers-reduced-motion:reduce) { .business-tile { transition: none; } }
+/* Preserve the existing soft crops in the compact tiles, including brand-free paint. */
+.business-tile-banner[src$="/good-roots-events.webp"] { object-position: center bottom; transform: scale(1.4); transform-origin: center 75%; filter: blur(3px); }
+.business-tile-banner[src$="/redwood-reef-wellness.webp"] { transform: scale(1.4); filter: blur(3px); }
+.business-tile-banner[src$="/paint-store-buckets.png"] { transform: scale(1.4); filter: blur(9px); }
+.business-tile-banner[src$="/wholehearted-tattoo.jpg"] { object-position: center 30%; transform: scale(1.18); filter: blur(4px); }
