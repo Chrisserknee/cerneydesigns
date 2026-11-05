@@ -55,6 +55,31 @@ const els = {
     fileList: document.getElementById('fileList'),
 };
 
+// Community feedback uses the existing private intake and its normal review step.
+let communityFeedback = null;
+async function prefillCommunityFeedback() {
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('community'), kind = params.get('feedback');
+    if (id === 'question') {
+        els.whatHappened.value = 'Community question: ';
+        els.extraContext.value = 'Please investigate a useful local resource or an unanswered community question.';
+        return;
+    }
+    if (!/^[a-z0-9-]{1,80}$/.test(id || '') || !['helped', 'correction'].includes(kind)) return;
+    try {
+        const response = await fetch('/community-help/catalog.json', {cache: 'no-store'});
+        if (!response.ok) return;
+        const catalog = await response.json(), card = catalog.find(c => c.id === id);
+        if (!card) return;
+        communityFeedback = {id, kind};
+        if (!els.whatHappened.value) els.whatHappened.value = `Community Help ${kind === 'helped' ? 'feedback — this helped' : 'correction'}: ${card.title}\n\n`;
+        if (!els.storyLocation.value) els.storyLocation.value = card.area;
+        if (!els.storyTiming.value) els.storyTiming.value = 'Feedback on a Community Help resource';
+        if (!els.extraContext.value) els.extraContext.value = `Resource: https://www.chriscerney.org/community-help/#${id}\nProvider: ${card.sourceName}\nFeedback is unverified and needs editorial review.`;
+    } catch { /* The normal tip form stays available if the catalogue cannot load. */ }
+}
+if (typeof window.location?.search === 'string') void prefillCommunityFeedback();
+
 const reviewStepIndex = els.steps.length - 1;
 let currentStep = 0;
 let isSubmitting = false;
@@ -295,7 +320,7 @@ function collectData() {
     const anonymous = getRadioValue('anonymous') === 'Yes';
     return {
         type: 'story_submission',
-        title: 'Story Submission / Potential Investigation',
+        title: communityFeedback ? 'Community Help / ' + (communityFeedback.kind === 'correction' ? 'Correction to review' : 'Reader feedback') : 'Story Submission / Potential Investigation',
         whatHappened: els.whatHappened.value.trim(),
         location: els.storyLocation.value.trim(),
         timing: els.storyTiming.value.trim(),
