@@ -1,5 +1,5 @@
 .footer-inner{flex-wrap:wrap}
-.policy-links{display:flex;flex-wrap:wrap;gap:10px 20px;font-size:.75rem}
+.policy-links{display:flex;align-items:center;flex-wrap:wrap;gap:10px 20px;font-size:.75rem}
 .policy-links a{color:var(--dim)}
 .policy-header .nav-inner{flex-wrap:wrap;padding-block:18px}
 .policy-nav{display:flex;flex-wrap:wrap;gap:12px 24px;font-size:.85rem}
