@@ -130,5 +130,10 @@ export default async function middleware(request: Request) {
         url.pathname = '/spotlightsignup/index.html';
         return rewrite(url, { headers: { ...(publicSite ? { 'Cache-Control': 'no-store' } : previewHeaders), 'Content-Security-Policy': directoryCsp.replace("img-src 'self' data: https:", "img-src 'self' data: blob: https:") } });
     }
+    // Review links use private tokens; only allow our sanitized banner/logo host.
+    if (/^\/spotlightreview(?:\/|$)/.test(url.pathname)) {
+        const reviewCsp = directoryCsp.replace("img-src 'self' data: https:", "img-src 'self' data: https://firebasestorage.googleapis.com");
+        return next({ headers: { ...previewHeaders, 'Content-Security-Policy': reviewCsp, 'Referrer-Policy': 'no-referrer' } });
+    }
     return next({ headers: publicSite && !privateExamples ? { 'Cache-Control': 'no-store' } : previewHeaders });
 }
