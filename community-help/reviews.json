@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-11-05T08:52:00Z",
+  "checkedAt": "2026-11-05T16:33:40Z",
   "method": "Public-source research and bounded link checks. No calls, applications, personal outcomes or live inventory checks. Provider reports are attributed; a recognized provider is not a guarantee of current access.",
   "reviews": [
     {
@@ -18,16 +18,16 @@
     },
     {
       "id": "chs-recovery",
-      "fingerprint": "3f05359f061e0b6",
-      "checkedAt": "2026-11-05T08:36:13Z",
+      "fingerprint": "f1fc42f6e3ffbcff",
+      "checkedAt": "2026-11-05T16:33:40Z",
       "disposition": "reviewed",
       "serviceType": "direct-service",
       "providerURL": "https://chservices.org/substance-abuse/outpatient-treatment/",
       "actionURL": "https://chservices.org/substance-abuse/outpatient-treatment/",
       "corroborationURL": "https://211montereycounty.org/211-service/211montere-52247206/",
       "evidenceType": "independent-service-listing",
-      "finding": "211 independently lists CHS outpatient assessments, counseling, Medi-Cal and sliding fees. The provider and directory agree on the Salinas assessment phone. This supports a real treatment service, not a measured recovery-success claim.",
-      "limits": "No treatment slot, clinical outcome, or individual coverage decision was confirmed.",
+      "finding": "CHS and 211 describe outpatient substance-use assessments and agree on 831-237-7222 and 831-383-7800. The short headline is original editorial encouragement, not an attributed quote or a guarantee of recovery.",
+      "limits": "No appointment, coverage decision or individual outcome confirmed. Provider age wording is inconsistent; the existing instruction to ask which program serves the caller’s age group is retained.",
       "directContact": false
     },
     {
@@ -756,6 +756,34 @@
       "evidenceType": "government-program-instructions",
       "finding": "The city’s program and detailed enrollment pages identify the service area, assistance types, documentation and enrollment-help number.",
       "limits": "Individual eligibility, current funding and a credit amount were not confirmed.",
+      "directContact": false
+    },
+    {
+      "id": "santa-cruz-recovery",
+      "fingerprint": "c1183a034d0b68f1",
+      "checkedAt": "2026-11-05T16:33:40Z",
+      "disposition": "reviewed",
+      "serviceType": "assessment-and-referral",
+      "providerURL": "https://www.santacruzhealth.org/BehavioralHealth/Programs/SubstanceUseDisorderServices/Resources/UrgentServices.aspx",
+      "actionURL": "https://www.santacruzhealth.org/BehavioralHealth/Programs/SubstanceUseDisorderServices/Resources/UrgentServices.aspx",
+      "corroborationURL": "https://www.dhcs.ca.gov/individuals/substance-use-disorder-county-access-lines/",
+      "evidenceType": "county-service-and-state-directory",
+      "finding": "County and state agree on the 24/7 substance-use access number. The county also documents weekday assessment/support offices in Santa Cruz and Watsonville. Original motivational wording makes no promise of treatment or recovery.",
+      "limits": "An access and referral service, not a confirmed appointment or placement. Individual eligibility, insurance coverage, program availability and outcomes were not confirmed.",
+      "directContact": false
+    },
+    {
+      "id": "fentanyl-awareness",
+      "fingerprint": "553bd75b5ac415f3",
+      "checkedAt": "2026-11-05T16:33:40Z",
+      "disposition": "reviewed",
+      "serviceType": "prevention-and-resource-finder",
+      "providerURL": "https://www.cdc.gov/overdose-prevention/about/fentanyl.html",
+      "actionURL": "https://www.cdph.ca.gov/Programs/CCDPHP/sapb/Pages/Naloxone.aspx",
+      "corroborationURL": "https://www.cdc.gov/overdose-prevention/reversing-overdose/about-naloxone.html",
+      "evidenceType": "federal-guidance-and-state-access-route",
+      "finding": "CDC supports the risk statement and naloxone/911 response. The actual CDPH action page returned HTTP 200 and contains the Naloxone Finder and community/pharmacy access instructions. The card does not allege a local incident or imply all drugs contain fentanyl.",
+      "limits": "General prevention guidance and a locator, not a guaranteed supply or an individual medical assessment. Local stock, prices and access hours were not confirmed. The finder is for preparation; suspected overdose requires emergency action.",
       "directContact": false
     }
   ]
