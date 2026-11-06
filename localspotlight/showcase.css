@@ -1,0 +1,61 @@
+/* The category showcase uses live approved listings and their original logos. */
+body.category-showcase { background: radial-gradient(ellipse at 12% 0%,#24465f 0,transparent 52%),#111f2c; }
+.category-showcase .site-header { background: linear-gradient(110deg,#2c668d,#24465f); box-shadow: 0 5px 30px #07172433; }
+.category-showcase .shell { width: min(1000px,calc(100% - 48px)); }
+.category-showcase .nav-inner { min-height: 48px; gap: 12px; }
+.category-showcase .site-header .wordmark { font-size: 18px; gap: 5px; }
+.category-showcase .site-header .wordmark strong { color: #b9def5; }
+.category-showcase .nav-character { width: 24px; height: 28px; }
+.category-showcase .nav-links a { color: #d0e2ef; }
+.category-showcase .join-compact { min-height: 36px; padding: 0 10px; font-size: 11px; border-color: #a3c8e36b; color: #eff8ff; }
+.category-showcase .menu-toggle { min-height: 36px; border-color: #a3c8e36b; }
+.category-showcase .directory-intro { display: block; margin-bottom: 12px; }
+.category-showcase .directory-intro h1 { font: 650 23px/1.2 Inter,sans-serif; letter-spacing: -.035em; }
+.category-showcase .directory-grid:not(.is-loading) { display: block; }
+.category-showcase .directory-grid.is-loading { grid-template-columns: repeat(2,minmax(0,1fr)); }
+.category-showcase .business-tile-skeleton { border-radius: 16px; background: #314b60; }
+.category-showcase .business-category-section { padding: 12px 0; }
+.category-showcase .business-category-section:first-child { padding-top: 0; }
+.category-showcase .business-category-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.category-showcase .business-category-heading { margin: 0; font: 650 14px/1.3 Inter,sans-serif; letter-spacing: -.01em; color: #d8eaf8; }
+.category-showcase .category-invitation { display: inline-flex; align-items: center; min-height: 32px; padding: 3px 0; color: #a8c8df; font: 500 10px/1.2 Inter,sans-serif; white-space: nowrap; text-decoration: none; }
+.category-showcase .category-invitation:hover { color: #edf7ff; text-decoration: underline; }
+.category-showcase .category-back { display: inline-flex; align-items: center; min-height: 36px; color: #bad8ed; font: 500 12px Inter,sans-serif; margin-bottom: 5px; text-decoration: none; }
+.category-showcase .category-logo-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; align-items: stretch; }
+.category-showcase .category-empty { font-size: 13px; color: #a8bdce; }
+.category-showcase .business-tile { position: relative; isolation: isolate; justify-content: center; align-items: flex-start; min-height: 190px; padding: 22px 22px 36px; border-radius: 19px; border: 1px solid #bdd8ecb3; background: #8da7bb; box-shadow: inset 0 1px #ffffff30,0 8px 25px #06152650; transition: transform .22s,border-color .22s,background .22s; }
+.category-showcase .business-tile:hover { background: #9bb7ca; border-color: #dbf2ff; transform: translateY(-2px); }
+.category-showcase .business-tile:focus-visible { outline: 3px solid #9dd8ff; outline-offset: 4px; }
+.category-showcase .business-tile-art { position: absolute; inset: 0; z-index: -2; width: 100%; height: 100%; background: transparent; isolation: auto; }
+.category-showcase .expanded-logo { display: block; width: 100%; height: 100%; padding: 4px; object-fit: contain; object-position: center; filter: contrast(1.1) brightness(.95); opacity: .92; }
+.category-showcase .business-tile-art::after { z-index: 1; background: linear-gradient(0deg,#071a2d88,transparent 30%),linear-gradient(135deg,#071d32b3 0%,#0d2a4280 55%,#17395070 100%); }
+.category-showcase .business-tile::after { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; border-radius: inherit; box-shadow: inset 0 0 0 1px #ffffff30; }
+.category-showcase .business-tile-copy { width: 100%; padding: 0; gap: 5px; align-items: flex-start; }
+.category-showcase .business-tile-name { color: #fff; font: 750 34px/1.05 Inter,sans-serif; letter-spacing: -.045em; overflow-wrap: anywhere; text-wrap: balance; text-shadow: 0 2px 5px #031322b3,0 0 16px #071a2d80; }
+.category-showcase .business-tile-subtitle { color: #edf5fc; font-size: 11px; line-height: 1.15; text-shadow: 0 1px 3px #031322; }
+.category-showcase .business-tile-city { position: absolute; bottom: 13px; left: 22px; right: 30px; font-size: 10px; line-height: 1.15; color: #e4f0fa; text-shadow: 0 1px 3px #031322; }
+.category-showcase .business-tile-arrow { position: absolute; right: 13px; bottom: 10px; color: #f1f8ff; font-size: 19px; }
+@media(max-width:600px) {
+ .category-showcase .shell { width: calc(100% - 24px); }
+ .category-showcase .nav-inner { min-height: 44px; gap: 6px; }
+ .category-showcase .site-header .wordmark { font-size: 16px; gap: 4px; }
+ .category-showcase .nav-character { width: 20px; height: 25px; }
+ .category-showcase .join-compact { padding: 0 8px; font-size: 10px; }
+ .category-showcase .menu-toggle { padding: 0 8px; }
+ .category-showcase .menu-toggle span { margin-left: 0; }
+ .cerneyselects-site.category-showcase .directory-main { padding-top: 15px; }
+ .category-showcase .directory-intro { margin-bottom: 16px; }
+ .category-showcase .directory-intro h1 { font-size: 19px; }
+ .category-showcase .business-category-section { padding: 10px 0; }
+ .category-showcase .business-category-heading { font-size: 12px; }
+ .category-showcase .category-invitation { font-size: 9px; min-height: 28px; }
+ .category-showcase .category-logo-grid { gap: 10px; }
+ .category-showcase .business-tile { min-height: 148px; padding: 17px 13px 29px; border-radius: 16px; }
+ .category-showcase .business-tile-name { font-size: clamp(20px,6vw,25px); line-height: 1.06; }
+ .category-showcase .business-tile-city { bottom: 10px; left: 13px; font-size: 9px; }
+ .category-showcase .business-tile-subtitle { font-size: 9px; }
+}
+@media(prefers-reduced-motion:reduce) {
+ .category-showcase .business-tile { transition: none; }
+ .category-showcase .business-tile:hover { transform: none; }
+}

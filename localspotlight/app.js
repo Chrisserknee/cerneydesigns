@@ -5,6 +5,7 @@
     const PREVIEW_DATA = '/localspotlight/preview/businesses.json';
     const isPreview = document.body.dataset.designPreview === 'true' || /^\/localspotlight\/preview(?:\/|\/index\.html)?$/.test(window.location.pathname);
     const compactDirectory = document.body.classList.contains('directory-first');
+    const showcaseDirectory = document.body.classList.contains('category-showcase');
     let pageSize = compactDirectory ? 48 : 20;
     const COUNTS = [10, 20, 30, 60, 80, 100];
     const MODES = ['logos', 'cards', 'text', 'mixed'];
@@ -208,6 +209,7 @@
         businessDialog.scrollTop = 0;
     }
     function businessTile(profile, index) {
+        if (showcaseDirectory) return showcaseTile(profile, index);
         const tile = node('button', 'business-tile');
         tile.type = 'button';
         tile.setAttribute('aria-label', `View ${profile.businessName} details`);
@@ -228,6 +230,32 @@
         const copy = node('span', 'business-tile-copy');
         copy.append(node('span', 'business-tile-name', profile.businessName), node('span', 'business-tile-city', profile.city));
         tile.append(top, copy);
+        tile.addEventListener('click', () => openBusiness(profile, index));
+        return tile;
+    }
+    function showcaseTile(profile, index) {
+        const tile = node('button', 'business-tile');
+        tile.type = 'button';
+        tile.setAttribute('aria-label', `View ${profile.businessName} details`);
+        tile.setAttribute('aria-haspopup', 'dialog');
+        const art = node('span', 'business-tile-art');
+        const src = logoUrl(profile.logoUrl);
+        if (src) {
+            const image = node('img', 'expanded-logo');
+            image.alt = ''; image.src = src;
+            image.loading = index < 12 ? 'eager' : 'lazy';
+            image.decoding = 'async'; image.referrerPolicy = 'no-referrer';
+            image.addEventListener('error', () => image.remove(), { once: true });
+            art.append(image);
+        }
+        const copy = node('span', 'business-tile-copy');
+        if (/^Sharp Corners\b/i.test(profile.businessName)) {
+            copy.append(node('span', 'business-tile-name', 'Sharp Corners'));
+            copy.append(node('span', 'business-tile-subtitle', 'Sports Cards & Collectibles'));
+        } else copy.append(node('span', 'business-tile-name', profile.businessName));
+        const arrow = node('span', 'business-tile-arrow', '↗');
+        arrow.setAttribute('aria-hidden', 'true');
+        tile.append(art, copy, node('span', 'business-tile-city', profile.city), arrow);
         tile.addEventListener('click', () => openBusiness(profile, index));
         return tile;
     }
@@ -274,6 +302,7 @@
     function renderDirectory() {
         if (!directoryLoaded) return;
         stopCategoryAnimations();
+        if (showcaseDirectory) { renderShowcase(); return; }
         const search = byId('businessSearch').value.trim().toLocaleLowerCase();
         const category = byId('categoryFilter').value;
         const city = byId('cityFilter').value;
@@ -308,7 +337,61 @@
         }
     }
 
+    function renderShowcase() {
+        const groups = window.CerneySelectsCategories.groups.map((group, order) => ({
+            ...group, order,
+            slug: group.label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
+            members: window.CerneySelectsDailyOrder.order(listings.filter(listing => listing.category === group.label)),
+        })).sort((a, b) => b.members.length - a.members.length || a.order - b.order);
+        const selected = groups.find(group => window.location.hash === '#category/' + group.slug);
+        byId('directoryTitle').textContent = selected ? selected.label : 'Discover Local Businesses';
+        byId('categoryBack').hidden = !selected;
+        let index = 0;
+        const sections = (selected ? [selected] : groups).map(group => {
+            const section = node('section', 'business-category-section');
+            const heading = node('h2', 'business-category-heading', selected
+                ? `${group.members.length} local ${group.members.length === 1 ? 'business' : 'businesses'}` : group.label);
+            heading.id = 'category-' + group.slug;
+            section.setAttribute('aria-labelledby', heading.id);
+            const invitation = node('a', 'category-invitation', selected ? 'List your business ↗' : `View all (${group.members.length}) →`);
+            invitation.href = selected ? '/apply/' : '#category/' + group.slug;
+            if (!selected) invitation.setAttribute('aria-label', `View all ${group.members.length} businesses in ${group.label}`);
+            const row = node('div', 'business-category-header');
+            row.append(heading, invitation);
+            const grid = node('div', 'category-logo-grid');
+            grid.append(...group.members.map(profile => businessTile(profile, index++)));
+            section.append(row, grid);
+            if (!group.members.length) section.append(node('p', 'category-empty', 'More local businesses coming soon.'));
+            return section;
+        });
+        byId('businessGrid').classList.remove('is-loading');
+        byId('businessGrid').replaceChildren(...sections);
+        byId('directoryEmpty').hidden = true;
+        const count = selected ? selected.members.length : listings.length;
+        byId('resultsCount').textContent = `${count} ${count === 1 ? 'business' : 'businesses'}${selected ? ' in ' + selected.label : ' across five categories'}`;
+    }
+
+    if (showcaseDirectory) {
+        let lastHash = window.location.hash;
+        window.addEventListener('hashchange', () => {
+            const hash = window.location.hash;
+            const categoryNavigation = hash.startsWith('#category/') || lastHash.startsWith('#category/');
+            lastHash = hash;
+            if (!categoryNavigation) return;
+            renderDirectory();
+            byId('menuToggle').setAttribute('aria-expanded', 'false');
+            byId('primaryLinks').classList.remove('is-open');
+            // Preserve normal anchor navigation to About and other page content.
+            if (!hash || hash === '#businesses' || hash.startsWith('#category/')) {
+                byId('directoryTitle').focus({ preventScroll: true });
+                window.scrollTo({ top: 0, behavior: 'instant' });
+                animateCategoryResults();
+            }
+        });
+    }
+
     function populateCities() {
+        if (!byId('cityFilter')) return;
         const selected = byId('cityFilter').value;
         const cities = [...new Set(listings.map((listing) => listing.city).filter(Boolean))].sort((a, b) => a.localeCompare(b));
         const options = [node('option', '', 'All cities'), ...cities.map((city) => node('option', '', city))];
@@ -378,7 +461,7 @@
     }
 
     function resetPage() { page = 1; renderDirectory(); }
-    byId('businessSearch').addEventListener('input', resetPage);
+    byId('businessSearch')?.addEventListener('input', resetPage);
     document.querySelectorAll('[data-category]').forEach(button => {
         button.addEventListener('click', () => {
             if (byId('categoryFilter').value === button.dataset.category) {
@@ -391,15 +474,16 @@
             animateCategoryResults();
         });
     });
-    byId('cityFilter').addEventListener('change', resetPage);
+    byId('cityFilter')?.addEventListener('change', resetPage);
     byId('clearFilters').addEventListener('click', () => {
+        if (showcaseDirectory) return;
         byId('businessSearch').value = ''; byId('categoryFilter').value = ''; byId('cityFilter').value = '';
         resetPage(); byId('businessSearch').focus();
         revealSelectedCategory();
     });
     byId('retryDirectory').addEventListener('click', loadDirectory);
     for (const [id, direction] of [['previousPage', -1], ['nextPage', 1]]) {
-        byId(id).addEventListener('click', () => {
+        byId(id)?.addEventListener('click', () => {
             page = Math.max(1, Math.min(page + direction, Math.ceil(filteredCount / pageSize)));
             renderDirectory();
             byId('businessGrid').scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start' });
@@ -423,11 +507,15 @@
         byId('previewCount').addEventListener('change', applyPreview);
         byId('previewMode').addEventListener('change', applyPreview);
     }
-    function scheduleWeeklyRefresh() {
-        const weekLength = 7 * 86400000;
-        const elapsed = ((Date.now() - Date.UTC(2026, 0, 5)) % weekLength + weekLength) % weekLength;
-        setTimeout(() => { renderDirectory(); scheduleWeeklyRefresh(); }, weekLength - elapsed + 100);
-    }
-    scheduleWeeklyRefresh();
+    // Also rotate a directory left open overnight, using the same Pacific day
+    // as the ordering module. Avoid rebuilding cards while a visitor reads one.
+    let renderedDay = window.CerneySelectsDailyOrder.dayNumber();
+    setInterval(() => {
+        const today = window.CerneySelectsDailyOrder.dayNumber();
+        if (today !== renderedDay && !document.hidden && !businessDialog?.open) {
+            renderedDay = today;
+            renderDirectory();
+        }
+    }, 60000);
     loadDirectory();
 })();
