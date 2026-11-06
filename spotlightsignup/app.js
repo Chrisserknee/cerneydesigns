@@ -117,7 +117,7 @@
         }
         top.append(mark, node('span', 'advertising-tag', 'Paid listing'));
         card.append(top);
-        card.append(node('p', 'business-category', safe.category || 'Your category'));
+        card.append(node('p', 'business-category', window.CerneySelectsCategories.display(safe.category) || 'Your category'));
         card.append(node('h3', '', name));
         card.append(node('p', 'business-location', safe.city || 'Your community'));
         card.append(node('p', 'business-description', safe.description || 'A little about your business, what you offer, and what makes you part of this community.'));
@@ -164,6 +164,13 @@
         if (!profile || typeof profile !== 'object') return;
         [...PUBLIC_FIELDS, 'email'].forEach((field) => {
             const input = form.elements.namedItem(field);
+            // Keep the original category on restored drafts and member profiles.
+            // Hidden legacy options avoid changing a profile simply by opening it.
+            if (field === 'category' && input && categories.includes(profile[field]) && !Array.from(input.options).some(option => option.value === profile[field])) {
+                const option = new Option(window.CerneySelectsCategories.display(profile[field]), profile[field]);
+                option.hidden = true;
+                input.append(option);
+            }
             if (input && typeof profile[field] === 'string') input.value = profile[field].slice(0, input.maxLength > 0 ? input.maxLength : 100);
         });
     }

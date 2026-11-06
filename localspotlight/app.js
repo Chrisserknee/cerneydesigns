@@ -75,7 +75,7 @@
         const source = profile && typeof profile === 'object' ? profile : {};
         return {
             id: string(source.id, 100),
-            businessName: string(source.businessName, 100), category: string(source.category, 100),
+            businessName: string(source.businessName, 100), category: isPreview ? string(source.category, 100) : window.CerneySelectsCategories.display(string(source.category, 100)),
             city: string(source.city, 80), address: string(source.address, 200), description: string(source.description, 400),
             website: string(source.website, 300), phone: string(source.phone, 40), logoUrl: string(source.logoUrl, 500), bannerUrl: string(source.bannerUrl, 500),
             ...Object.fromEntries(window.CerneySelectsSocials.platforms.map(({ field }) => [field, string(source[field], 300)])),
