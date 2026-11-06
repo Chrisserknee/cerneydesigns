@@ -252,7 +252,7 @@
         if (/^Sharp Corners\b/i.test(profile.businessName)) {
             copy.append(node('span', 'business-tile-name', 'Sharp Corners'));
             copy.append(node('span', 'business-tile-subtitle', 'Sports Cards & Collectibles'));
-        } else copy.append(node('span', 'business-tile-name', profile.businessName));
+        } else copy.append(node('span', `business-tile-name${/\S{12}/.test(profile.businessName) ? ' has-long-word' : ''}`, profile.businessName));
         const arrow = node('span', 'business-tile-arrow', '↗');
         arrow.setAttribute('aria-hidden', 'true');
         tile.append(art, copy, node('span', 'business-tile-city', profile.city), arrow);

@@ -52,6 +52,7 @@ body.category-showcase { background: radial-gradient(ellipse at 12% 0%,#24465f 0
  .category-showcase .category-logo-grid { gap: 10px; }
  .category-showcase .business-tile { min-height: 148px; padding: 17px 13px 29px; border-radius: 16px; }
  .category-showcase .business-tile-name { font-size: clamp(20px,6vw,25px); line-height: 1.06; }
+ .category-showcase .business-tile-name.has-long-word { font-size: clamp(16px,calc(6vw - 3px),22px); }
  .category-showcase .business-tile-city { bottom: 10px; left: 13px; font-size: 9px; }
  .category-showcase .business-tile-subtitle { font-size: 9px; }
 }
