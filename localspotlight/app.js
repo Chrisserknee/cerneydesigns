@@ -355,7 +355,7 @@
             section.setAttribute('aria-labelledby', heading.id);
             const invitation = node('a', 'category-invitation', selected ? 'List your business ↗' : `View all (${group.members.length}) →`);
             invitation.href = selected ? '/apply/' : '#category/' + group.slug;
-            if (!selected) invitation.setAttribute('aria-label', `View all ${group.members.length} businesses in ${group.label}`);
+            if (!selected) invitation.setAttribute('aria-label', `View all ${group.members.length} ${group.members.length === 1 ? 'business' : 'businesses'} in ${group.label}`);
             const row = node('div', 'business-category-header');
             row.append(heading, invitation);
             const grid = node('div', 'category-logo-grid');
