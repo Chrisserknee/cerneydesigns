@@ -178,6 +178,10 @@
     {
       "source": "/api/booking",
       "destination": "/api/spotlight?handler=booking"
+    },
+    {
+      "source": "/api/mobile-tip-upload",
+      "destination": "/api/tip-upload?handler=mobile"
     }
   ]
 }
