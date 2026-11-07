@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const { createModeration } = require('./moderation');
 const { profileHash } = require('./providers');
 const { buildEmail } = require('./emails');
+const { reviewDeadline } = require('./review-window');
 const PROFILE = { businessName: 'Sandbox Coffee', category: 'Food & Restaurants', city: 'Monterey', description: 'A synthetic test business.', website: 'https://example.com/', phone: '', logoUrl: '' };
 function fixture(extra = {}) {
     let time = 1800000000000;
@@ -32,7 +33,7 @@ function fixture(extra = {}) {
         emailIdempotencyWindowMs: 23 * 3600000,
         async sendEmail(payload, key) { calls.sends.push({ payload: structuredClone(payload), key }); if (!sent.has(key)) sent.set(key, { id: `mail_${sent.size}` }); if (controls.beforeSend) { const callback = controls.beforeSend; controls.beforeSend = null; await callback(); } maybeError('send'); return sent.get(key); },
     };
-    const settings = { siteUrl: 'https://preview.vercel.app', reviewSecret: 'test-review-secret-with-at-least-32-characters', reviewWithinMs: 2 * 86400000, retryMs: 300000 };
+    const settings = { siteUrl: 'https://preview.vercel.app', reviewSecret: 'test-review-secret-with-at-least-32-characters', retryMs: 300000 };
     const core = createModeration({ store, providers, settings, now: () => time, ...extra });
     const token = () => {
         const email = calls.sends.find((call) => call.key.endsWith(':owner-review'));
@@ -175,7 +176,7 @@ test('disabled email retains unattempted durable jobs for later delivery', async
     const f = fixture(); f.controls.emailReady = false;
     await f.core.ingest({ subscriptionId: 'sub_test' });
     assert.equal(f.calls.hold, 1); assert.deepEqual(f.data.get('sub_test').emails, {});
-    f.advance(2 * 86400000); f.controls.emailReady = true; await f.core.retry();
+    f.advance(f.data.get('sub_test').reviewDueAt - f.now() + 1); f.controls.emailReady = true; await f.core.retry();
     assert.equal(f.sent.size, 3); assert.equal(f.data.get('sub_test').work.state, 'queued');
 });
 
@@ -216,14 +217,14 @@ test('email review actions are fragment links and never directly perform a decis
     assert.match(message.text, /must confirm/);
 });
 
-test('the two-day review deadline starts at payment, and overdue never means automatic approval', async () => {
+test('the business-week deadline starts at payment, and overdue never means automatic approval', async () => {
     const f = fixture(); f.snapshot.paidAt -= 86400000;
     const result = await f.core.ingest({ subscriptionId: 'sub_test' });
-    assert.equal(result.reviewDueAt, f.now() + 86400000);
-    f.advance(86400001); await f.core.retry();
+    assert.equal(result.reviewDueAt, reviewDeadline(f.snapshot.paidAt));
+    f.advance(result.reviewDueAt - f.now() + 1); await f.core.retry();
     assert.equal(f.data.get('sub_test').status, 'pending');
     assert.equal(f.calls.approve, 0); assert.equal(f.calls.cancel, 0);
-    assert.equal(f.calls.sends.filter((call) => call.key.endsWith(':owner-overdue')).length, 1);
+    assert.equal(f.calls.sends.filter((call) => call.key.endsWith(':owner-overdue-business-week')).length, 1);
 });
 
 test('a decision during the active ingestion lease is applied once by its existing worker', async () => {

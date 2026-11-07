@@ -75,7 +75,7 @@
         } else $('bannerImage').removeAttribute('src');
         $('paidAmount').textContent = new Intl.NumberFormat('en-US', { style: 'currency', currency: data.currency || 'usd' }).format(Number(data.paidAmount || 0) / 100);
         const due = new Date(data.reviewDueAt);
-        $('reviewDue').textContent = Number.isNaN(due.getTime()) ? '' : `Review by ${new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(due)}`;
+        $('reviewDue').textContent = Number.isNaN(due.getTime()) ? '' : `Review by ${new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/Los_Angeles', timeZoneName: 'short' }).format(due)}`;
         const labels = { pending: 'Awaiting your review', approving: 'Approval processing', approved: 'Approved', declining: 'Decline processing', declined: 'Declined', needs_attention: 'Needs attention' };
         $('reviewStatus').textContent = labels[data.status] || 'Checking status';
         form.hidden = data.decisionAllowed !== true;

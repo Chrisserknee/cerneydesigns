@@ -199,7 +199,7 @@ test('checkout fixes price, amount, customer ownership and recurring terms on th
     assert.match(params.integration_identifier, /^spotlight_[a-z]{8}$/);
     assert.equal(params.subscription_data.metadata.spotlight, MARKER);
     assert.equal(params.subscription_data.metadata.spotlight_review_status, 'pending');
-    assert.match(params.custom_text.submit.message, /review.*2 days/i);
+    assert.match(params.custom_text.submit.message, /review.*one business week \(5 business days\)/i);
     assert.match(params.custom_text.submit.message, /refund/i);
     assert.deepEqual(params.subscription_data.billing_mode, { type: 'flexible' });
     assert.equal(params.subscription_data.metadata.email, undefined);

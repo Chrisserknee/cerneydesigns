@@ -3,6 +3,8 @@
 const crypto = require('node:crypto');
 const { buildEmail } = require('./emails');
 const { profileHash } = require('./providers');
+const { REVIEW_POLICY, reviewDeadline } = require('./review-window');
+const OVERDUE_EMAIL = 'owner-overdue-business-week';
 const MAX_TOKEN_MS = 7 * 86400000;
 function fail(message, status = 400, code = 'INVALID_REQUEST') { throw Object.assign(new Error(message), { status, code }); }
 function attention(message, code = 'NEEDS_ATTENTION') { return Object.assign(new Error(message), { status: 409, code }); }
@@ -62,7 +64,7 @@ function createModeration({ store, providers, settings, banners, now = Date.now 
         if (!providers.emailReady()) throw Object.assign(new Error('Email is disabled; job retained.'), { status: 503, code: 'EMAIL_DISABLED' });
         const previous = record.emails[type];
         if (previous?.firstAttemptAt && now() - previous.firstAttemptAt >= (providers.emailIdempotencyWindowMs || 23 * 3600000)) throw attention('Email delivery needs review after its idempotency window.', 'EMAIL_IDEMPOTENCY_EXPIRED');
-        if (['owner-review', 'owner-review-renewed', 'owner-overdue'].includes(type) && now() >= record.tokenExpiresAt) throw attention('Review link expired before email could be delivered.');
+        if (['owner-review', 'owner-review-renewed', OVERDUE_EMAIL].includes(type) && now() >= record.tokenExpiresAt) throw attention('Review link expired before email could be delivered.');
         // Persist exact payload before sending. Provider idempotency must always see
         // the same message, including token and decline reason, across retries.
         const prepared = await claimedChange(applicationId, owner, (current) => {
@@ -124,7 +126,7 @@ function createModeration({ store, providers, settings, banners, now = Date.now 
                 if (!await send(applicationId, owner, record.tokenRenewals ? 'owner-review-renewed' : 'owner-review')) return store.read(applicationId);
                 if (!await send(applicationId, owner, 'applicant-received')) return store.read(applicationId);
                 record = await owned(); if (!record) return store.read(applicationId);
-                if (!record.decision && now() >= record.reviewDueAt && !await send(applicationId, owner, 'owner-overdue')) return store.read(applicationId);
+                if (!record.decision && now() >= record.reviewDueAt && !await send(applicationId, owner, OVERDUE_EMAIL)) return store.read(applicationId);
             }
             record = await owned(); if (!record) return store.read(applicationId);
             if (record.decision?.value === 'approve') {
@@ -159,7 +161,7 @@ function createModeration({ store, providers, settings, banners, now = Date.now 
             await checkpoint((current) => {
                 const refundPending = current.decision?.value === 'decline' && current.refund?.status !== 'succeeded';
                 const awaitingReview = !current.decision;
-                const reviewWakeAt = current.emails['owner-overdue']?.state === 'sent' ? current.tokenExpiresAt : current.reviewDueAt;
+                const reviewWakeAt = current.emails[OVERDUE_EMAIL]?.state === 'sent' ? current.tokenExpiresAt : Math.min(current.reviewDueAt, current.tokenExpiresAt);
                 const decisionUnfinished = current.decision?.value === 'approve' ? !current.effects.approved || current.emails['applicant-approved']?.state !== 'sent' : current.decision?.value === 'decline' ? !current.effects.canceled : false;
                 Object.assign(current.work, { state: refundPending || awaitingReview || decisionUnfinished ? 'queued' : 'idle', nextAttemptAt: decisionUnfinished ? now() : refundPending ? now() + retryMs : awaitingReview ? reviewWakeAt : 0, leaseUntil: 0, leaseOwner: '', lastError: null });
             });
@@ -184,7 +186,7 @@ function createModeration({ store, providers, settings, banners, now = Date.now 
             if (snapshot.subscriptionId !== subscriptionId || snapshot.paidAmount !== 10000 || snapshot.currency !== 'usd' || snapshot.profileHash !== profileHash(snapshot.profile)) fail('Payment does not match the application.', 409, 'PAYMENT_MISMATCH');
             const timestamp = now();
             const paidAt = Number.isSafeInteger(snapshot.paidAt) && snapshot.paidAt > 0 && snapshot.paidAt <= timestamp ? snapshot.paidAt : timestamp;
-            const fresh = { id: subscriptionId, revision: 1, snapshot, createdAt: timestamp, updatedAt: timestamp, status: 'pending', decision: null, reason: '', reviewDueAt: paidAt + (settings.reviewWithinMs || 2 * 86400000), tokenNonce: crypto.randomBytes(24).toString('base64url'), tokenExpiresAt: timestamp + tokenTtl, effects: { held: false, approved: false, canceled: false }, refund: { status: 'not_requested', refundedAmount: 0 }, emails: {}, work: { state: 'queued', nextAttemptAt: timestamp, leaseUntil: 0, leaseOwner: '', attempts: 0 } };
+            const fresh = { id: subscriptionId, revision: 1, snapshot, createdAt: timestamp, updatedAt: timestamp, status: 'pending', decision: null, reason: '', reviewDueAt: reviewDeadline(paidAt), reviewPolicy: REVIEW_POLICY, tokenNonce: crypto.randomBytes(24).toString('base64url'), tokenExpiresAt: timestamp + tokenTtl, effects: { held: false, approved: false, canceled: false }, refund: { status: 'not_requested', refundedAmount: 0 }, emails: {}, work: { state: 'queued', nextAttemptAt: timestamp, leaseUntil: 0, leaseOwner: '', attempts: 0 } };
             await store.create(subscriptionId, fresh);
             record = await store.read(subscriptionId);
         } else if (record.decision?.value === 'decline' && record.refund?.status !== 'succeeded' && record.work.state !== 'attention') {

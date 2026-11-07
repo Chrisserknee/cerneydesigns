@@ -10,7 +10,7 @@ Logo uploads accept still JPEG, PNG, or WebP images up to 2 MiB, 16,000,000 pixe
 
 `retrySpotlightModeration` runs every five minutes. Storage uses immutable generation reads and conditional writes, so concurrent decisions cannot overwrite each other. Work leases and email receipts survive process restarts. Email jobs remain queued while sending is disabled.
 
-The review deadline is two days after the initial payment. Missing that deadline sends an owner reminder; it never approves the listing automatically. A pending application's review link can be renewed once after seven days, with a final owner attention alert if the replacement expires. Refunds requiring action or three failed refund attempts notify the owner while the worker continues checking for a confirmed refund. A refund confirmation email is sent only after the full $100 refund succeeds.
+The review deadline is one business week (5 business days) after the initial payment. Missing that deadline sends an owner reminder; it never approves the listing automatically. A pending application's review link can be renewed once after seven days, with a final owner attention alert if the replacement expires. Refunds requiring action or three failed refund attempts notify the owner while the worker continues checking for a confirmed refund. A refund confirmation email is sent only after the full $100 refund succeeds.
 
 Required Firebase secrets:
 

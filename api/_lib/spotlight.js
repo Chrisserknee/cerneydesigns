@@ -359,7 +359,7 @@ function createService(stripe, settings = config(), moderation = callModeration)
             success_url: `${settings.siteUrl}/apply/?checkout=success`,
             cancel_url: `${settings.siteUrl}/apply/?checkout=canceled`,
             billing_address_collection: 'auto',
-            custom_text: { submit: { message: 'You pay $100 now. Your listing is reviewed within 2 days and appears only if approved. If declined, we cancel the subscription, refund your payment, and email you the reason. Approved listings renew at $100/month until canceled.' } },
+            custom_text: { submit: { message: 'You pay $100 now. Your listing is reviewed within one business week (5 business days) and appears only if approved. If declined, we cancel the subscription, refund your payment, and email you the reason. Approved listings renew at $100/month until canceled.' } },
         }, { idempotencyKey: `spotlight-checkout-${ownerKey}` });
         const url = safeStripeUrl(session.url, 'checkout.stripe.com');
         if (!url || !/^cs_(?:live|test)_[A-Za-z0-9]+$/.test(session.id)) throw new Error('Stripe did not return a Checkout URL');

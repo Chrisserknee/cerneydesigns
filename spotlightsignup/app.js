@@ -372,7 +372,7 @@
             description = 'Your listing is not published. Chris is checking your application and payment. Contact us if you need an update.';
         } else if (active && reviewPending) {
             label = data.reviewStatus === 'approving' ? 'Approval processing' : 'Awaiting approval';
-            description = 'Payment received. Your listing stays private while we review it, within 2 days. We will email the decision. No further monthly payment is collected while review is pending.';
+            description = 'Payment received. Your listing stays private while we review it, within one business week (5 business days). We will email the decision. No further monthly payment is collected while review is pending.';
         } else if (active && data.cancelAtPeriodEnd) {
             label = 'Cancellation scheduled';
             description = `Your subscription will not renew. ${published ? 'Your listing remains visible' : 'Your paid period continues'}${until ? ` through ${until}` : ' through the end of your paid billing period'}.`;
@@ -412,7 +412,7 @@
                 notice.textContent = description;
                 clearTimeout(pollTimer);
             } else if (active && reviewPending && data.paymentConfirmed === true) {
-                notice.textContent = 'Payment received. Your application is awaiting review. Allow up to 2 days; we’ll email you when it is approved or declined. Your business is not public yet.';
+                notice.textContent = 'Payment received. Your application is awaiting review. Allow up to one business week (5 business days); we’ll email you when it is approved or declined. Your business is not public yet.';
                 notice.classList.add('ready-notice');
                 removeStored(DRAFT_KEY); removeStored(REQUEST_KEY);
                 clearTimeout(pollTimer);
@@ -449,7 +449,7 @@
                 statusAttempts += 1;
                 pollTimer = setTimeout(() => loadStatus({ poll: true, updateFields: !byId('editDetails').open }), 5000);
             } else if (poll && stillWaiting && statusAttempts >= 12) {
-                byId('returnNotice').textContent = 'Payment confirmation is still pending. After payment is confirmed, we review your application within 2 days. Only approved listings appear. You can refresh your status below or return later.';
+                byId('returnNotice').textContent = 'Payment confirmation is still pending. After payment is confirmed, we review your application within one business week (5 business days). Only approved listings appear. You can refresh your status below or return later.';
             }
         } catch {
             if (forgetting) return;
@@ -665,7 +665,7 @@
         byId('returnNotice').textContent = 'You returned from checkout. Your draft is saved on this device, and you can continue when you’re ready. If you completed a payment, check your subscription status below.';
     } else if (checkoutReturn === 'success') {
         byId('returnNotice').hidden = false;
-        byId('returnNotice').textContent = 'Checking your payment. After payment is confirmed, we review your application within 2 days. Only approved listings appear.';
+        byId('returnNotice').textContent = 'Checking your payment. After payment is confirmed, we review your application within one business week (5 business days). Only approved listings appear.';
     }
     if (checkoutReturn) {
         byId('returnNotice').focus({ preventScroll: true });
