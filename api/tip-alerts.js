@@ -15,7 +15,7 @@ module.exports = async (request, response) => {
     let body;
     try { body = parseBody(request); if (Buffer.byteLength(JSON.stringify(body)) > (body?.op==='tracker-edit'?65000:body?.op==='producer-media-part'?2900000:body?.op==='producer-media-finish'?100000:String(body?.op||'').startsWith('field-')?780000:String(body?.op||'').startsWith('producer-')?30000:8192)) return sendJson(response,413,{error:'Request too large.'}); }
     catch { return sendJson(response,400,{error:'Invalid request.'}); }
-    const ops = ['pair','status','subscribe','unsubscribe','logout','list','tip','test','devices','revoke-device','thumbnail','tip-media','newsroom','scanner','field-save','field-get','field-audio-part','field-audio-finish','field-audio-read','producer-catalog','producer-list','producer-get','producer-send','producer-cancel','producer-media-part','producer-media-finish','producer-media-status','producer-artifact'];
+    const ops = ['pair','status','subscribe','unsubscribe','logout','list','tip','test','devices','revoke-device','thumbnail','tip-media','newsroom','scanner','scanner-audio','field-save','field-get','field-audio-part','field-audio-finish','field-audio-read','producer-catalog','producer-list','producer-get','producer-send','producer-cancel','producer-media-part','producer-media-finish','producer-media-status','producer-artifact'];
     ops.push('facebook-media-list','facebook-media-read','tracker-list','tracker-get','tracker-status','tracker-separate','tracker-edit','tracker-pin','producer-media-read');
     if (!ops.includes(body?.op)) return sendJson(response,400,{error:'Unknown request.'});
     let payload;
@@ -25,7 +25,7 @@ module.exports = async (request, response) => {
     } else {
         const token = readCookie(request,COOKIE);
         if (!/^[A-Za-z0-9_-]{43}$/.test(token)) return sendJson(response,401,{error:'Sign in to connect this device.'});
-        payload = {op:body.op,token,...(body.op === 'subscribe' ? {subscription:body.subscription} : {}),...(['tip','revoke-device','thumbnail','tip-media'].includes(body.op) ? {id:body.id} : {})};
+        payload = {op:body.op,token,...(body.op === 'subscribe' ? {subscription:body.subscription} : {}),...(['tip','revoke-device','thumbnail','tip-media','scanner-audio'].includes(body.op) ? {id:body.id} : {})};
         if(String(body.op).startsWith('facebook-media-'))Object.assign(payload,{id:body.id,assetID:body.assetID,index:body.index,thumbnail:body.thumbnail===true});
         if(String(body.op).startsWith('field-'))Object.assign(payload,{id:body.id,note:body.note,expectedRevision:body.expectedRevision,index:body.index,sha256:body.sha256,base64:body.base64,parts:body.parts,mimeType:body.mimeType});
         if(String(body.op).startsWith('producer-'))for(const key of ['id','requestID','title','text','preferences','sourceRefs','assetIDs','assetID','index','sha256','base64','parts','mimeType','filename','bytes','cursor','artifactID','checksumMode'])if(body[key]!==undefined)payload[key]=body[key];

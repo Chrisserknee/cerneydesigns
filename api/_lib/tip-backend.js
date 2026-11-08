@@ -1,5 +1,6 @@
 'use strict';
 const {createHmac}=require('node:crypto');
+const SCANNER_BACKEND='https://us-west1-tip-line-8c2d7.cloudfunctions.net/scannerReportsApi';
 const BACKEND='https://us-west1-tip-line-8c2d7.cloudfunctions.net/tipAlertsApi';
 function secret() {
     const key=process.env.TIP_ALERTS_PROXY_SECRET || '';
@@ -9,7 +10,7 @@ function secret() {
 async function callTipBackend(payload) {
     const body=JSON.stringify(payload), timestamp=String(Date.now());
     const signature=createHmac('sha256',secret()).update(timestamp+'.'+body).digest('hex');
-    return fetch(BACKEND,{method:'POST',headers:{'Content-Type':'application/json','X-Tip-Timestamp':timestamp,'X-Tip-Signature':signature},body,signal:AbortSignal.timeout(25000),redirect:'error'});
+    return fetch(['scanner','scanner-audio'].includes(payload.op)?SCANNER_BACKEND:BACKEND,{method:'POST',headers:{'Content-Type':'application/json','X-Tip-Timestamp':timestamp,'X-Tip-Signature':signature},body,signal:AbortSignal.timeout(25000),redirect:'error'});
 }
 async function reserveLoginAttempt(request) {
     // Vercel overwrites this header; never use a client-supplied alternate IP.
