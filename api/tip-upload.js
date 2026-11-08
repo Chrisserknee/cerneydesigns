@@ -3,7 +3,12 @@ const {createHmac}=require('node:crypto');
 const {isIP}=require('node:net');
 const {callTipBackend}=require('./_lib/tip-backend');
 const {parseBody,sendJson}=require('./_lib/http');
+const {URL}=require('node:url');
 module.exports=async(req,res)=>{
+ // Share the existing function; each channel keeps its own admission validation.
+ if(new URL(req.url||'/', 'https://www.chriscerney.org').searchParams.get('handler')==='mobile'){
+  return require('./_lib/mobile-tip-upload').createMobileTipUploadHandler({callTipBackend})(req,res);
+ }
  if(req.method!=='POST')return sendJson(res,405,{error:'Method not allowed.'});
  if(req.headers.origin!=='https://www.chriscerney.org')return sendJson(res,403,{error:'Request origin is not allowed.'});
  if(!String(req.headers['content-type']||'').startsWith('application/json'))return sendJson(res,415,{error:'JSON required.'});
