@@ -12,6 +12,10 @@ const { logger } = require('firebase-functions');
 const {defineSecret}=require('firebase-functions/params');
 const {gatewayAuthenticated}=require('./request-auth');
 const proxySecret=defineSecret('TIP_ALERTS_PROXY_SECRET');
+const apnsSecret=defineSecret('CERNEY_TIPS_APNS_AUTH');
+const apns=require('./apns-transport').createAPNs({getCredentials:()=>apnsSecret.value()});
+const {nativeDevices}=require('./native-push');
+const nativePush=require('./native-push').createNativePush({read,write,updateDevice,send:apns.send,ready:apns.ready});
 const { SITE, hash, activeDevice, validSubscription, tipRecord, retryTime, notification, pushNotification } = require('./tip-alerts-helpers');
 const {sourceContext,displayContext}=require('./tip-inbox-context');
 const {thumbnailDescriptor,requestedThumbnail,sameThumbnail,verifiedThumbnailBytes,MAX_BYTES}=require('./tip-thumbnail');
@@ -208,12 +212,18 @@ async function deliver(tip, device, keys) {
         }
     }
 }
+async function dispatchAlerts(tip,devices,keys){
+    await Promise.all([
+        ...devices.map(device=>deliver(tip,device,keys)),
+        ...nativeDevices(devices).map(device=>nativePush.deliver(tip,device)),
+    ]);
+}
 async function capture(event) {
     if(event.data?.bucket==='tip-line-8c2d7.firebasestorage.app' && /^_tipalerts\/v1\/tips\/[a-f0-9]{64}\.json$/.test(event.data.name||'')){
         const stored=await read(event.data.name.slice(ROOT.length));
         if(!stored || String(stored.generation)!==String(event.data.generation) || !voiceTip(stored.data))return;
         const keys=await config(),devices=await documents('devices/');
-        await Promise.all(devices.map(device=>deliver(stored.data,device,keys)));return;
+        await dispatchAlerts(stored.data,devices,keys);return;
     }
     if (!event.data?.name?.startsWith('tips/') || !/\/_(submission|context_ready)\.json$/.test(event.data.name)) return;
     const contextOnly=event.data.name.endsWith('/_context_ready.json');
@@ -223,7 +233,7 @@ async function capture(event) {
     if (!tip || contextOnly) return;
     const keys = await config();
     const devices = await documents('devices/');
-    await Promise.all(devices.map(device => deliver(tip, device, keys)));
+    await dispatchAlerts(tip,devices,keys);
 }
 async function authenticate(token) {
     if (!/^[A-Za-z0-9_-]{43}$/.test(token || '')) return null;
@@ -290,6 +300,10 @@ async function handleApi(req, res) {
         const device = await authenticate(body.token);
         if (!device) return res.status(401).json({error:'Sign in to connect this device.'});
         if(body.op==='tip-media')return res.json(await tipMedia(body));
+        if(String(body.op||'').startsWith('native-')){
+            try{return res.json(await nativePush.handle(body,device));}
+            catch(e){const known=[400,401,409,429,503].includes(e.code);return res.status(known?e.code:503).json({error:known?e.message:'Native alerts could not connect. Please try again.'});}
+        }
         if(body.op==='scanner')return res.json(require('./scanner-feed').scannerFeed((await read('scanner/feed.json'))?.data));
         if(String(body.op||'').startsWith('tracker-'))return res.json(await tracker.handle(body));
         if(String(body.op||'').startsWith('producer-'))return res.json(await producerHandler(body,device));
@@ -308,11 +322,11 @@ async function handleApi(req, res) {
         }
         if(body.op === 'devices') {
             const devices=(await documents('devices/')).filter(d=>activeDevice(d));
-            return res.json({devices:devices.map(d=>({id:d.id,label:deviceLabel(d),createdAt:d.createdAt,current:d.id===device.id,alertsOn:!!d.subscription,lastTestAt:d.lastTestAt||null,pushExpiredAt:d.pushExpiredAt||null}))});
+            return res.json({devices:devices.map(d=>({id:d.id,label:deviceLabel(d),createdAt:d.createdAt,current:d.id===device.id,alertsOn:!!d.subscription||!!d.nativePush,channel:d.nativePush?'native':'web',lastTestAt:d.lastNativeTestAt||d.lastTestAt||null,pushExpiredAt:d.pushExpiredAt||null}))});
         }
         if(body.op === 'revoke-device') {
             if(!/^[a-f0-9]{64}$/.test(body.id || '') || body.id===device.id)return res.status(400).json({error:'Use Sign out to disconnect this device.'});
-            await updateDevice(body.id,{revokedAt:new Date().toISOString(),expiresAt:new Date().toISOString(),subscription:null});
+            await updateDevice(body.id,{revokedAt:new Date().toISOString(),expiresAt:new Date().toISOString(),subscription:null,nativePush:null});
             return res.json({disconnected:true});
         }
         if (body.op === 'status') {
@@ -332,7 +346,7 @@ async function handleApi(req, res) {
             return res.json({subscribed:false});
         }
         if (body.op === 'logout') {
-            await updateDevice(device.id,{revokedAt:new Date().toISOString(),expiresAt:new Date().toISOString(),subscription:null});
+            await updateDevice(device.id,{revokedAt:new Date().toISOString(),expiresAt:new Date().toISOString(),subscription:null,nativePush:null});
             return res.json({authenticated:false});
         }
         if (body.op === 'list' || body.op === 'tip') {
@@ -393,14 +407,14 @@ async function handleApi(req, res) {
         return res.status(503).json({error:'Temporarily unavailable. Please try again.'});
     }
 }
-exports.captureWebTip = onObjectFinalized({...options,retry:true},capture);
-exports.updateWebTip = onObjectMetadataUpdated({...options,retry:true},capture);
-exports.retryWebTips = onSchedule({...options,maxInstances:1,schedule:'every 5 minutes'},async()=>{
+exports.captureWebTip = onObjectFinalized({...options,retry:true,secrets:[apnsSecret]},capture);
+exports.updateWebTip = onObjectMetadataUpdated({...options,retry:true,secrets:[apnsSecret]},capture);
+exports.retryWebTips = onSchedule({...options,maxInstances:1,schedule:'every 5 minutes',secrets:[apnsSecret]},async()=>{
     const keys = await config();
-    const devices = (await documents('devices/')).filter(d=>d.subscription && activeDevice(d));
+    const devices = (await documents('devices/')).filter(d=>(d.subscription||d.nativePush) && activeDevice(d));
     if (!devices.length) return;
     const tips = (await documents('tips/')).filter(t=>Date.parse(t.receivedAt)>Date.now()-7*86400000);
-    for (const tip of tips) for (const device of devices) await deliver(tip,device,keys);
+    for (const tip of tips) await dispatchAlerts(tip,devices,keys);
 });
 async function secureHandleApi(req,res) {
     res.set('Cache-Control','no-store');res.set('X-Content-Type-Options','nosniff');
@@ -408,5 +422,5 @@ async function secureHandleApi(req,res) {
     if(req.body?.op==='upload-authorize'){try{const r=await require('./upload-admission').authorize(req.body);return res.status(r.status).json(r.body);}catch{return res.status(503).json({error:'Upload protection unavailable. Please try again.'});}}
     return handleApi(req,res);
 }
-exports.tipAlertsApi = onRequest({...options,memory:'512MiB',concurrency:16,invoker:'public',secrets:[proxySecret]},secureHandleApi);
+exports.tipAlertsApi = onRequest({...options,memory:'512MiB',concurrency:16,invoker:'public',secrets:[proxySecret,apnsSecret]},secureHandleApi);
 exports.refreshStoryTracker = onSchedule({...options,memory:'512MiB',maxInstances:1,schedule:'every 5 minutes'},async()=>{await tracker.sync();});

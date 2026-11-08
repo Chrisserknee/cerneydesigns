@@ -133,3 +133,12 @@ test('private Facebook thumbnails require pairing and cannot choose storage path
  const p=proxy(false,{});await p.run(req(body,{cookie:'cc_tip_device='+'x'.repeat(43)}),p.res);
  assert.equal(p.calls[0].body.thumbnail,true);assert.equal(p.calls[0].body.path,undefined);assert.equal(p.calls[0].body.token,'x'.repeat(43));
 });
+
+test('native alerts require a paired same-origin session and ignore injected credentials or endpoints',async()=>{
+ const denied=proxy();await denied.run(req({op:'native-register',deviceToken:'ab'.repeat(32)}),denied.res);assert.equal(denied.res.code,401);assert.equal(denied.calls.length,0);
+ const p=proxy(false,{configured:true,subscribed:true});
+ await p.run(req({op:'native-register',deviceToken:'ab'.repeat(32),environment:'production',bundleID:'org.chriscerney.tips',token:'attacker',privateKey:'SECRET',url:'https://evil.test'}, {cookie:'cc_tip_device='+'x'.repeat(43)}),p.res);
+ assert.deepEqual(JSON.parse(JSON.stringify(p.calls[0].body)),{op:'native-register',token:'x'.repeat(43),deviceToken:'ab'.repeat(32),environment:'production',bundleID:'org.chriscerney.tips'});
+ assert(!JSON.stringify(p.logs).includes('SECRET'));
+ const foreign=proxy();await foreign.run(req({op:'native-test'},{origin:'https://evil.test',cookie:'cc_tip_device='+'x'.repeat(43)}),foreign.res);assert.equal(foreign.res.code,403);
+});

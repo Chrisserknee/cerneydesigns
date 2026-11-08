@@ -12,11 +12,12 @@ test('Scanner snapshot requires a trusted device and preserves paused source sta
  const denied=response();await x.handleApi({method:'POST',is:()=>true,body:{op:'scanner',token:'invalid'}},denied);assert.equal(denied.code,401);
  const allowed=response();await x.handleApi({method:'POST',is:()=>true,body:{op:'scanner',token}},allowed);assert.equal(allowed.body.sources[0].status,'paused');assert.equal(allowed.body.version,1);
 });
-function harness({send=async()=>{},fetchImpl=async()=>({ok:false}), initial={}, onList=async()=>{}, onDownload=async()=>{}}={}){
+function harness({nativeSend=null,send=async()=>{},fetchImpl=async()=>({ok:false}), initial={}, onList=async()=>{}, onDownload=async()=>{}}={}){
  const files=new Map(Object.entries(initial).map(([name,data])=>[name,{data,generation:1}]));let generation=1;const counts={metadata:0,downloads:0};
  const b={file(name,opts={}){return {name,getMetadata:async()=>{counts.metadata++;const x=files.get(name);if(!x)throw Object.assign(Error(),{code:404});return [{generation:x.generation,...(x.metadata||{})}];},download:async()=>{counts.downloads++;await onDownload(name);const x=files.get(name);if(!x || (opts.generation && opts.generation!==x.generation))throw Object.assign(Error(),{code:404});return [Buffer.from(JSON.stringify(x.data))];},save:async(value,opts)=>{const old=files.get(name);const expected=opts.preconditionOpts?.ifGenerationMatch;if(expected!==undefined && expected!==(old?.generation || 0))throw Object.assign(Error(),{code:412});files.set(name,{data:JSON.parse(value),generation:++generation,metadata:opts.metadata||{}});}};},getFiles:async({prefix,fields})=>{await onList(prefix);return [[...files.keys()].filter(n=>n.startsWith(prefix)).map(name=>fields?{name,generation:files.get(name).generation}:{name,metadata:{generation:files.get(name).generation,...(files.get(name).metadata||{})}})];}};
  const c=vm.createContext({exports:{},Buffer,URL,Date,Intl,AbortSignal,fetch:fetchImpl,require(name){
  if(name==='firebase-functions/params')return {defineSecret:()=>({value:()=> 'test-secret'.repeat(4)})};
+ if(name==='./apns-transport' && nativeSend)return {createAPNs:()=>({ready:()=>true,send:nativeSend})};
  if(name==='web-push')return {sendNotification:send,generateVAPIDKeys:()=>keys};
  if(name==='firebase-admin/storage')return {getStorage:()=>({bucket:()=>b})};
  if(name==='firebase-functions')return {logger:{info(){},warn(){},error(){}}};
@@ -26,7 +27,7 @@ function harness({send=async()=>{},fetchImpl=async()=>({ok:false}), initial={}, 
  return require(name);
  }});
  vm.runInContext(fs.readFileSync(__dirname+'/tip-alerts.js','utf8')+'\nthis.testing={deliver,authenticate,handleApi,syncTip,adminVerified,updateDevice,reserveLogin,secureHandleApi,inboxDocuments,fieldSummaries};',c);
- return {...c.testing,files,counts};
+ return {...c.testing,capture:c.exports.captureWebTip,files,counts};
 }
 test('only supported HTTPS push endpoints and correctly sized keys are accepted',()=>{
  assert.equal(h.validSubscription(subscription),true);
@@ -281,4 +282,19 @@ test('a cold inbox validates every saved-cache generation against the live catal
  c.files.set(name,{generation:'13',data:{...tip,status:'ready'}});
  assert.equal((await c.inboxDocuments())[0].status,'ready');assert.equal(originalReads,1);
  c.files.delete(name);assert.equal((await c.inboxDocuments()).length,0);
+});
+
+
+test('native registration is authenticated and captured Google Voice tips reach APNs exactly once',async()=>{
+ const paired='n'.repeat(43),id=h.hash(paired),sent=[];
+ const d={id,sessionPolicy:'until-sign-out',expiresAt:null,createdAt:new Date(now-60000).toISOString()};
+ const voice={...tip,sourceKind:'google_voice',sourceDescription:'Viewer supplied context',status:'ready',path:`_tipalerts/v1/voice-sources/${tip.id}.json`};
+ const x=harness({nativeSend:async(...args)=>{sent.push(args);return {acceptedAt:new Date().toISOString()};},initial:{['_tipalerts/v1/devices/'+id+'.json']:d,['_tipalerts/v1/tips/'+tip.id+'.json']:voice,['_tipalerts/v1/config.json']:keys}});
+ const response=()=>({set(){},status(n){this.code=n;return this;},json(body){this.body=body;return this;}});
+ const denied=response();await x.handleApi({method:'POST',is:()=>true,body:{op:'native-register',token:'invalid'}},denied);assert.equal(denied.code,401);
+ const r=response();await x.handleApi({method:'POST',is:()=>true,body:{op:'native-register',token:paired,deviceToken:'ab'.repeat(32),bundleID:'org.chriscerney.tips',environment:'production'}},r);assert.equal(r.body.subscribed,true);
+ x.files.get('_tipalerts/v1/devices/'+id+'.json').data.nativePush.registeredAt=new Date(now-60000).toISOString();
+ const event={data:{bucket:'tip-line-8c2d7.firebasestorage.app',name:'_tipalerts/v1/tips/'+tip.id+'.json',generation:1}};
+ await x.capture(event);await x.capture(event);assert.equal(sent.length,1);assert.equal(sent[0][1].tipID,tip.id);assert.equal(sent[0][1].aps.alert.title,'Google Voice tip');
+ const out=response();await x.handleApi({method:'POST',is:()=>true,body:{op:'logout',token:paired}},out);assert.equal(x.files.get('_tipalerts/v1/devices/'+id+'.json').data.nativePush,null);
 });
