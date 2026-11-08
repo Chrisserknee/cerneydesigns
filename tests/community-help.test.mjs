@@ -45,7 +45,7 @@ test('featured finished feed post matches reviewed copy and immutable media',asy
     assert.deepEqual([p.width,p.height,p.duration],[1080,1350,20]);
     const review=audit.reviews.find(r=>r.id===card.id);
     assert.deepEqual(review.publishedPost,p);
-    for(const type of ['image','video']){
+    for(const type of ['image','video',...(p.image4KURL ? ['image4K'] : [])]){
       const u=new URL(p[type+'URL']);
       assert.equal(u.origin,'https://www.chriscerney.org');
       assert.ok(u.pathname.startsWith('/community-help/media/'));
