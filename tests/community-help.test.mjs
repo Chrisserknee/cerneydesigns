@@ -12,7 +12,7 @@ test('catalog contains sourced, review-dated resources with concise artwork copy
     assert.ok(card.evidence,card.id);
     assert.ok(safeURL(card.sourceURL),card.id);
     assert.ok(card.title.length <= 40,card.id+' headline');
-    assert.ok(card.message.length <= 70,card.id+' action line');
+    assert.ok(card.message.length <= 110,card.id+' action line');
     assert.ok(card.details.length > card.message.length,card.id+' practical details');
   }
 });

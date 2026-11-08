@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-11-05T16:33:40Z",
+  "checkedAt": "2026-11-08T04:05:06Z",
   "method": "Public-source research and bounded link checks. No calls, applications, personal outcomes or live inventory checks. Provider reports are attributed; a recognized provider is not a guarantee of current access.",
   "reviews": [
     {
@@ -774,15 +774,15 @@
     },
     {
       "id": "fentanyl-awareness",
-      "fingerprint": "553bd75b5ac415f3",
-      "checkedAt": "2026-11-05T16:33:40Z",
+      "fingerprint": "62cf0b0a1ed67e17",
+      "checkedAt": "2026-11-08T04:05:06Z",
       "disposition": "reviewed",
       "serviceType": "prevention-and-resource-finder",
       "providerURL": "https://www.cdc.gov/overdose-prevention/about/fentanyl.html",
       "actionURL": "https://www.cdph.ca.gov/Programs/CCDPHP/sapb/Pages/Naloxone.aspx",
       "corroborationURL": "https://www.cdc.gov/overdose-prevention/reversing-overdose/about-naloxone.html",
       "evidenceType": "federal-guidance-and-state-access-route",
-      "finding": "CDC supports the risk statement and naloxone/911 response. The actual CDPH action page returned HTTP 200 and contains the Naloxone Finder and community/pharmacy access instructions. The card does not allege a local incident or imply all drugs contain fentanyl.",
+      "finding": "Rechecked November 7, 2026: CDC fentanyl guidance documents mixing into illicit drugs and counterfeit pills, potentially deadly levels and inability to identify fentanyl by sight, taste or smell. CDC naloxone guidance documents slowed/stopped breathing, brain damage or death during overdose, opioid-overdose reversal and calling 911/staying with the person. CDPH page retrieved successfully and contains Naloxone Finder; no local stock or free availability promised. Sources: https://www.cdc.gov/overdose-prevention/about/fentanyl.html ; https://www.cdc.gov/overdose-prevention/reversing-overdose/about-naloxone.html ; https://www.cdph.ca.gov/Programs/CCDPHP/sapb/Pages/Naloxone.aspx",
       "limits": "General prevention guidance and a locator, not a guaranteed supply or an individual medical assessment. Local stock, prices and access hours were not confirmed. The finder is for preparation; suspected overdose requires emergency action.",
       "directContact": false
     }
