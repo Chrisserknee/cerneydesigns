@@ -34,3 +34,23 @@ test('future reviews, missing reviews and closed cards never look current',()=>{
 test('feedback and source links reject script URLs and untrusted query fragments',()=>{assert.equal(safeURL('javascript:alert(1)'),null);assert.equal(safeURL('https://a:b@example.com'),null);assert.throws(()=>feedbackURL('../bad','helped'));assert.throws(()=>feedbackURL('211','delete'));assert.equal(feedbackURL('211','correction'),'/submit-story/?community=211&feedback=correction');});
 
 test('changed wording cannot reuse an earlier source review',()=>{const c=cards[0];assert.equal(availability({...c,message:'A new unsupported claim'},Date.parse(c.checkedAt)),'Needs review');});
+
+test('featured finished feed post matches reviewed copy and immutable media',async()=>{
+  const {createHash}=await import('node:crypto');
+  assert.equal(cards[0].id,'fentanyl-awareness');
+  assert.equal(cards[0].featured,true);
+  for(const card of cards.filter(c=>c.publishedPost)){
+    const p=card.publishedPost;
+    assert.equal(p.fingerprint,fingerprint(card));
+    assert.deepEqual([p.width,p.height,p.duration],[1080,1350,20]);
+    const review=audit.reviews.find(r=>r.id===card.id);
+    assert.deepEqual(review.publishedPost,p);
+    for(const type of ['image','video']){
+      const u=new URL(p[type+'URL']);
+      assert.equal(u.origin,'https://www.chriscerney.org');
+      assert.ok(u.pathname.startsWith('/community-help/media/'));
+      const data=fs.readFileSync(new URL('..'+u.pathname,import.meta.url));
+      assert.equal(createHash('sha256').update(data).digest('hex'),p[type+'SHA256']);
+    }
+  }
+});

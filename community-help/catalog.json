@@ -1,5 +1,36 @@
 [
   {
+    "id": "fentanyl-awareness",
+    "series": "practicalHelp",
+    "title": "Hidden fentanyl can stop your breathing.",
+    "message": "Street drugs and fake pills may contain fentanyl without you knowing. Suspected overdose? Call 911.",
+    "area": "Monterey · Santa Cruz counties",
+    "sourceName": "CDC · California Public Health",
+    "sourceURL": "https://www.cdc.gov/overdose-prevention/about/fentanyl.html",
+    "actionURL": "https://ccodp.org/naloxone/",
+    "details": "Street drugs and fake pills can contain fentanyl without you knowing. You can’t detect it by sight, smell or taste. An opioid overdose can slow or stop breathing.\n\nLOCAL NALOXONE / NARCAN PICKUP\n\n📍 SALINAS\nMST Salinas Transit Center — 110 Salinas Street\nCounty-announced kiosk for free Narcan and fentanyl test strips. Current operation and stock still need confirmation; call MST at 888-678-2871 before making a trip.\n\nMonterey County Health Department\n1270 Natividad Road, Salinas\nThe county lists free naloxone in the lobby. Check building hours before going.\n\n📍 MONTEREY\nMonterey Peninsula College — Student Center\n980 Fremont Street, Monterey\nFree Narcan and fentanyl test strips from the vending machine. Check Student Center access hours before going.\n\n📍 SANTA CRUZ\nCounty Safe Use and Overdose Prevention Program\n1060 Emeline Avenue, Room 105, Santa Cruz\nListed pickup hours: Mon/Fri 10 a.m.–1 p.m.; Tue 5–7 p.m.; Thu 4–6 p.m. Closed weekends and county holidays.\nCall 831-454-2437 to confirm hours and supplies.\n\nSources reviewed Nov. 7, 2026. Transit Center operation still needs confirmation; no location’s stock has been checked today. Hours and availability can change.\n\nSuspected overdose? Call 911. Give naloxone if available and stay until help arrives. Don’t travel to a pickup location instead of calling for emergency help.\n\nMore pickup locations: https://ccodp.org/naloxone/\n\nSources: Monterey County Health Department, MST, Monterey Peninsula College, Santa Cruz County Health Services Agency and CDC.\n\nArchive photo: Salinas, 1991 — John Margolies / Library of Congress. Illustrative photo, not a drug-related incident.",
+    "evidence": "Rechecked November 7, 2026: CDC fentanyl guidance documents mixing into illicit drugs and counterfeit pills, potentially deadly levels and inability to identify fentanyl by sight, taste or smell. CDC naloxone guidance documents slowed/stopped breathing, brain damage or death during overdose, opioid-overdose reversal and calling 911/staying with the person. CDPH page retrieved successfully and contains Naloxone Finder; no local stock or free availability promised. Sources: https://www.cdc.gov/overdose-prevention/about/fentanyl.html ; https://www.cdc.gov/overdose-prevention/reversing-overdose/about-naloxone.html ; https://www.cdph.ca.gov/Programs/CCDPHP/sapb/Pages/Naloxone.aspx Local pickup sources reviewed November 7: County Health Department 1270 Natividad Road; MPC Student Center 980 Fremont Street; Santa Cruz SUOPP 1060 Emeline Avenue Room 105. Hours and stock limits are explicit in the caption. MST 110 Salinas Street kiosk launch is documented, but continued operation after the original October 31 agreement term and stock were NOT verified; caption says call first, not confirmed current. Sources: https://mpc.edu/news/narcan-vending-machine.html ; https://mpc.edu/about/campuses-and-centers/contact-us.html ; https://santacruzhealth.org/PublicHealth/InfectiousDisease/CAReTeamIntegratedServices/SafeUseandOverdosePreventionProgram.aspx ; https://www.countyofmonterey.gov/government/departments-a-h/health/behavioral-health/bh-home/opioid-safety-information-and-resources-espa-ol ; https://www.countyofmonterey.gov/Home/Components/News/News/11308/18?arch=1&npage=9&widgetId=41 ; https://mst.org/privacy-policy/",
+    "photoID": "salinas-alisal",
+    "state": "reviewed",
+    "checkedAt": "2026-11-08T04:05:06Z",
+    "reviewBy": "2026-11-15T04:05:06Z",
+    "endsAt": null,
+    "revision": 3,
+    "publicPageURL": "https://www.chriscerney.org/community-help/#fentanyl-awareness",
+    "reviewedFingerprint": "86a8dd5195a93147",
+    "featured": true,
+    "publishedPost": {
+      "fingerprint": "86a8dd5195a93147",
+      "imageURL": "https://www.chriscerney.org/community-help/media/fentanyl-glass-b8d6a986e955.jpg",
+      "imageSHA256": "b8d6a986e955ec957bb5ec1022582d8bdf0a1b7021244bfe1c2f5a4f1b8bf4bf",
+      "videoURL": "https://www.chriscerney.org/community-help/media/fentanyl-glass-9bf1896f2be6.mp4",
+      "videoSHA256": "9bf1896f2be6cc47d49f9c166253b98dc9603a5ce7d05a693e8ec526d627d12d",
+      "width": 1080,
+      "height": 1350,
+      "duration": 20
+    }
+  },
+  {
     "id": "rotacare-clinic",
     "series": "beforeYouGo",
     "title": "No insurance?",
@@ -38,26 +69,6 @@
     "revision": 4,
     "publicPageURL": "https://www.chriscerney.org/community-help/#chs-recovery",
     "reviewedFingerprint": "f1fc42f6e3ffbcff"
-  },
-  {
-    "id": "fentanyl-awareness",
-    "series": "practicalHelp",
-    "title": "Hidden fentanyl can stop breathing.",
-    "message": "Street drugs and fake pills can contain lethal doses.\nFind naloxone. Suspected overdose? Call 911.",
-    "area": "Monterey · Santa Cruz counties",
-    "sourceName": "CDC · California Public Health",
-    "sourceURL": "https://www.cdc.gov/overdose-prevention/about/fentanyl.html",
-    "actionURL": "https://www.cdph.ca.gov/Programs/CCDPHP/sapb/Pages/Naloxone.aspx",
-    "details": "Illegally made fentanyl is a powerful opioid that may be mixed into drugs such as cocaine, methamphetamine or heroin, or pressed into fake prescription pills. A person may take it without knowing. Appearance, smell and taste cannot tell you whether fentanyl is present. An opioid overdose can slow or stop breathing and cause brain injury or death. Naloxone can reverse an opioid overdose, including one involving fentanyl. If you suspect an overdose, give naloxone if available, call 911 and stay until emergency help arrives. Naloxone does not replace emergency care. Open California Public Health’s Naloxone Finder to locate community programs; confirm hours, cost and supply with the provider. This is general prevention information, not confirmation of a specific local contaminated batch.",
-    "evidence": "Rechecked November 7, 2026: CDC fentanyl guidance documents mixing into illicit drugs and counterfeit pills, potentially deadly levels and inability to identify fentanyl by sight, taste or smell. CDC naloxone guidance documents slowed/stopped breathing, brain damage or death during overdose, opioid-overdose reversal and calling 911/staying with the person. CDPH page retrieved successfully and contains Naloxone Finder; no local stock or free availability promised. Sources: https://www.cdc.gov/overdose-prevention/about/fentanyl.html ; https://www.cdc.gov/overdose-prevention/reversing-overdose/about-naloxone.html ; https://www.cdph.ca.gov/Programs/CCDPHP/sapb/Pages/Naloxone.aspx",
-    "photoID": "salinas-alisal",
-    "state": "reviewed",
-    "checkedAt": "2026-11-08T04:05:06Z",
-    "reviewBy": "2026-11-15T04:05:06Z",
-    "endsAt": null,
-    "revision": 2,
-    "publicPageURL": "https://www.chriscerney.org/community-help/#fentanyl-awareness",
-    "reviewedFingerprint": "62cf0b0a1ed67e17"
   },
   {
     "id": "santa-cruz-recovery",
