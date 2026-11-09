@@ -22,6 +22,7 @@
   function videoPreview(video,frame,file,cover,eager,title){
     video.preload='none';
     if(!cover){video.src=file.url;return;}
+    video.controls=false;
     const preview=element('div','video-preview'),image=element('img'),play=element('button','video-start');
     image.alt=cover.alt || title;image.loading=eager?'eager':'lazy';image.fetchPriority=eager?'high':'auto';image.decoding='async';image.src=cover.url;
     play.type='button';play.setAttribute('aria-label','Play report: '+title);play.append(icon('play'),element('span','','Play report'));
@@ -33,7 +34,7 @@
       // Keep the decoded cover visible while playback connects. No MP4 request
       // competes with thumbnails before the reader actually presses Play.
       if(!video.hasAttribute('src')){video.poster=cover.url;video.src=file.url;}
-      play.hidden=true;
+      video.controls=true;play.hidden=true;
       video.play().catch(()=>{play.hidden=false;toast('Tap Play again, or use the video controls.');});
     });
   }
