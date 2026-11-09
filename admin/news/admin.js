@@ -165,7 +165,22 @@ function renderMedia() {
       dirty = true;
       renderMedia();
     });
-    row.append(preview, detail, remove);
+    const controls = el('div', 'media-controls');
+    if (!media.some(file => file.type.startsWith('video/')) && media.indexOf(item) > 0) {
+      const lead = el('button', '', 'Make lead image');
+      lead.type = 'button';
+      lead.disabled = busy || !item.ready;
+      lead.setAttribute('aria-label', 'Set ' + item.name + ' as lead image');
+      lead.addEventListener('click', () => {
+        media = [item, ...media.filter(file => file !== item)];
+        dirty = true;
+        renderMedia();
+        message('upload-status', 'Lead image updated. Publish to save the change.');
+      });
+      controls.append(lead);
+    }
+    controls.append(remove);
+    row.append(preview, detail, controls);
     list.append(row);
     item.progressElement = progress;
     item.statusElement = caption;

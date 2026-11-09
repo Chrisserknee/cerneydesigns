@@ -97,3 +97,4 @@
 
 .format-switch{display:flex;gap:8px;margin:0 0 23px}.format-switch button{min-height:44px;min-width:110px;border:1px solid #40576c;border-radius:7px;background:transparent;color:var(--muted);font-size:13px}.format-switch button[aria-pressed=true]{background:#263f54;color:var(--text);border-color:var(--blue)}
 #editor>label.additional-media{padding:18px;border:1px dashed #4c6780;border-radius:9px;background:#172534}
+.media-controls{display:flex;flex-direction:column;align-items:flex-end;gap:6px}.media-controls button:first-child:not(:last-child){color:var(--blue);max-width:95px;text-align:right;line-height:1.6}
