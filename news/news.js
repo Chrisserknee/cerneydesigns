@@ -22,7 +22,7 @@
     const card=element('article','post');card.id='post-'+post.id;
     const header=element('header','post-header'),avatar=element('div','avatar','CC'),author=element('div');
     avatar.setAttribute('aria-hidden','true');author.append(element('div','post-author','Chris Cerney'));
-    const date=element('time','post-date',new Intl.DateTimeFormat('en-US',{month:'short',day:'numeric',year:'numeric'}).format(new Date(post.publishAt)));date.dateTime=post.publishAt;author.append(date);header.append(avatar,author);
+    const date=element('time','post-date',new Intl.DateTimeFormat('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'}).format(new Date(post.publishAt)));date.dateTime=post.publishAt;if(!post.media.some(m=>m.type.startsWith('video/')))author.append(date);header.append(avatar,author);
     if(post.topic)header.append(element('span','topic',post.topic));card.append(header);
     if(post.media.length){
       const gallery=element('div','gallery');gallery.setAttribute('aria-label','Media for '+post.title);gallery.tabIndex=0;
@@ -34,7 +34,7 @@
         media.addEventListener('error',()=>{if(!frame.querySelector('.media-error'))frame.append(element('p','media-error','Media could not load. Try reloading this story.'));});
         const expand=element('button','expand');expand.type='button';expand.setAttribute('aria-label','View media fullscreen');expand.append(icon('expand'));expand.addEventListener('click',async()=>{try{if(frame.requestFullscreen)await frame.requestFullscreen();else if(media.webkitEnterFullscreen)media.webkitEnterFullscreen();else window.open(file.url,'_blank','noopener');}catch{toast('Use your video player’s fullscreen control.');}});frame.append(expand);gallery.append(frame);
       }
-      card.append(gallery);if(post.media.length>1)card.append(element('p','media-count',post.media.length+' photos / videos · swipe to see more'));
+      card.append(gallery);if(post.media.some(m=>m.type.startsWith('video/'))){const posted=date.cloneNode(true);posted.classList.add('posted-below-video');posted.textContent='Posted '+date.textContent;card.append(posted);}if(post.media.length>1)card.append(element('p','media-count',post.media.length+' photos / videos · swipe to see more'));
     }
     const actions=element('div','post-actions');
     const saved=member.saved?.includes(post.id)===true,save=element('button');save.type='button';save.setAttribute('aria-pressed',String(saved));save.append(icon('bookmark'),element('span','',saved?'Saved':'Save'));
