@@ -185,6 +185,8 @@ function published(subscription, settings) {
 function publicListing(subscription) {
     const profile = readProfile(subscription.metadata);
     const listingId = crypto.createHash('sha256').update(`spotlight:${subscription.id}`).digest('hex').slice(0, 20);
+    const reviewedBio = require('./spotlight-reviewed-bios.json')[listingId];
+    const description = subscription.livemode && reviewedBio?.profileHash === publicProfileHash(profile) ? reviewedBio.description : '';
     const verifiedAddress = require('./spotlight-verified-addresses.json')[listingId];
     const address = subscription.livemode && !profile.address && verifiedAddress?.profileHash === publicProfileHash(profile) ? verifiedAddress.address : '';
     const existingLogo = require('./spotlight-existing-logos.json')[listingId];
@@ -193,7 +195,7 @@ function publicListing(subscription) {
     const fallback = subscription.livemode && !profile.bannerSourceUrl && existingBanner?.profileHash === publicProfileHash(profile) ? existingBanner.url : '';
     const image = (subscription.metadata.spotlight_banner_profile === publicProfileHash(profile)
         ? bannerUrl(subscription.metadata.spotlight_banner_url, subscription.livemode) : '') || fallback;
-    return { id: listingId, ...profile, ...(address ? { address } : {}), ...(logo ? { logoUrl: logo } : {}), ...(image ? { bannerUrl: image } : {}) };
+    return { id: listingId, ...profile, ...(description ? { description } : {}), ...(address ? { address } : {}), ...(logo ? { logoUrl: logo } : {}), ...(image ? { bannerUrl: image } : {}) };
 }
 
 function createService(stripe, settings = config(), moderation = callModeration) {
