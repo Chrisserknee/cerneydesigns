@@ -8,7 +8,8 @@ let posts = [],
   filter = "all",
   busy = false,
   dirty = false,
-  publishAtOriginal = null;
+  publishAtOriginal = null,
+  format = 'video';
 const el = (tag, className, value) => {
   const node = document.createElement(tag);
   if (className) node.className = className;
@@ -35,6 +36,24 @@ const status = (post) =>
 function message(id, value, error = false) {
   $(id).textContent = value;
   $(id).classList.toggle("error", error);
+}
+function setFormat(value) {
+  if (value === 'article' && media.some(item => item.type.startsWith('video/'))) {
+    message('upload-status', 'Remove the video before changing this post to an article.', true);
+    return;
+  }
+  format = value;
+  const written = format === 'article';
+  $('files').closest('label').hidden = written;
+  for (const [field, slot] of [['title', 'headline-slot'], ['photos', 'photo-slot']]) {
+    const label = $(field).closest('label');
+    if (written) $('media-list').before(label);
+    else $(slot).append(label);
+  }
+  $('description-label').textContent = written ? 'Article text' : 'Description';
+  $('caption').placeholder = written ? 'Write your article. Separate paragraphs with a blank line.' : 'What’s the story? Add your reporting and context.';
+  document.querySelectorAll('[data-format]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.format === format)));
+  publicationInfo();
 }
 function lock(value, allowWriting = false) {
   busy = value;
@@ -146,7 +165,22 @@ function renderMedia() {
       dirty = true;
       renderMedia();
     });
-    row.append(preview, detail, remove);
+    const controls = el('div', 'media-controls');
+    if (!media.some(file => file.type.startsWith('video/')) && media.indexOf(item) > 0) {
+      const lead = el('button', '', 'Make lead image');
+      lead.type = 'button';
+      lead.disabled = busy || !item.ready;
+      lead.setAttribute('aria-label', 'Set ' + item.name + ' as lead image');
+      lead.addEventListener('click', () => {
+        media = [item, ...media.filter(file => file !== item)];
+        dirty = true;
+        renderMedia();
+        message('upload-status', 'Lead image updated. Publish to save the change.');
+      });
+      controls.append(lead);
+    }
+    controls.append(remove);
+    row.append(preview, detail, controls);
     list.append(row);
     item.progressElement = progress;
     item.statusElement = caption;
@@ -158,6 +192,7 @@ async function open(post) {
   revision = post?.revision || 0;
   publishAtOriginal = post?.status === "published" ? post.publishAt : null;
   media = (post?.media || []).map((m) => ({ ...m, ready: true }));
+  setFormat(post && !media.some(item => item.type.startsWith('video/')) ? 'article' : 'video');
   $("title").value = post?.title || "";
   $("caption").value = post?.caption || "";
   $("location").value = post?.location || "";
@@ -198,7 +233,7 @@ function publicationInfo() {
         dateStyle: "medium",
         timeStyle: "short",
       })
-    : "The posting date and time will appear automatically below your video.";
+    : format === 'article' ? 'The publication date and time will appear automatically on your article.' : "The posting date and time will appear automatically below your video.";
 }
 function localDate(iso) {
   const date = new Date(iso);
@@ -336,6 +371,7 @@ async function addFiles(event) {
 }
 $("files").addEventListener("change", addFiles);
 $("photos").addEventListener("change", addFiles);
+document.querySelectorAll('[data-format]').forEach(button => button.addEventListener('click', () => setFormat(button.dataset.format)));
 async function save(target) {
   if (busy) return;
   if (!$("editor").reportValidity()) return;
