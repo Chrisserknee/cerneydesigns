@@ -89,3 +89,8 @@
 .media-row input{font-size:16px!important}
 .editor-heading h2{font-size:22px}
 }
+
+.publication-info{color:var(--muted);font-size:12px;line-height:1.8;margin:8px 0 24px}
+.media-details summary{font-size:10px;color:var(--blue);cursor:pointer;margin:6px 0}
+.media-details input{margin-bottom:8px}
+.upload-zone{margin-bottom:20px}

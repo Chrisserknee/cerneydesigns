@@ -187,3 +187,5 @@ dialog{padding:29px 23px}
 }
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}
 }
+
+.posted-below-video{display:block;margin:14px 24px 0;color:var(--muted);font-size:12px;line-height:1.7}
