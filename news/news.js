@@ -21,6 +21,8 @@
   const videoObserver=new IntersectionObserver(entries=>entries.forEach(entry=>{if(!entry.isIntersecting)entry.target.pause();}),{threshold:.3});
   function paragraph(text) {
     const p=element('p');
+    const related=text.match(/^(Watch the corresponding video report|Read the corresponding article|Original TikTok publication): (https:\/\/\S+)$/);
+    if(related){const segments=textSegments(related[2]);if(segments.length===1&&segments[0].url){const link=element('a','story-link',related[1]+' ↗');link.href=segments[0].url;if(new URL(link.href).origin!==location.origin){link.target='_blank';link.rel='noopener noreferrer';}p.className='related-story';p.append(link);return p;}}
     for(const segment of textSegments(text)){
       if(!segment.url){p.append(document.createTextNode(segment.text));continue;}
       const link=element('a','story-link',segment.text);link.href=segment.url;
