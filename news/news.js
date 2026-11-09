@@ -1,11 +1,12 @@
 'use strict';
 (() => {
   const $=id=>document.getElementById(id);
+  const {hasVideo,isArticle,textSegments,articlePage}=window.NewsArticles;
   const params=new URLSearchParams(location.search);
   const linkParams=new URLSearchParams(location.hash.slice(1));
   let pendingLink=linkParams.get('signin'), unsubscribe=linkParams.get('unsubscribe');
   if (pendingLink || unsubscribe) history.replaceState({},'',location.pathname+location.search);
-  let view=['video','image','saved'].includes(params.get('view')) ? params.get('view') : 'all';
+  let view=['video','article','image','saved'].includes(params.get('view')) ? params.get('view') : 'all';
   let member={authenticated:false}, posts=[],nextOffset=null,requestNumber=0,searchTimer,toastTimer;
   const postId=params.get('post');
   const element=(tag,className,value)=>{const el=document.createElement(tag);if(className)el.className=className;if(value!==undefined)el.textContent=value;return el;};
@@ -18,30 +19,47 @@
   function updateAccount() {document.querySelectorAll('.join-button').forEach(b=>b.textContent=member.authenticated ? 'My account' : 'Join free ↗');document.querySelectorAll('.rail .account-button span').forEach(s=>s.textContent=member.authenticated ? 'My account' : 'Join / sign in');}
   function showMessage(id,message,error=false) {const el=$(id);el.textContent=message;el.classList.toggle('error',error);}
   const videoObserver=new IntersectionObserver(entries=>entries.forEach(entry=>{if(!entry.isIntersecting)entry.target.pause();}),{threshold:.3});
+  function paragraph(text) {
+    const p=element('p');
+    for(const segment of textSegments(text)){
+      if(!segment.url){p.append(document.createTextNode(segment.text));continue;}
+      const link=element('a','story-link',segment.text);link.href=segment.url;
+      if(new URL(segment.url).origin!==location.origin){link.target='_blank';link.rel='noopener noreferrer';}
+      p.append(link);
+    }
+    return p;
+  }
   function renderPost(post) {
-    const card=element('article','post');card.id='post-'+post.id;
+    const written=isArticle(post),card=element('article',written?'post article-post':'post');card.id='post-'+post.id;
+    const paragraphs=post.caption.split(/\n\s*\n/).filter(Boolean);
     const header=element('header','post-header'),avatar=element('div','avatar','CC'),author=element('div');
     avatar.setAttribute('aria-hidden','true');author.append(element('div','post-author','Chris Cerney'));
     const date=element('time','post-date',new Intl.DateTimeFormat('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'}).format(new Date(post.publishAt)));date.dateTime=post.publishAt;if(!post.media.some(m=>m.type.startsWith('video/')))author.append(date);header.append(avatar,author);
     if(post.topic)header.append(element('span','topic',post.topic));card.append(header);
+    if(written){const title=element('div','article-heading'),heading=element(postId?'h1':'h2'),link=element('a','',post.title);link.href=post.permalink;heading.append(link);title.append(element('p','eyebrow','ARTICLE · CHRIS CERNEY'),heading);card.append(title);}
     if(post.media.length){
       const gallery=element('div','gallery');gallery.setAttribute('aria-label','Media for '+post.title);gallery.tabIndex=0;
-      for(const file of post.media){
+      const files=written&&!postId?post.media.slice(0,1):post.media;
+      for(const file of files){
         const frame=element('figure','media-frame');let media;
         if(file.type.startsWith('video/')){media=element('video');media.controls=true;media.playsInline=true;media.preload='metadata';const cover=post.media.find(item=>item.type.startsWith('image/'));if(cover)media.poster=cover.url;media.setAttribute('aria-label',file.alt || post.title);media.addEventListener('play',()=>document.querySelectorAll('video').forEach(other=>{if(other!==media)other.pause();}));videoObserver.observe(media);}
         else{media=element('img');media.alt=file.alt || post.title;media.loading='lazy';media.decoding='async';}
         media.src=file.url;frame.append(media);
         media.addEventListener('error',()=>{if(!frame.querySelector('.media-error'))frame.append(element('p','media-error','Media could not load. Try reloading this story.'));});
-        const expand=element('button','expand');expand.type='button';expand.setAttribute('aria-label','View media fullscreen');expand.append(icon('expand'));expand.addEventListener('click',async()=>{try{if(frame.requestFullscreen)await frame.requestFullscreen();else if(media.webkitEnterFullscreen)media.webkitEnterFullscreen();else window.open(file.url,'_blank','noopener');}catch{toast('Use your video player’s fullscreen control.');}});frame.append(expand);gallery.append(frame);
+        const expand=element('button','expand');expand.type='button';expand.setAttribute('aria-label','View media fullscreen');expand.append(icon('expand'));expand.addEventListener('click',async()=>{try{if(frame.requestFullscreen)await frame.requestFullscreen();else if(media.webkitEnterFullscreen)media.webkitEnterFullscreen();else window.open(file.url,'_blank','noopener');}catch{toast('Use your video player’s fullscreen control.');}});frame.append(expand);if(written&&file.alt)frame.append(element('figcaption','still-caption',file.alt));gallery.append(frame);
       }
-      card.append(gallery);if(post.media.some(m=>m.type.startsWith('video/'))){const posted=date.cloneNode(true);posted.classList.add('posted-below-video');posted.textContent='Posted '+date.textContent;card.append(posted);}if(post.media.length>1)card.append(element('p','media-count',post.media.length+' photos / videos · swipe to see more'));
+      card.append(gallery);if(hasVideo(post)){const posted=date.cloneNode(true);posted.classList.add('posted-below-video');posted.textContent='Posted '+date.textContent;card.append(posted);}if(files.length>1)card.append(element('p','media-count',files.length+(written?' report images · swipe to see more':' photos / videos · swipe to see more')));
     }
     const actions=element('div','post-actions');
     const saved=member.saved?.includes(post.id)===true,save=element('button');save.type='button';save.setAttribute('aria-pressed',String(saved));save.append(icon('bookmark'),element('span','',saved?'Saved':'Save'));
     save.addEventListener('click',async()=>{if(!member.authenticated)return account();save.disabled=true;try{member=await api({op:'save-story',id:post.id,saved:save.getAttribute('aria-pressed')!=='true'});const value=member.saved.includes(post.id);save.setAttribute('aria-pressed',String(value));save.querySelector('span').textContent=value?'Saved':'Save';if(view==='saved'&&!value)void load();}catch(error){toast(error.message);}finally{save.disabled=false;}});
     const share=element('button');share.type='button';share.append(icon('share'),element('span','','Share'));share.addEventListener('click',async()=>{try{if(navigator.share)await navigator.share({title:post.title,url:post.permalink});else{await navigator.clipboard.writeText(post.permalink);toast('Story link copied.');}}catch(error){if(error.name!=='AbortError')toast('Open this story and copy its address to share.');}});
-    actions.append(save,share);card.append(actions);
-    const copy=element('div','post-copy'),heading=element('h2'),permalink=element('a','',post.title);permalink.href=post.permalink;heading.append(permalink);copy.append(heading,element('p','',post.caption));if(post.location)copy.append(element('p','location',post.location));card.append(copy);return card;
+    actions.append(save,share);if(!written)card.append(actions);
+    const copy=element('div','post-copy');
+    if(!written){const heading=element('h2'),permalink=element('a','',post.title);permalink.href=post.permalink;heading.append(permalink);copy.append(heading);}
+    for(const text of written&&!postId?paragraphs.slice(0,2):paragraphs)copy.append(paragraph(text));
+    if(written&&!postId){const read=element('a','read-article','Read article ↗');read.href=post.permalink;copy.append(read);}
+    if(post.location)copy.append(element('p','location',post.location));card.append(copy);if(written)card.append(actions);return card;
   }
   function empty() {
     const box=element('section','empty-state'),symbol=element('div','empty-icon');symbol.append(icon(view==='saved'?'bookmark':'play'));box.append(symbol);
@@ -51,25 +69,27 @@
     else if(searching){title='No stories found.';message='Try another name, place or topic.';}
     else if(view==='saved'){title=member.authenticated?'Your saved stories live here.':'Keep the stories that matter.';message=member.authenticated?'Tap Save on a published story to return to it here.':'Join free or sign in to keep a personal collection of reporting.';}
     else if(view==='video'){title='Video reporting, right here.';message='Published videos will appear here, with full-screen playback and a direct link to each story.';}
+    else if(view==='article'){title='The reporting, in writing.';message='Read articles with images, source context and links to the corresponding video reports.';}
     else if(view==='image'){title='Stories told in photographs.';message='Published photos and galleries will appear here.';}
     box.append(element('p','eyebrow','CHRIS CERNEY NEWS'),element('h2','',title),element('p','',message));
     const actions=element('div','empty-actions');
     if(!member.authenticated&&!searching){const join=element('button','primary','Join free ↗');join.addEventListener('click',account);actions.append(join);}
     const archive=element('a','secondary',postId?'Back to the feed':'Explore the portfolio ↗');archive.href=postId?'/news/':'/portfolio/';actions.append(archive);box.append(actions);return box;
   }
-  function setActive(){document.querySelectorAll('[data-view]').forEach(b=>{const active=b.dataset.view===view;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active));});document.querySelectorAll('[data-nav]').forEach(b=>b.classList.toggle('current',b.dataset.nav===view));$('feed').classList.toggle('video-view',view==='video');$('search').disabled=view==='saved'||Boolean(postId);}
+  function setActive(){document.querySelectorAll('[data-view]').forEach(b=>{const active=b.dataset.view===view;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active));});document.querySelectorAll('[data-nav]').forEach(b=>b.classList.toggle('current',b.dataset.nav===view));$('feed').classList.toggle('video-view',view==='video');$('search').disabled=view==='saved'||Boolean(postId);document.querySelector('.profile-intro').hidden=Boolean(postId);document.querySelector('.feed-controls').hidden=Boolean(postId);document.querySelector('.desktop-title').firstChild.textContent=view==='article'?'Articles ':'News feed ';if(!postId)document.title=(view==='article'?'Articles':'News')+' — Chris Cerney';}
   async function load(append=false){
     const number=++requestNumber;setActive();$('feed-status').textContent=append?'Loading more stories…':'Loading the latest reporting…';$('load-more').hidden=true;
     try{
       let data;
       if(view==='saved'){data=member.authenticated?await api({op:'saved-feed'}):{posts:[],nextOffset:null};}
-      else{const query=new URLSearchParams({op:'feed',offset:append?String(nextOffset || 0):'0'});if(postId)query.set('id',postId);if(view!=='all')query.set('type',view);if($('search').value.trim())query.set('q',$('search').value.trim());const res=await fetch('/api/news?'+query);data=await res.json();if(!res.ok)throw new Error(data.error || 'Could not load stories.');}
+      else{const fetchPage=async offset=>{const query=new URLSearchParams({op:'feed',offset:String(offset)});if(postId)query.set('id',postId);if(['video','image'].includes(view))query.set('type',view);if($('search').value.trim())query.set('q',$('search').value.trim());const res=await fetch('/api/news?'+query);const result=await res.json();if(!res.ok)throw new Error(result.error || 'Could not load stories.');return result;};const offset=append?nextOffset || 0:0;data=view==='article'&&!postId?await articlePage(fetchPage,offset,()=>number===requestNumber):await fetchPage(offset);}
       if(number!==requestNumber)return;
-      posts=append?[...posts,...data.posts]:data.posts;nextOffset=data.nextOffset;
+      const seen=new Set(append?posts.map(post=>post.id):[]);data.posts=data.posts.filter(post=>{if(seen.has(post.id))return false;seen.add(post.id);return true;});posts=append?[...posts,...data.posts]:data.posts;nextOffset=data.nextOffset;
       if(!append){videoObserver.disconnect();$('feed').replaceChildren();if(postId){const back=element('a','single-back','← All reporting');back.href='/news/';$('feed').append(back);}}
       for(const post of data.posts)$('feed').append(renderPost(post));
+      if(postId&&posts.length){document.title=posts[0].title+' — Chris Cerney';document.querySelector('link[rel="canonical"]').href=posts[0].permalink;}
       if(!posts.length)$('feed').append(empty());
-      $('feed-status').textContent=posts.length? (view==='saved'?'Your saved reporting':'Latest reporting · newest first'):'';$('load-more').hidden=nextOffset===null;
+      $('feed-status').textContent=posts.length? (view==='saved'?'Your saved reporting':view==='article'?'Written reporting · newest first':'Latest reporting · newest first'):'';$('load-more').hidden=nextOffset===null;
     }catch(error){if(number!==requestNumber)return;$('feed-status').textContent=error.message+' ';const retry=element('button','secondary','Try again');retry.addEventListener('click',()=>load());$('feed-status').append(retry);}
   }
   document.querySelectorAll('[data-view],[data-nav]').forEach(button=>button.addEventListener('click',event=>{if(postId){event.preventDefault();const target=button.dataset.view || button.dataset.nav;location.href=target==='all'?'/news/':'/news/?view='+target;return;}event.preventDefault();view=button.dataset.view || button.dataset.nav;history.replaceState({},'',view==='all'?'/news/':'/news/?view='+view);void load();}));

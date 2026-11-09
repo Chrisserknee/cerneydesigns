@@ -7,7 +7,7 @@
     <title>Publishing desk — Chris Cerney</title>
     <link rel="icon" href="/images/favicon-cc.svg" />
     <link rel="stylesheet" href="/news/news.css" />
-    <link rel="stylesheet" href="/admin/news/admin.css?v=20261108-simple" />
+    <link rel="stylesheet" href="/admin/news/admin.css?v=20261108-articles" />
     <link
       href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap"
       rel="stylesheet"
@@ -47,7 +47,7 @@
           <div>
             <p class="eyebrow">CHRIS CERNEY NEWS</p>
             <h1>Publishing desk</h1>
-            <p>Choose your video, add a description, and publish.</p>
+            <p>Choose Video or Article, add your reporting, and publish.</p>
           </div>
           <button class="primary" id="new-post">＋ New post</button>
         </div>
@@ -76,6 +76,7 @@
               <h2 id="editor-title">New post</h2>
               <span class="status-badge" id="post-state">DRAFT</span>
             </div>
+            <div class="format-switch" aria-label="Post format"><button type="button" data-format="video" aria-pressed="true">Video</button><button type="button" data-format="article" aria-pressed="false">Article</button></div>
             <label class="upload-zone" for="files"
               ><svg aria-hidden="true"><use href="/news/icons.svg#play" /></svg
               ><strong>Choose your video</strong
@@ -89,7 +90,7 @@
             <div id="media-list"></div>
             <p id="upload-status" class="message" role="status"></p>
             <label
-              >Description<textarea
+              ><span id="description-label">Description</span><textarea
                 id="caption"
                 rows="6"
                 maxlength="10000"
@@ -103,7 +104,7 @@
             </p>
             <details class="publish-options">
               <summary>More options</summary>
-              <label
+              <div id="headline-slot"><label
                 >Headline
                 <span class="optional"
                   >Optional · created from your description</span
@@ -112,6 +113,7 @@
                   maxlength="180"
                   placeholder="Use the first sentence of your description"
               /></label>
+              </div>
               <div class="field-row">
                 <label
                   >Location <span class="optional">Optional</span
@@ -135,13 +137,14 @@
                   </datalist></label
                 >
               </div>
-              <label class="additional-media"
+              <div id="photo-slot"><label class="additional-media"
                 >Add photos<input
                   id="photos"
                   type="file"
                   accept="image/jpeg,image/png,image/webp,image/avif"
                   multiple
               /></label>
+              </div>
               <p class="hint">
                 You can also publish a written story with photos. Up to 10 files
                 per post; 30 MB per photo.
@@ -187,7 +190,7 @@
     </dialog>
     <script
       type="module"
-      src="/admin/news/admin.js?v=20261108-decoded"
+      src="/admin/news/admin.js?v=20261108-articles"
     ></script>
   </body>
 </html>

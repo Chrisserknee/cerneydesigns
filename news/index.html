@@ -11,7 +11,7 @@
   <link rel="manifest" href="/news/manifest.webmanifest">
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/news/news.css">
+  <link rel="stylesheet" href="/news/news.css?v=20261108-articles">
 </head>
 <body>
 <a class="skip" href="#main">Skip to news</a>
@@ -21,6 +21,7 @@
     <nav class="rail-nav">
       <a href="/news/" class="nav-item current" data-nav="all"><svg><use href="/news/icons.svg#home"/></svg><span>News feed</span></a>
       <a href="/news/?view=video" class="nav-item" data-nav="video"><svg><use href="/news/icons.svg#play"/></svg><span>Watch</span></a>
+      <a href="/news/?view=article" class="nav-item" data-nav="article"><svg><use href="/news/icons.svg#article"/></svg><span>Articles</span></a>
       <a href="/news/?view=image" class="nav-item" data-nav="image"><svg><use href="/news/icons.svg#photo"/></svg><span>Photos</span></a>
       <a href="/news/?view=saved" class="nav-item" data-nav="saved"><svg><use href="/news/icons.svg#bookmark"/></svg><span>Saved</span></a>
       <button class="nav-item account-button" type="button"><svg><use href="/news/icons.svg#user"/></svg><span>Join / sign in</span></button>
@@ -34,7 +35,7 @@
       <p class="profile-description">Independent reporting.<br><strong>A direct connection.</strong></p>
       <div class="profile-meta"><span><svg><use href="/news/icons.svg#pin"/></svg> Central Coast, California</span><span>Photos · Video · Stories</span></div>
     </section>
-    <div class="feed-controls"><div class="tabs" aria-label="Filter news"><button data-view="all" class="active" aria-pressed="true">All posts</button><button data-view="video" aria-pressed="false">Videos</button><button data-view="image" aria-pressed="false">Photos</button><button data-view="saved" aria-pressed="false">Saved</button></div><label class="search"><svg><use href="/news/icons.svg#search"/></svg><input type="search" id="search" maxlength="100" placeholder="Search stories" aria-label="Search stories"></label></div>
+    <div class="feed-controls"><div class="tabs" aria-label="Filter news"><button data-view="all" class="active" aria-pressed="true">All posts</button><button data-view="video" aria-pressed="false">Videos</button><button data-view="article" aria-pressed="false">Articles</button><button data-view="image" aria-pressed="false">Photos</button><button data-view="saved" aria-pressed="false">Saved</button></div><label class="search"><svg><use href="/news/icons.svg#search"/></svg><input type="search" id="search" maxlength="100" placeholder="Search stories" aria-label="Search stories"></label></div>
     <p id="feed-status" class="feed-status" role="status">Loading the latest reporting…</p>
     <div id="feed" aria-label="News posts"></div>
     <button id="load-more" class="secondary load-more" hidden>Load more stories</button>
@@ -48,9 +49,10 @@
     <p class="side-note">Published by Chris Cerney.<br>Built for a direct connection with the community.</p>
   </aside>
 </div>
-<nav class="mobile-nav" aria-label="News navigation"><a href="/news/" data-nav="all" class="current"><svg><use href="/news/icons.svg#home"/></svg><span>Feed</span></a><a href="/news/?view=video" data-nav="video"><svg><use href="/news/icons.svg#play"/></svg><span>Watch</span></a><a href="/news/?view=saved" data-nav="saved"><svg><use href="/news/icons.svg#bookmark"/></svg><span>Saved</span></a><button type="button" class="account-button"><svg><use href="/news/icons.svg#user"/></svg><span>Account</span></button></nav>
+<nav class="mobile-nav" aria-label="News navigation"><a href="/news/" data-nav="all" class="current"><svg><use href="/news/icons.svg#home"/></svg><span>Feed</span></a><a href="/news/?view=video" data-nav="video"><svg><use href="/news/icons.svg#play"/></svg><span>Watch</span></a><a href="/news/?view=article" data-nav="article"><svg><use href="/news/icons.svg#article"/></svg><span>Articles</span></a><a href="/news/?view=saved" data-nav="saved"><svg><use href="/news/icons.svg#bookmark"/></svg><span>Saved</span></a><button type="button" class="account-button"><svg><use href="/news/icons.svg#user"/></svg><span>Account</span></button></nav>
 <dialog id="account-dialog" aria-labelledby="account-title"><button class="dialog-close" type="button" data-close aria-label="Close account">×</button><div id="join-view"><p class="eyebrow">YOUR DIRECT CONNECTION</p><h2 id="account-title">Join the community.</h2><p>A free account for saving stories and following Chris’s reporting. Sign in with an email link—no password needed.</p><form id="join-form"><label>Email address<input type="email" id="email" autocomplete="email" maxlength="254" required placeholder="you@example.com"></label><label class="check"><input type="checkbox" id="consent" required><span>Create or access my free account. I’ve read the <a href="/news/privacy.html">privacy notice</a>.</span></label><label class="check"><input type="checkbox" id="updates"><span>Email me new reporting when I join. Existing members can change this in Account.</span></label><button class="primary" type="submit">Email me a sign-in link <span>↗</span></button></form></div><div id="member-view" hidden><p class="eyebrow">YOU’RE PART OF THE COMMUNITY</p><h2>Your account</h2><p id="member-email"></p><label class="check"><input type="checkbox" id="member-updates"><span>Email updates when Chris publishes and chooses to notify subscribers.</span></label><button class="primary" id="preferences">Save preferences</button><button class="secondary" id="logout">Sign out</button><button class="text-danger" id="delete-account">Delete my account and saved stories</button></div><p id="account-message" class="message" role="status"></p></dialog>
 <dialog id="link-dialog" aria-labelledby="link-title"><p class="eyebrow">CHRIS CERNEY NEWS</p><h2 id="link-title">Finish signing in</h2><p id="link-text">Confirm to sign in securely on this device.</p><button class="primary" id="confirm-link">Continue</button><button class="secondary" data-close>Cancel</button><p id="link-message" class="message" role="status"></p></dialog>
 <div id="toast" class="toast" role="status" hidden></div>
-<script src="/news/news.js?v=20261108-posters" defer></script>
+<script src="/news/article-utils.js?v=20261108-articles" defer></script>
+<script src="/news/news.js?v=20261108-articles" defer></script>
 </body></html>
