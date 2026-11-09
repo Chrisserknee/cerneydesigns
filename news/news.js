@@ -19,6 +19,25 @@
   function updateAccount() {document.querySelectorAll('.join-button').forEach(b=>b.textContent=member.authenticated ? 'My account' : 'Join free ↗');document.querySelectorAll('.rail .account-button span').forEach(s=>s.textContent=member.authenticated ? 'My account' : 'Join / sign in');}
   function showMessage(id,message,error=false) {const el=$(id);el.textContent=message;el.classList.toggle('error',error);}
   const videoObserver=new IntersectionObserver(entries=>entries.forEach(entry=>{if(!entry.isIntersecting)entry.target.pause();}),{threshold:.3});
+  function videoPreview(video,frame,file,cover,eager,title){
+    video.preload='none';
+    if(!cover){video.src=file.url;return;}
+    video.controls=false;
+    const preview=element('div','video-preview'),image=element('img'),play=element('button','video-start');
+    image.alt=cover.alt || title;image.loading=eager?'eager':'lazy';image.fetchPriority=eager?'high':'auto';image.decoding='async';image.src=cover.url;
+    play.type='button';play.setAttribute('aria-label','Play report: '+title);play.append(icon('play'),element('span','','Play report'));
+    preview.append(image,play);frame.append(preview);
+    image.addEventListener('error',()=>{image.hidden=true;preview.classList.add('preview-unavailable');});
+    video.addEventListener('playing',()=>{preview.hidden=true;});
+    video.addEventListener('error',()=>{preview.hidden=false;play.hidden=false;});
+    play.addEventListener('click',()=>{
+      // Keep the decoded cover visible while playback connects. No MP4 request
+      // competes with thumbnails before the reader actually presses Play.
+      if(!video.hasAttribute('src')){video.poster=cover.url;video.src=file.url;}
+      video.controls=true;play.hidden=true;
+      video.play().catch(()=>{play.hidden=false;toast('Tap Play again, or use the video controls.');});
+    });
+  }
   function paragraph(text) {
     const p=element('p');
     const related=text.match(/^(Watch the corresponding video report|Read the corresponding article|Original TikTok publication): (https:\/\/\S+)$/);
@@ -31,7 +50,7 @@
     }
     return p;
   }
-  function renderPost(post) {
+  function renderPost(post,eager=false) {
     const written=isArticle(post),card=element('article',written?'post article-post':'post');card.id='post-'+post.id;
     const paragraphs=post.caption.split(/\n\s*\n/).filter(Boolean);
     const header=element('header','post-header'),avatar=element('div','avatar','CC'),author=element('div');
@@ -41,12 +60,13 @@
     if(written){const title=element('div','article-heading'),heading=element(postId?'h1':'h2'),link=element('a','',post.title);link.href=post.permalink;heading.append(link);title.append(element('p','eyebrow','ARTICLE · CHRIS CERNEY'),heading);card.append(title);}
     if(post.media.length){
       const gallery=element('div','gallery');gallery.setAttribute('aria-label','Media for '+post.title);gallery.tabIndex=0;
-      const files=written&&!postId?post.media.slice(0,1):post.media;
+      const cover=post.media.find(file=>file.type.startsWith('image/'));
+      const files=written&&!postId?post.media.slice(0,1):written?post.media:post.media.filter(file=>file!==cover);
       for(const file of files){
         const frame=element('figure','media-frame');let media;
-        if(file.type.startsWith('video/')){media=element('video');media.controls=true;media.playsInline=true;media.preload='metadata';const cover=post.media.find(item=>item.type.startsWith('image/'));if(cover)media.poster=cover.url;media.setAttribute('aria-label',file.alt || post.title);media.addEventListener('play',()=>document.querySelectorAll('video').forEach(other=>{if(other!==media)other.pause();}));videoObserver.observe(media);}
-        else{media=element('img');media.alt=file.alt || post.title;media.loading='lazy';media.decoding='async';}
-        media.src=file.url;frame.append(media);
+        if(file.type.startsWith('video/')){media=element('video');media.controls=true;media.playsInline=true;media.setAttribute('aria-label',file.alt || post.title);media.addEventListener('play',()=>document.querySelectorAll('video').forEach(other=>{if(other!==media)other.pause();}));videoObserver.observe(media);}
+        else{media=element('img');media.alt=file.alt || post.title;media.loading=eager?'eager':'lazy';media.fetchPriority=eager?'high':'auto';media.decoding='async';media.src=file.url;}
+        frame.append(media);if(file.type.startsWith('video/'))videoPreview(media,frame,file,cover,eager,post.title);
         media.addEventListener('error',()=>{if(!frame.querySelector('.media-error'))frame.append(element('p','media-error','Media could not load. Try reloading this story.'));});
         const expand=element('button','expand');expand.type='button';expand.setAttribute('aria-label','View media fullscreen');expand.append(icon('expand'));expand.addEventListener('click',async()=>{try{if(frame.requestFullscreen)await frame.requestFullscreen();else if(media.webkitEnterFullscreen)media.webkitEnterFullscreen();else window.open(file.url,'_blank','noopener');}catch{toast('Use your video player’s fullscreen control.');}});frame.append(expand);if(written&&file.alt)frame.append(element('figcaption','still-caption',file.alt));gallery.append(frame);
       }
@@ -87,8 +107,8 @@
       else{const fetchPage=async offset=>{const query=new URLSearchParams({op:'feed',offset:String(offset)});if(postId)query.set('id',postId);if(['video','image'].includes(view))query.set('type',view);if($('search').value.trim())query.set('q',$('search').value.trim());const res=await fetch('/api/news?'+query);const result=await res.json();if(!res.ok)throw new Error(result.error || 'Could not load stories.');return result;};const offset=append?nextOffset || 0:0;data=view==='article'&&!postId?await articlePage(fetchPage,offset,()=>number===requestNumber):await fetchPage(offset);}
       if(number!==requestNumber)return;
       const seen=new Set(append?posts.map(post=>post.id):[]);data.posts=data.posts.filter(post=>{if(seen.has(post.id))return false;seen.add(post.id);return true;});posts=append?[...posts,...data.posts]:data.posts;nextOffset=data.nextOffset;
-      if(!append){videoObserver.disconnect();$('feed').replaceChildren();if(postId){const back=element('a','single-back','← All reporting');back.href='/news/';$('feed').append(back);}}
-      for(const post of data.posts)$('feed').append(renderPost(post));
+      if(!append){document.querySelectorAll('#feed video').forEach(video=>{video.pause();video.removeAttribute('src');video.load();});videoObserver.disconnect();$('feed').replaceChildren();if(postId){const back=element('a','single-back','← All reporting');back.href='/news/';$('feed').append(back);}}
+      for(const [index,post] of data.posts.entries())$('feed').append(renderPost(post,!append&&index===0));
       if(postId&&posts.length){document.title=posts[0].title+' — Chris Cerney';document.querySelector('link[rel="canonical"]').href=posts[0].permalink;}
       if(!posts.length)$('feed').append(empty());
       $('feed-status').textContent=posts.length? (view==='saved'?'Your saved reporting':view==='article'?'Written reporting · newest first':'Latest reporting · newest first'):'';$('load-more').hidden=nextOffset===null;

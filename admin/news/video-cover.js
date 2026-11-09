@@ -47,7 +47,7 @@ export async function videoCover(file) {
     video.pause();
     const scale = Math.min(
       1,
-      1920 / Math.max(video.videoWidth, video.videoHeight),
+      1280 / Math.max(video.videoWidth, video.videoHeight),
     );
     const canvas = document.createElement("canvas");
     canvas.width = Math.max(1, Math.round(video.videoWidth * scale));
@@ -65,7 +65,7 @@ export async function videoCover(file) {
       throw new Error("Cover frame is blank");
     }
     const blob = await new Promise((resolve) =>
-      canvas.toBlob(resolve, "image/jpeg", 0.9),
+      canvas.toBlob(resolve, "image/jpeg", 0.78),
     );
     if (!blob) throw new Error("Cover preview unavailable");
     return new File([blob], file.name.replace(/\.[^.]+$/, "") + "-cover.jpg", {
