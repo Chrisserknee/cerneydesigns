@@ -85,12 +85,12 @@ test('custom events remain disabled until a supported plan is approved', () => {
 
 test('enabled events redact URL secrets and drop unknown properties and names', () => {
     const page = browser('https://cerneyselects.com/?secret=x', true);
-    const event = {type:'event', name:'Site interaction', url:'https://cerneyselects.com/?secret=x#private', data:{action:'business_open', target:'example business',email:'private@example.com'}};
+    const event = {type:'event', url:'https://cerneyselects.com/?secret=x#private', payload:{name:'Site interaction',data:{action:'business_open', target:'example business',email:'private@example.com'}}};
     const clean=page.beforeSend(event);
     assert.equal(clean.url,'https://cerneyselects.com/');
-    assert.deepEqual(Object.keys(clean.data),['action','target']);
-    assert.equal(page.beforeSend({...event,name:'arbitrary'}),null);
-    assert.equal(page.beforeSend({...event,data:{action:'business_open',target:'private@example.com'}}),null);
+    assert.deepEqual(Object.keys(clean.payload.data),['action','target']);
+    assert.equal(page.beforeSend({...event,payload:{...event.payload,name:'arbitrary'}}),null);
+    assert.equal(page.beforeSend({...event,payload:{...event.payload,data:{action:'business_open',target:'private@example.com'}}}),null);
     assert.equal(page.beforeSend({...event,url:'https://cerneyselects.com/spotlightreview/'}),null);
 });
 

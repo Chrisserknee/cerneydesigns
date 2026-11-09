@@ -27,10 +27,10 @@
         const url = publicPage(event.url);
         if (!url) return null;
         if (event.type === 'pageview') return { ...event, url };
-        if (!customEventsEnabled || event.type !== 'event' || event.name !== 'Site interaction'
-            || !actions.has(event.data?.action) || !safeTarget(event.data?.target)) return null;
+        if (!customEventsEnabled || event.type !== 'event' || event.payload?.name !== 'Site interaction'
+            || !actions.has(event.payload?.data?.action) || !safeTarget(event.payload?.data?.target)) return null;
         // Exactly two controlled properties: no form values, raw URLs or IDs.
-        return { ...event, url, data: { action: event.data.action, target: event.data.target } };
+        return { type: 'event', url, payload: { name: 'Site interaction', data: { action: event.payload.data.action, target: event.payload.data.target } } };
     });
     function track(action, target) {
         if (!customEventsEnabled || !publicPage(window.location.href) || !actions.has(action) || !safeTarget(target)) return;
