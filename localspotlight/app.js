@@ -189,6 +189,7 @@
         const socials = window.CerneySelectsSocialLinks(profile);
         if (socials) bottom.append(socials);
         if (bottom.childElementCount) body.append(bottom);
+        card.dataset.analyticsBusiness = profile.businessName.toLowerCase().replace(/[^a-z0-9 ._&/-]/g, '').slice(0, 90);
         card.append(body);
         return card;
     }
@@ -230,6 +231,8 @@
         const copy = node('span', 'business-tile-copy');
         copy.append(node('span', 'business-tile-name', profile.businessName), node('span', 'business-tile-city', profile.city));
         tile.append(top, copy);
+        tile.dataset.analyticsAction = 'business_open';
+        tile.dataset.analyticsTarget = profile.businessName.toLowerCase().replace(/[^a-z0-9 ._&/-]/g, '').slice(0, 90);
         tile.addEventListener('click', () => openBusiness(profile, index));
         return tile;
     }
@@ -256,6 +259,8 @@
         const arrow = node('span', 'business-tile-arrow', '↗');
         arrow.setAttribute('aria-hidden', 'true');
         tile.append(art, copy, node('span', 'business-tile-city', profile.city), arrow);
+        tile.dataset.analyticsAction = 'business_open';
+        tile.dataset.analyticsTarget = profile.businessName.toLowerCase().replace(/[^a-z0-9 ._&/-]/g, '').slice(0, 90);
         tile.addEventListener('click', () => openBusiness(profile, index));
         return tile;
     }
