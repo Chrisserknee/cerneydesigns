@@ -77,7 +77,7 @@
         return {
             id: string(source.id, 100),
             businessName: string(source.businessName, 100), category: isPreview ? string(source.category, 100) : window.CerneySelectsCategories.display(string(source.category, 100)),
-            city: string(source.city, 80), address: string(source.address, 200), description: string(source.description, 400),
+            city: string(source.city, 80), address: string(source.address, 200), description: string(source.description, 1000),
             website: string(source.website, 300), phone: string(source.phone, 40), logoUrl: string(source.logoUrl, 500), bannerUrl: string(source.bannerUrl, 500),
             ...Object.fromEntries(window.CerneySelectsSocials.platforms.map(({ field }) => [field, string(source[field], 300)])),
             logoBackdrop: isPreview && source.logoBackdrop === 'dark' ? 'dark' : '',
@@ -147,6 +147,7 @@
         }
         const showMark = mode !== 'cards';
         const card = node('article', `directory-card${showMark ? '' : ' without-logo'}`);
+        if (profile.id === '843114bb12f7c25e7e79') card.classList.add('jglow-reviewed-bio');
         const tone = Array.from(profile.businessName).reduce((total, char) => total + char.codePointAt(0), 0) % 4;
         card.dataset.tone = String(tone);
         if (showMark) {

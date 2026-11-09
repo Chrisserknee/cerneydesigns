@@ -60,3 +60,6 @@ body.category-showcase { background: radial-gradient(ellipse at 12% 0%,#24465f 0
  .category-showcase .business-tile { transition: none; }
  .category-showcase .business-tile:hover { transform: none; }
 }
+
+/* Keep Jglow’s approved longer bio readable and close to other listing sizes. */
+.cerneyselects-site.directory-page .business-dialog .jglow-reviewed-bio .directory-description { font-size: .8rem; line-height: 1.55; }
