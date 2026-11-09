@@ -63,6 +63,8 @@ export default async function middleware(request: Request) {
     const spotlightPath = selectsNamespace;
     const selectsAdmin = /^\/admin\/spotlight(?:\/|$)/.test(url.pathname) || ['/admin/style.css', '/api/admin-auth'].includes(url.pathname);
     const policyPath = /^\/(privacy|terms)(?:\/|\/index\.html)?$/.exec(url.pathname);
+    // Public shared telemetry bootstrap contains no application data.
+    if (!selects && ['chriscerney.org', 'www.chriscerney.org'].includes(url.hostname) && url.pathname === '/localspotlight/analytics.js') return next();
     if (!selects && !spotlightPath) return next();
     // The new domain contains only Cerney Selects. Other site features stay on
     // chriscerney.org, including their private administration and payment APIs.

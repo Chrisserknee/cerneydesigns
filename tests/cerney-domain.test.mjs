@@ -260,3 +260,13 @@ test('canonical public pages and assets work while ordinary reporting filenames 
         }
     } finally { delete process.env.CERNEYSELECTS_PUBLIC; }
 });
+
+
+test('reporting site can load shared analytics without opening private Selects pages', async () => {
+    for (const host of ['chriscerney.org','www.chriscerney.org']) {
+        const asset = await middleware(new Request('https://' + host + '/localspotlight/analytics.js'));
+        assert.equal(asset.headers.get('x-middleware-next'), '1');
+        const review = await middleware(new Request('https://' + host + '/spotlightreview/'));
+        assert.notEqual(review.headers.get('x-middleware-next'), '1');
+    }
+});
