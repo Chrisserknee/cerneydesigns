@@ -28,7 +28,7 @@
       const gallery=element('div','gallery');gallery.setAttribute('aria-label','Media for '+post.title);gallery.tabIndex=0;
       for(const file of post.media){
         const frame=element('figure','media-frame');let media;
-        if(file.type.startsWith('video/')){media=element('video');media.controls=true;media.playsInline=true;media.preload='metadata';media.setAttribute('aria-label',file.alt || post.title);media.addEventListener('play',()=>document.querySelectorAll('video').forEach(other=>{if(other!==media)other.pause();}));videoObserver.observe(media);}
+        if(file.type.startsWith('video/')){media=element('video');media.controls=true;media.playsInline=true;media.preload='metadata';const cover=post.media.find(item=>item.type.startsWith('image/'));if(cover)media.poster=cover.url;media.setAttribute('aria-label',file.alt || post.title);media.addEventListener('play',()=>document.querySelectorAll('video').forEach(other=>{if(other!==media)other.pause();}));videoObserver.observe(media);}
         else{media=element('img');media.alt=file.alt || post.title;media.loading='lazy';media.decoding='async';}
         media.src=file.url;frame.append(media);
         media.addEventListener('error',()=>{if(!frame.querySelector('.media-error'))frame.append(element('p','media-error','Media could not load. Try reloading this story.'));});
