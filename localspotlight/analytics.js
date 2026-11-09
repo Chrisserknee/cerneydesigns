@@ -1,7 +1,7 @@
 (() => {
     'use strict';
-    // Enable only after the owner approves a Vercel plan with custom events.
-    const customEventsEnabled = false;
+    // Pro custom events approved and activated by the owner.
+    const customEventsEnabled = true;
     const selectsHosts = new Set(['cerneyselects.com', 'www.cerneyselects.com']);
     const newsHosts = new Set(['chriscerney.org', 'www.chriscerney.org']);
     const selectsPaths = new Set(['/', '/apply', '/privacy', '/terms']);

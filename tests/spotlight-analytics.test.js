@@ -18,7 +18,7 @@ function browser(href, enabled = false) {
             head: { appendChild: (script) => scripts.push(script) },
         },
     });
-    const run = () => vm.runInContext(enabled ? source.replace("const customEventsEnabled = false", "const customEventsEnabled = true") : source, context);
+    const run = () => vm.runInContext(source.replace(/const customEventsEnabled = (true|false)/, `const customEventsEnabled = ${enabled}`), context);
     run();
     return { window, scripts, run, listeners, beforeSend: window.vaq?.[0]?.[1] };
 }
