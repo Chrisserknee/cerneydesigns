@@ -1,12 +1,12 @@
 'use strict';
-const {createHmac,timingSafeEqual} = require('node:crypto');
 const {onRequest} = require('firebase-functions/v2/https');
 const {onSchedule} = require('firebase-functions/v2/scheduler');
 const {defineSecret} = require('firebase-functions/params');
 const {getStorage} = require('firebase-admin/storage');
 const {GoogleAuth} = require('google-auth-library');
 const {gatewayAuthenticated} = require('./request-auth');
-const {createNewsService,isPublic,ID,SITE} = require('./news-core');
+const {createNewsService,SITE} = require('./news-core');
+const {createNewsMediaHandler}=require('./news-media');
 const proxySecret=defineSecret('TIP_ALERTS_PROXY_SECRET');
 const emailSecret=defineSecret('SPONSORSHIP_RESEND_API_KEY');
 const ROOT='_news/v1/';
@@ -75,40 +75,11 @@ exports.newsApi=onRequest({...options,secrets:[proxySecret,emailSecret],invoker:
         return res.status(status).json({error:status===503 ? 'The news service is temporarily unavailable. Please try again.' : error.message});
     }
 });
-exports.newsMedia=onRequest({...options,secrets:[proxySecret],invoker:'public'},async(req,res)=>{
-    res.set({'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Access-Control-Allow-Origin':SITE,'Accept-Ranges':'bytes'});
-    if (!['GET','HEAD'].includes(req.method)) return res.status(405).end();
-    const id=String(req.query.media || '');
-    if (!ID.test(id)) return res.status(404).end();
-    try {
-        let record;
-        const expires=String(req.query.expires || ''),signature=String(req.query.signature || '');
-        if (/^\d{13}$/.test(expires) && Number(expires)>Date.now() && Number(expires)<=Date.now()+16*60000 && /^[a-f0-9]{64}$/.test(signature)) {
-            const expected=createHmac('sha256',proxySecret.value()).update(`news-preview:${id}:${expires}`).digest();
-            if (timingSafeEqual(expected,Buffer.from(signature,'hex'))) record=(await store.read('uploads/'+id+'.json'))?.data;
-        }
-        if (!record) {
-            const post=(await service.catalog()).posts.find(p=>p.id===req.query.post && isPublic(p));
-            record=post?.media.find(item=>item.id===id);
-        }
-        if (!record) return res.status(404).end();
-        const file=bucket().file(ROOT+'media/'+id,record.generation ? {generation:record.generation} : {});
-        const [metadata]=await file.getMetadata();
-        if (Number(metadata.size)!==record.size || metadata.contentType!==record.type) return res.status(404).end();
-        if (req.method==='HEAD') {
-            res.set('Content-Type',record.type);res.set('Content-Length',String(record.size));
-            return res.status(200).end();
-        }
-        // Storage serves large files and byte ranges directly. A function must
-        // not buffer/proxy 2 GB originals through HTTP response-size limits.
-        const [url]=await file.getSignedUrl({version:'v4',action:'read',expires:Date.now()+15*60000,
-            queryParams:record.generation ? {generation:record.generation} : {}});
-        return res.redirect(302,url);
-    } catch(error) {
-        if (!res.headersSent) {
-            return res.status(404).end();
-        }
-        res.destroy();
-    }
-});
+exports.newsMedia=onRequest({...options,secrets:[proxySecret],invoker:'public'},createNewsMediaHandler({
+    catalog:()=>service.catalog(),
+    readUpload:async id=>(await store.read('uploads/'+id+'.json'))?.data,
+    fileFor:record=>bucket().file(ROOT+'media/'+record.id,record.generation ? {generation:record.generation} : {}),
+    previewSecret:()=>proxySecret.value()
+}));
+
 exports.sendNewsUpdates=onSchedule({...options,schedule:'every 5 minutes',secrets:[proxySecret,emailSecret]},()=>service.deliverUpdates());
