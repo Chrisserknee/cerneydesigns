@@ -1,5 +1,5 @@
 import { uploadFile } from "/news/upload.js";
-import { videoCover } from "/admin/news/video-cover.js";
+import { videoCover } from "/admin/news/video-cover.js?v=20261108-decoded";
 const $ = (id) => document.getElementById(id);
 let posts = [],
   currentId = crypto.randomUUID(),
