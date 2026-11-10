@@ -19,6 +19,7 @@ const overlaps=(a,b)=>a.start<b.end&&a.end>b.start;
 function windowsFor(config,date){
     const override=config.windows.find(w=>w.date===date);
     if(override)return override.closed?[]:[override];
+    if(config.availabilityMode==='dates')return [];
     const day=new Date(date+'T12:00:00Z').getUTCDay();
     return (config.weeklyWindows||[]).filter(w=>w.day===day).map(w=>({...w,date}));
 }
@@ -26,7 +27,7 @@ function offeredDates(config,now){
     const first=localDate(now,config.timeZone),dates=[];
     const durations=(config.packages?.length?config.packages:[config.package]).filter(Boolean).map(p=>p.durationMinutes);
     const duration=Math.min(...durations,480)*MINUTE;
-    for(let i=0;i<60;i++){
+    for(let i=0;i<(config.bookingHorizonDays||60);i++){
         const date=new Date(Date.parse(first+'T12:00:00Z')+i*86400000).toISOString().slice(0,10);
         if(windowsFor(config,date).some(w=>{
             const start=localTimeToUtc(date,w.start,config.timeZone),end=localTimeToUtc(date,w.end,config.timeZone);

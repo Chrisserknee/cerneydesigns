@@ -3,7 +3,7 @@ const core=require('./sponsorship-core');
 const schedule=require('./sponsorship-schedule');
 const {emailJobs}=require('./sponsorship-emails');
 const DEFAULT_CONFIG={enabled:false,timeZone:'America/Los_Angeles',calendarId:'chrisserknee@gmail.com',blockCalendarIds:['chrisserknee@gmail.com'],
-    package:null,packages:[],terms:null,windows:[],weeklyWindows:[],bufferBefore:30,bufferAfter:30,leadHours:24,revision:0};
+    package:null,packages:[],terms:null,windows:[],weeklyWindows:[],availabilityMode:'weekly',bookingHorizonDays:60,bufferBefore:30,bufferAfter:30,leadHours:24,revision:0};
 const freshState=()=>({schema:2,config:{...DEFAULT_CONFIG},orders:{},holds:{},limits:{},outbox:{}});
 const orderFor=(s,id)=>{const r=s.orders[id];if(!r)core.fail('Request not found.',404);return r;};
 function authenticate(s,b){const r=orderFor(s,b.id);if(!core.validToken(b.token,r.tokenHash))core.fail('Request not found.',404);return r;}
@@ -22,10 +22,12 @@ function validateConfig(b,previous){
     c.packages=c.packages.map(core.packageConfig);
     if(new Set(c.packages.map(p=>p.id)).size!==c.packages.length)core.fail('Each package needs a unique ID.');
     c.terms=c.terms?{version:core.field(c.terms.version,'agreement version',80),provider:core.field(c.terms.provider,'legal business name',200),text:core.field(c.terms.text,'agreement terms',20000),exclusiveText:core.field(c.terms.exclusiveText||'','exclusivity terms',15000,false),approved:c.terms.approved===true}:null;
+    if(!['dates','weekly'].includes(c.availabilityMode))core.fail('Choose selected dates or a weekly schedule.');
+    if(!Number.isInteger(c.bookingHorizonDays)||c.bookingHorizonDays<7||c.bookingHorizonDays>365)core.fail('Set the booking horizon between 7 and 365 days.');
     c.windows=schedule.validateWindows(c.windows,c.timeZone);
     c.weeklyWindows=schedule.validateWeekly(c.weeklyWindows);
     c.enabled=c.enabled===true;
-    if(c.enabled&&(!(c.packages.length||c.package)||!(c.windows.length||c.weeklyWindows.length)||!c.terms?.approved))core.fail('Set your package, filming hours, and approved agreement terms before opening requests.');
+    if(c.enabled&&(!(c.packages.length||c.package)||!(c.windows.some(w=>!w.closed)||(c.availabilityMode==='weekly'&&c.weeklyWindows.length))||!c.terms?.approved))core.fail('Set your package, filming hours, and approved agreement terms before opening requests.');
     if(c.enabled&&c.packages.some(p=>p.exclusive)&&!c.terms.exclusiveText)core.fail('Add the exclusivity agreement before offering exclusive plans.');
     return c;
 }
@@ -51,6 +53,10 @@ function createWorkflow({store,calendar,payments,now=Date.now,ready=()=>true,rec
         if(!['pending','accepting'].includes(r.status))core.fail('This request cannot be accepted.',409);
         if(!s.config.terms?.approved)core.fail('Approve the agreement terms in settings first.',409);
         if(r.status==='pending'){
+            // Quote changes are owner-only and happen before a signed agreement exists.
+            if(r.package.priceType==='from'&&(!Number.isSafeInteger(review.quoteAmount)||review.quoteAmount<r.package.amount||review.quoteAmount>10000000))core.fail('Confirm a final price at or above the advertised starting price.');
+            if(r.package.priceType!=='from'&&review.quoteAmount!=null&&review.quoteAmount!==r.package.amount)core.fail('This package has a fixed price.');
+            const approvedScope=review.approvedScope==null?r.package.includes:core.field(review.approvedScope,'approved deliverables and scope',3000);
             const proposed={...r.slot,bufferBefore:s.config.bufferBefore,bufferAfter:s.config.bufferAfter};
             const busy=await calendar.busy(s.config,schedule.slotInterval(proposed).start,schedule.slotInterval(proposed).end);
             if(busy.some(b=>schedule.overlaps(b,schedule.slotInterval(proposed))))core.fail('Google Calendar now has a conflict. Ask the business for another time.',409);
@@ -71,9 +77,11 @@ function createWorkflow({store,calendar,payments,now=Date.now,ready=()=>true,rec
                 const date=schedule.localDate(current.slot.start,c.timeZone);
                 const slot=schedule.buildSlots(c,date,[],next.holds,now()).find(slot=>slot.start===current.slot.start);
                 if(!slot)core.fail('This time is no longer available in your filming schedule.',409);
+                const approvedPackage={...current.package,priceType:'fixed',amount:current.package.priceType==='from'?review.quoteAmount:current.package.amount,includes:approvedScope};
+                approvedPackage.billingDescription=core.billingDescription(approvedPackage);
                 next.holds[id]=slot;
-                next.orders[id]={...current,slot,exclusivity,status:'accepting',calendarId:next.config.calendarId,blockCalendarIds:next.config.blockCalendarIds,
-                    agreement:core.agreement({...current,slot,exclusivity},next.config.terms,now()),acceptedAt:now(),conflictsReviewed:review.conflictsReviewed===true};
+                next.orders[id]={...current,package:approvedPackage,requestedPackage:current.package,slot,exclusivity,status:'accepting',calendarId:next.config.calendarId,blockCalendarIds:next.config.blockCalendarIds,
+                    agreement:core.agreement({...current,package:approvedPackage,slot,exclusivity},next.config.terms,now()),acceptedAt:now(),conflictsReviewed:review.conflictsReviewed===true};
             });
         }
         s=await store.read();r=orderFor(s,id);
@@ -81,7 +89,7 @@ function createWorkflow({store,calendar,payments,now=Date.now,ready=()=>true,rec
         // Idempotent calendar event ID permits retry after a lost response.
         try{await calendar.hold(r);}
         catch(e){
-            if(e.code===409)await store.change(next=>{if(orderFor(next,id).status==='accepting'){next.orders[id]={...next.orders[id],status:'pending',agreement:null};delete next.holds[id];}});
+            if(e.code===409)await store.change(next=>{if(orderFor(next,id).status==='accepting'){next.orders[id]={...next.orders[id],package:next.orders[id].requestedPackage||next.orders[id].package,status:'pending',agreement:null};delete next.holds[id];}});
             throw e;
         }
         await store.change(next=>{
@@ -143,7 +151,7 @@ function createWorkflow({store,calendar,payments,now=Date.now,ready=()=>true,rec
         await store.change(s=>{s.orders[id].calendarConfirmed=true;queue(s,s.orders[id],'paid',now());});
     }
     async function handle(b){
-        if(b.op==='draft-settings')return {config:require('./sponsorship-presets').draft,note:'Draft proposal. Monthly Partner ($1,500) and Monthly Campaign ($2,500) are proposed; review package scope and agreements before opening booking.'};
+        if(b.op==='draft-settings')return {config:require('./booking-premium-presets').draft,note:'Premium package draft loaded. Review the scope and agreement, add available dates, then save. Requests remain paused until you open them.'};
         if(b.op==='settings')return {config:(await store.read()).config,integrationsReady:ready(),recurringReady:recurringReady()};
         if(b.op==='save-settings'){
             const current=await store.read();if(b.revision!==current.config.revision)core.fail('Settings changed. Reload before saving.',409);
@@ -154,7 +162,7 @@ function createWorkflow({store,calendar,payments,now=Date.now,ready=()=>true,rec
         }
         if(b.op==='offer'){
             const c=(await store.read()).config;
-            return {open:c.enabled&&ready(),package:packagesFor(c)[0]||null,packages:packagesFor(c),timeZone:c.timeZone,dates:schedule.offeredDates(c,now()),weeklyWindows:c.weeklyWindows,revision:c.revision};
+            return {open:c.enabled&&ready(),package:packagesFor(c)[0]||null,packages:packagesFor(c),timeZone:c.timeZone,dates:c.enabled?schedule.offeredDates(c,now()):[],datesByPackage:Object.fromEntries(packagesFor(c).map(p=>[p.id,c.enabled?schedule.offeredDates({...c,package:p,packages:[p]},now()):[]])),revision:c.revision};
         }
         if(b.op==='availability')return available(b.date,'',b.packageId);
         if(b.op==='submit'){

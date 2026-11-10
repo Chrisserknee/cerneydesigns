@@ -25,10 +25,12 @@ function packageConfig(p){
     if(!Number.isInteger(paymentDueDays)||paymentDueDays<1||paymentDueDays>30)fail('Set invoice payment terms between 1 and 30 days.');
     const billing=p.billing||'once';
     if(!['once','monthly','three_month'].includes(billing))fail('Choose a valid billing plan.');
+    const priceType=p.priceType||'fixed';
+    if(!['fixed','from'].includes(priceType)||(priceType==='from'&&billing!=='once'))fail('Starting prices require a one-time package.');
     const id=p.id||'feature';if(!/^[a-z][a-z0-9-]{0,59}$/.test(id))fail('Use a valid package ID.');
     const videoCount=p.videoCount??1;if(!Number.isInteger(videoCount)||videoCount<1||videoCount>10)fail('Set the included video count.');
     const result={id,title:field(p.title,'package title',120),amount:p.amount,currency:'usd',durationMinutes:p.durationMinutes,
-        billing,videoCount,exclusive:p.exclusive===true,
+        billing,priceType,videoCount,exclusive:p.exclusive===true,
         paymentDueDays,
         includes:field(p.includes,'package inclusions',3000),channels:field(p.channels,'posting channels',500),turnaround:field(p.turnaround,'turnaround',500),
         revisions:field(p.revisions,'revisions',500),priceNote:field(p.priceNote||'','price details',500,false),
@@ -37,6 +39,7 @@ function packageConfig(p){
 }
 function billingDescription(p){
     const amount=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:2}).format(p.amount/100);
+    if(p.priceType==='from')return `Starting at ${amount}. Your final price is confirmed before signing and payment. No recurring charges.`;
     if(p.billing==='monthly')return `${amount} per month. Automatically renews each month until canceled before the next billing period. Cancellation takes effect at the end of the paid period.`;
     if(p.billing==='three_month')return `Three monthly payments of ${amount} (${new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(3*p.amount/100)} total). Three-month commitment. Ends after month three, with no automatic fourth payment.`;
     return `${amount} once. No recurring charges.`;

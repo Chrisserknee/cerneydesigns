@@ -58,7 +58,7 @@ function createCalendar({auth,fetchImpl=fetch}){
         const range=slotInterval(r.slot),ranges=await busy(configFor(r),range.start,range.end,r.id);
         if(ranges.some(b=>overlaps(range,b)))core.fail('The calendar now has a conflict.',409);
         try{
-            e=await request(path(r.calendarId)+'?sendUpdates=none',{method:'POST',body:{id:eventId(r.id),summary:'Video shoot hold — '+r.business,
+            e=await request(path(r.calendarId)+'?sendUpdates=none',{method:'POST',body:{id:eventId(r.id),summary:r.package.title+' hold — '+r.business,
                 description:`Filming: ${r.slot.start} to ${r.slot.end}\nCalendar block includes travel buffers. Awaiting agreement and payment.\n${SITE}/book/manage/?request=${r.id}`,
                 location:r.location,visibility:'private',transparency:'opaque',start:{dateTime:new Date(range.start).toISOString(),timeZone:r.slot.timeZone},
                 end:{dateTime:new Date(range.end).toISOString(),timeZone:r.slot.timeZone},extendedProperties:{private:{sponsorshipId:r.id}}}});
@@ -69,7 +69,7 @@ function createCalendar({auth,fetchImpl=fetch}){
     }
     async function confirm(r){
         await verifyHold(r);
-        await request(path(r.calendarId)+'/'+eventId(r.id)+'?sendUpdates=none',{method:'PATCH',body:{summary:'Video shoot — '+r.business,
+        await request(path(r.calendarId)+'/'+eventId(r.id)+'?sendUpdates=none',{method:'PATCH',body:{summary:r.package.title+' — '+r.business,
             description:`Agreement signed. Payment received.\nFilming: ${r.slot.start} to ${r.slot.end}\nCalendar block includes travel buffers.\n${SITE}/book/manage/?request=${r.id}`}});
     }
     return {busy,hold,verifyHold,confirm};
