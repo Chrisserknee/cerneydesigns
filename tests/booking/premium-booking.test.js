@@ -5,7 +5,7 @@ const {validateConfig}=require('../../functions-booking/sponsorship-workflow');
 const {buildSlots,windowsFor,offeredDates}=require('../../functions-booking/sponsorship-schedule');
 const {createHarness,fixedNow}=require('./helpers/sponsorship-fixture.cjs');
 async function setup(){const h=createHarness();const c=structuredClone(draft);c.enabled=true;c.terms.approved=true;c.windows=[{date:'2026-10-20',start:'09:00',end:'17:00'}];await h.workflow.handle({op:'save-settings',revision:1,config:c});return h;}
-const request={packageId:'promotional-video',category:'Test shop',market:'Test city'};
+const request={packageId:'promotional-video',videoStyleId:'chris-tries-it',category:'Test shop',market:'Test city'};
 test('premium default has exact prices and durations, no dates and unapproved terms',()=>{
  const c=validateConfig(draft,{revision:0});assert.equal(c.enabled,false);assert.equal(c.terms.approved,false);assert.deepEqual(c.packages.map(p=>[p.amount,p.durationMinutes,p.priceType,p.billing]),[[100000,120,'from','once'],[175000,180,'fixed','once']]);assert.deepEqual(offeredDates(c,fixedNow),[]);
  assert.throws(()=>validateConfig({...c,enabled:true,terms:{...c.terms,approved:true}},{revision:1}),/filming hours/);
@@ -36,7 +36,7 @@ test('approval quote must meet starting price and freezes in agreement and invoi
  const invoice=[...h.invoices.values()][0];invoice.status='paid';invoice.amount_paid=125000;await h.workflow.paymentReceived(invoice);await h.workflow.paymentReceived(invoice);assert.equal((await h.store.read()).orders[id].calendarConfirmed,true);assert.equal(h.metrics.confirmations,1);
 });
 test('fixed event stays $1750 and three hours through approval and payment; decline never bills',async()=>{
- const h=await setup(),{id}=await h.submit('a'.repeat(64),{...request,packageId:'event-coverage'});
+ const h=await setup(),{id}=await h.submit('a'.repeat(64),{...request,packageId:'event-coverage',videoStyleId:undefined});
  await assert.rejects(h.workflow.handle({op:'approve',id,quoteAmount:100000}),/fixed price/);const r=await h.workflow.handle({op:'approve',id});assert.equal(r.package.amount,175000);assert.equal(Date.parse(r.slot.end)-Date.parse(r.slot.start),180*60000);await h.sign(id);await h.workflow.handle({op:'checkout',id,token:'a'.repeat(64)});assert.equal([...h.invoices.values()][0].total,175000);
  const other=await setup(),n=await other.submit('b'.repeat(64),request);await other.workflow.handle({op:'decline',id:n.id});await assert.rejects(other.workflow.handle({op:'checkout',id:n.id,token:'b'.repeat(64)}),/Sign the agreement/);assert.equal(other.metrics.issues,0);assert.equal(other.metrics.holds,0);
 });
@@ -51,4 +51,16 @@ test('a calendar hold conflict restores the starting-price request for owner rev
  await assert.rejects(h.workflow.handle({op:'approve',id,quoteAmount:125000}),/Conflict/);
  const r=(await h.store.read()).orders[id];assert.equal(r.status,'pending');assert.equal(r.package.priceType,'from');assert.equal(r.package.amount,100000);assert.equal(r.agreement,null);assert.equal(h.metrics.issues,0);
  await assert.rejects(h.workflow.handle({op:'approve',id}),/final price/);
+});
+test('video style is server-defined and persists in review, agreement, and notification',async()=>{
+ const h=await setup();await assert.rejects(h.submit('a'.repeat(64),{...request,videoStyleId:'invented'}),/Choose a video style/);
+ const {id}=await h.submit('a'.repeat(64),{...request,videoStyle:{title:'Fake label'},maxVideoSeconds:9999});let r=await h.workflow.handle({op:'status',id,token:'a'.repeat(64)});
+ assert.equal(r.videoStyle.title,'Chris tries it');assert.equal(r.package.maxVideoSeconds,179);assert.equal(r.package.durationMinutes,120);
+ const notification=Object.values((await h.store.read()).outbox).find(j=>j.type==='request-owner');assert.match(notification.text,/Video style: Chris tries it/);assert.match(notification.text,/2 minutes 59 seconds/);
+ r=await h.workflow.handle({op:'approve',id,quoteAmount:100000});assert.equal(r.agreement.document.videoStyle.id,'chris-tries-it');assert.equal(r.agreement.document.package.maxVideoSeconds,179);assert.match(r.agreement.document.terms,/On-location filming time is separate/);
+});
+test('event coverage has a longer-recap description and the same 179-second cap, without promotional styles',async()=>{
+ const h=await setup();await assert.rejects(h.submit('a'.repeat(64),{...request,packageId:'event-coverage'}),/does not offer/);
+ const {id}=await h.submit('a'.repeat(64),{...request,packageId:'event-coverage',videoStyleId:undefined});const r=await h.workflow.handle({op:'status',id,token:'a'.repeat(64)});
+ assert.equal(r.package.durationMinutes,180);assert.equal(r.package.maxVideoSeconds,179);assert.match(r.package.videoLengthNote,/longer recap/);assert.equal(r.videoStyle,undefined);
 });

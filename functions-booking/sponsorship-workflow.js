@@ -172,6 +172,11 @@ function createWorkflow({store,calendar,payments,now=Date.now,ready=()=>true,rec
             const data=core.intake(b),c=initial.config;
             if(!c.enabled||!ready())core.fail('Requests are not open yet.',503);
             const selected=choosePackage(c,b.packageId);
+            if(selected.videoStyles?.length){
+                const style=selected.videoStyles.find(s=>s.id===b.videoStyleId);
+                if(!style)core.fail('Choose a video style.');
+                data.videoStyle={id:style.id,title:style.title,description:style.description};
+            }else if(b.videoStyleId)core.fail('This package does not offer that video style.');
             if(c.packages?.length){data.category=core.field(b.category,'business category',200);data.market=core.field(b.market,'business market',200);}
             const day=schedule.localDate(b.slotStart,c.timeZone),availability=await available(day,'',selected.id);
             const slot=availability.slots.find(s=>s.start===b.slotStart);if(!slot)core.fail('That time is no longer available. Choose another time.',409);

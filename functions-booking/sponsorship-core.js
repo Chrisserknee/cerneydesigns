@@ -35,6 +35,13 @@ function packageConfig(p){
         includes:field(p.includes,'package inclusions',3000),channels:field(p.channels,'posting channels',500),turnaround:field(p.turnaround,'turnaround',500),
         revisions:field(p.revisions,'revisions',500),priceNote:field(p.priceNote||'','price details',500,false),
         usageRights:field(p.usageRights||'Published on Chris’s channels only. No website use, reposting, footage delivery, or repurposing without a separate written agreement.','content rights',1000)};
+    if(p.maxVideoSeconds!=null){if(!Number.isInteger(p.maxVideoSeconds)||p.maxVideoSeconds<1||p.maxVideoSeconds>3600)fail('Set a valid finished video length.');result.maxVideoSeconds=p.maxVideoSeconds;}
+    if(p.videoLengthNote)result.videoLengthNote=field(p.videoLengthNote,'finished video length details',500);
+    if(p.videoStyles!=null){
+        if(!Array.isArray(p.videoStyles)||p.videoStyles.length>6)fail('Choose up to six video styles.');
+        result.videoStyles=p.videoStyles.map(s=>{if(!s||!/^[a-z][a-z0-9-]{0,59}$/.test(s.id))fail('Use a valid video style ID.');return {id:s.id,title:field(s.title,'video style title',80),description:field(s.description,'video style description',500)};});
+        if(new Set(result.videoStyles.map(s=>s.id)).size!==result.videoStyles.length)fail('Each video style needs a unique ID.');
+    }
     result.billingDescription=billingDescription(result);return result;
 }
 function billingDescription(p){
@@ -46,7 +53,7 @@ function billingDescription(p){
 }
 function agreement(order,terms,now){
     const document={version:terms.version,provider:terms.provider,customer:order.business,contact:order.name,email:order.email,
-        package:order.package,filming:order.slot,location:order.location,videoBrief:order.brief,terms:terms.text,issuedAt:now,
+        package:order.package,...(order.videoStyle?{videoStyle:order.videoStyle}:{}),filming:order.slot,location:order.location,videoBrief:order.brief,terms:terms.text,issuedAt:now,
         ...(order.exclusivity?{exclusivity:order.exclusivity,exclusivityTerms:terms.exclusiveText}:{}),
         billingDescription:billingDescription(order.package)};
     return {document,hash:hash(JSON.stringify(document))};
@@ -107,7 +114,7 @@ function paidRecord(order,invoice,now){
     return {...order,status:'paid',paidAt:now,calendarConfirmed:false};
 }
 function publicRecord(r){
-    return {id:r.id,status:r.status,business:r.business,package:r.package,slot:r.slot,location:r.location,brief:r.brief,declineReason:r.declineReason,exclusivity:r.exclusivity,
+    return {id:r.id,status:r.status,business:r.business,package:r.package,videoStyle:r.videoStyle,slot:r.slot,location:r.location,brief:r.brief,declineReason:r.declineReason,exclusivity:r.exclusivity,
         agreement:r.agreement,signature:r.signature?{name:r.signature.name,title:r.signature.title,signedAt:r.signature.signedAt,agreementHash:r.signature.agreementHash,drawing:r.signature.drawing,drawingHash:r.signature.drawingHash}:null,
         invoice:r.invoice?{number:r.invoice.number}:null,billing:r.billing,payments:r.payments?.map(({id,...p})=>p),calendarConfirmed:r.calendarConfirmed,createdAt:r.createdAt};
 }
