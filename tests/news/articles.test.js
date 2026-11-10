@@ -1,7 +1,7 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const {isArticle, textSegments, articlePage} = require('../../news/article-utils');
+const {isArticle, textSegments, articlePage, relatedLink, keepVisible, isEditorNote} = require('../../news/article-utils');
 const video = id => ({id, media: [{type: 'video/mp4'}, {type: 'image/jpeg'}]});
 const article = id => ({id, media: [{type: 'image/jpeg'}]});
 
@@ -36,4 +36,25 @@ test('caption links preserve punctuation and leave markup and unsafe schemes as 
   assert.equal(segments.map(segment => segment.text).join(''), text);
   assert.deepEqual(segments.filter(segment => segment.url).map(segment => segment.url), ['https://example.com/a?post=123', 'https://example.com/story']);
   assert.deepEqual(textSegments('http://example.com javascript:alert(1)'), [{text: 'http://example.com javascript:alert(1)'}]);
+});
+
+test('paired links are recognized in both one-line and line-break label forms', () => {
+  assert.deepEqual(relatedLink('Watch the corresponding video report: https://www.chriscerney.org/news/?post=a'), {label: 'Watch the corresponding video report', url: 'https://www.chriscerney.org/news/?post=a'});
+  assert.deepEqual(relatedLink('Watch the full video report:\nhttps://www.chriscerney.org/news/?post=b'), {label: 'Watch the full video report', url: 'https://www.chriscerney.org/news/?post=b'});
+  assert.deepEqual(relatedLink('Read the accompanying article:\nhttps://www.chriscerney.org/news/?post=c\n'), {label: 'Read the accompanying article', url: 'https://www.chriscerney.org/news/?post=c'});
+  assert.equal(relatedLink('Watch the full video report: http://example.com'), null);
+  assert.equal(relatedLink('Prosecutors say the video report: https://example.com was reviewed.'), null);
+});
+
+test('folded copy keeps source attribution and paired links visible', () => {
+  assert.equal(keepVisible('Source: Monterey County District Attorney\u2019s Office, November 9, 2026.\nhttps://www.countyofmonterey.gov/x'), true);
+  assert.equal(keepVisible('Read the accompanying article:\nhttps://www.chriscerney.org/news/?post=c'), true);
+  assert.equal(keepVisible('Original TikTok publication: https://www.tiktok.com/@chriscerney/video/1'), true);
+  assert.equal(keepVisible('Witnesses gave conflicting accounts of who fired first.'), false);
+});
+
+test('only explicit dated notes get the small note style; reporting ledes stay body size', () => {
+  for (const note of ['Originally reported November 8, 2026. This account reflects the Seaside Police Department statement.', 'From our October 24, 2026 report.', 'From our October 25, 2026 report. October 25 is the report\'s publication date.', 'Sponsored feature. Originally published October 22, 2026.']) assert.equal(isEditorNote(note), true, note);
+  assert.equal(isEditorNote('The Monterey County District Attorney\u2019s Office is detailing alleged necklace thefts, gang insults and conflicting accounts.'), false);
+  assert.equal(isEditorNote('From our reporting, investigators said the road was closed.'), false);
 });

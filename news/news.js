@@ -1,7 +1,7 @@
 'use strict';
 (() => {
   const $=id=>document.getElementById(id);
-  const {hasVideo,isArticle,textSegments,articlePage}=window.NewsArticles;
+  const {hasVideo,isArticle,textSegments,articlePage,relatedLink,keepVisible,isEditorNote}=window.NewsArticles;
   const params=new URLSearchParams(location.search);
   const linkParams=new URLSearchParams(location.hash.slice(1));
   let pendingLink=linkParams.get('signin'), unsubscribe=linkParams.get('unsubscribe');
@@ -18,6 +18,10 @@
   document.querySelectorAll('[data-close]').forEach(button=>button.addEventListener('click',()=>button.closest('dialog').close()));
   function updateAccount() {document.querySelectorAll('.join-button').forEach(b=>b.textContent=member.authenticated ? 'My account' : 'Join free ↗');document.querySelectorAll('.rail .account-button span').forEach(s=>s.textContent=member.authenticated ? 'My account' : 'Join / sign in');}
   function showMessage(id,message,error=false) {const el=$(id);el.textContent=message;el.classList.toggle('error',error);}
+  // A dimmed, blurred copy of the same image fills the empty sides of portrait
+  // frames. Same URL, so the browser reuses the request; the real image stays
+  // complete and uncropped on top.
+  function backdrop(url){const b=element('img','media-backdrop');b.alt='';b.setAttribute('aria-hidden','true');b.loading='lazy';b.decoding='async';b.fetchPriority='low';b.src=url;b.addEventListener('error',()=>b.remove());return b;}
   const videoObserver=new IntersectionObserver(entries=>entries.forEach(entry=>{if(!entry.isIntersecting)entry.target.pause();}),{threshold:.3});
   function videoPreview(video,frame,file,cover,eager,title){
     video.preload='none';
@@ -26,7 +30,7 @@
     const preview=element('div','video-preview'),image=element('img'),play=element('button','video-start');
     image.alt=cover.alt || title;image.loading=eager?'eager':'lazy';image.fetchPriority=eager?'high':'auto';image.decoding='async';image.src=cover.url;
     play.type='button';play.setAttribute('aria-label','Play report: '+title);play.append(icon('play'),element('span','','Play report'));
-    preview.append(image,play);frame.append(preview);
+    preview.append(backdrop(cover.url),image,play);frame.append(preview);
     image.addEventListener('error',()=>{image.hidden=true;preview.classList.add('preview-unavailable');});
     video.addEventListener('playing',()=>{preview.hidden=true;});
     video.addEventListener('error',()=>{preview.hidden=false;play.hidden=false;});
@@ -40,8 +44,8 @@
   }
   function paragraph(text) {
     const p=element('p');
-    const related=text.match(/^(Watch the corresponding video report|Read the corresponding article|Original TikTok publication): (https:\/\/\S+)$/);
-    if(related){const segments=textSegments(related[2]);if(segments.length===1&&segments[0].url){const link=element('a','story-link',related[1]+' ↗');link.href=segments[0].url;if(new URL(link.href).origin!==location.origin){link.target='_blank';link.rel='noopener noreferrer';}p.className='related-story';p.append(link);return p;}}
+    const related=relatedLink(text);
+    if(related){const segments=textSegments(related.url);if(segments.length===1&&segments[0].url){const link=element('a','story-link',related.label+' ↗');link.href=segments[0].url;if(new URL(link.href).origin!==location.origin){link.target='_blank';link.rel='noopener noreferrer';}p.className='related-story';p.append(link);return p;}}
     for(const segment of textSegments(text)){
       if(!segment.url){p.append(document.createTextNode(segment.text));continue;}
       const link=element('a','story-link',segment.text);link.href=segment.url;
@@ -51,7 +55,7 @@
     return p;
   }
   function renderPost(post,eager=false) {
-    const written=isArticle(post),card=element('article',written?'post article-post':'post');card.id='post-'+post.id;
+    const written=isArticle(post),card=element('article',written?'post article-post':hasVideo(post)?'post video-post':'post');card.id='post-'+post.id;
     const paragraphs=post.caption.split(/\n\s*\n/).filter(Boolean);
     const header=element('header','post-header'),avatar=element('div','avatar','CC'),author=element('div');
     avatar.setAttribute('aria-hidden','true');author.append(element('div','post-author','Chris Cerney'));
@@ -65,8 +69,9 @@
       for(const file of files){
         const frame=element('figure','media-frame');let media;
         if(file.type.startsWith('video/')){media=element('video');media.controls=true;media.playsInline=true;media.setAttribute('aria-label',file.alt || post.title);media.addEventListener('play',()=>document.querySelectorAll('video').forEach(other=>{if(other!==media)other.pause();}));videoObserver.observe(media);}
-        else{media=element('img');media.alt=file.alt || post.title;media.loading=eager?'eager':'lazy';media.fetchPriority=eager?'high':'auto';media.decoding='async';media.src=file.url;}
-        frame.append(media);if(file.type.startsWith('video/'))videoPreview(media,frame,file,cover,eager,post.title);
+        else{media=element('img','media-still');media.alt=file.alt || post.title;media.loading=eager?'eager':'lazy';media.fetchPriority=eager?'high':'auto';media.decoding='async';media.src=file.url;}
+        if(file.type.startsWith('video/')){frame.append(media);videoPreview(media,frame,file,cover,eager,post.title);}
+        else{const stage=element('div','media-stage');stage.append(backdrop(file.url),media);frame.append(stage);}
         media.addEventListener('error',()=>{if(!frame.querySelector('.media-error'))frame.append(element('p','media-error','Media could not load. Try reloading this story.'));});
         const expand=element('button','expand');expand.type='button';expand.setAttribute('aria-label','View media fullscreen');expand.append(icon('expand'));expand.addEventListener('click',async()=>{try{if(frame.requestFullscreen)await frame.requestFullscreen();else if(media.webkitEnterFullscreen)media.webkitEnterFullscreen();else window.open(file.url,'_blank','noopener');}catch{toast('Use your video player’s fullscreen control.');}});frame.append(expand);if(written&&file.alt)frame.append(element('figcaption','still-caption',file.alt));gallery.append(frame);
       }
@@ -78,8 +83,18 @@
     const share=element('button');share.type='button';share.append(icon('share'),element('span','','Share'));share.addEventListener('click',async()=>{try{if(navigator.share)await navigator.share({title:post.title,url:post.permalink});else{await navigator.clipboard.writeText(post.permalink);toast('Story link copied.');}}catch(error){if(error.name!=='AbortError')toast('Open this story and copy its address to share.');}});
     actions.append(save,share);if(!written)card.append(actions);
     const copy=element('div','post-copy');
-    if(!written){const heading=element('h2'),permalink=element('a','',post.title);permalink.href=post.permalink;heading.append(permalink);copy.append(heading);}
-    for(const text of written&&!postId?paragraphs.slice(0,2):paragraphs)copy.append(paragraph(text));
+    if(!written){const heading=element('h2'),permalink=element('a','',post.title);permalink.href=post.permalink;heading.append(permalink);if(hasVideo(post))copy.append(element('p','eyebrow post-kind','VIDEO REPORT · CHRIS CERNEY'));copy.append(heading);}
+    const main=paragraphs.filter(text=>!keepVisible(text));
+    if(!written&&!postId&&main.length>3){
+      // Long report descriptions stay complete, but fold after two paragraphs in
+      // the feed so one video does not become an endless card.
+      for(const text of main.slice(0,2))copy.append(paragraph(text));
+      const more=element('div','more-text');more.id='more-'+post.id;more.hidden=true;for(const text of main.slice(2))more.append(paragraph(text));
+      const toggle=element('button','more-toggle','Show full report text');toggle.type='button';toggle.setAttribute('aria-expanded','false');toggle.setAttribute('aria-controls',more.id);
+      toggle.addEventListener('click',()=>{const open=more.hidden;more.hidden=!open;toggle.setAttribute('aria-expanded',String(open));toggle.textContent=open?'Show less':'Show full report text';});
+      copy.append(more,toggle);for(const text of paragraphs.filter(keepVisible))copy.append(paragraph(text));
+    }
+    else for(const [index,text] of (written&&!postId?paragraphs.slice(0,2):paragraphs).entries()){const p=paragraph(text);if(written&&index===0&&isEditorNote(text))p.classList.add('article-note');copy.append(p);}
     if(written&&!postId){const read=element('a','read-article','Read article ↗');read.href=post.permalink;copy.append(read);}
     if(post.location)copy.append(element('p','location',post.location));card.append(copy);if(written)card.append(actions);return card;
   }
@@ -98,7 +113,7 @@
     if(!member.authenticated&&!searching){const join=element('button','primary','Join free ↗');join.addEventListener('click',account);actions.append(join);}
     const archive=element('a','secondary',postId?'Back to the feed':'Explore the portfolio ↗');archive.href=postId?'/news/':'/portfolio/';actions.append(archive);box.append(actions);return box;
   }
-  function setActive(){document.querySelectorAll('[data-view]').forEach(b=>{const active=b.dataset.view===view;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active));});document.querySelectorAll('[data-nav]').forEach(b=>b.classList.toggle('current',b.dataset.nav===view));$('feed').classList.toggle('video-view',view==='video');$('search').disabled=view==='saved'||Boolean(postId);document.querySelector('.profile-intro').hidden=Boolean(postId);document.querySelector('.feed-controls').hidden=Boolean(postId);document.querySelector('.desktop-title').firstChild.textContent=view==='article'?'Articles ':'News feed ';if(!postId)document.title=(view==='article'?'Articles':'News')+' — Chris Cerney';}
+  function setActive(){document.querySelectorAll('[data-view]').forEach(b=>{const active=b.dataset.view===view;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active));});document.querySelectorAll('[data-nav]').forEach(b=>b.classList.toggle('current',b.dataset.nav===view));$('feed').classList.toggle('video-view',view==='video');$('feed').classList.toggle('single-view',Boolean(postId));$('search').disabled=view==='saved'||Boolean(postId);document.querySelector('.profile-intro').hidden=Boolean(postId);document.querySelector('.feed-controls').hidden=Boolean(postId);document.querySelector('.desktop-title').firstChild.textContent=view==='article'?'Articles ':'News feed ';if(!postId)document.title=(view==='article'?'Articles':'News')+' — Chris Cerney';}
   async function load(append=false){
     const number=++requestNumber;setActive();$('feed-status').textContent=append?'Loading more stories…':'Loading the latest reporting…';$('load-more').hidden=true;
     try{
