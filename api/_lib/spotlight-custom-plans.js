@@ -13,8 +13,14 @@ function billingTerms(sub, settings) {
   const plan = customPlan(sub, settings);
   return plan ? {priceId:plan.price,amount:plan.amount} : {priceId:settings.priceId,amount:10000};
 }
+function invoiceTerms(sub, settings) {
+  const plan = customPlan(sub, settings);
+  const item = sub?.items?.data?.[0];
+  if (plan?.autoUpgrade && id(sub.latest_invoice) === plan.initialInvoice && item.current_period_start === plan.periodStart && item.current_period_end === plan.periodEnd) return {priceId:settings.priceId,amount:10000,supplement:plan};
+  return billingTerms(sub, settings);
+}
 function reviewDraft(applicationId) {
   const plan = plans().find(p => p.subscription === applicationId);
-  return plan ? {initialAmount:15000,monthlyAmount:plan.amount,status:'Prepared proposal. Listing approval alone does not activate this billing change. Check Stripe for current invoice and subscription status.',invoiceUrl:`https://dashboard.stripe.com/invoices/${plan.invoice}`,terms:'Construction exclusivity is month-to-month. Includes a feature alongside other local businesses in one of our regular weekly business spotlight videos, not a dedicated Hare video. Approximately 25,000 views is a target for the overall video, not a guarantee.'} : null;
+  return plan ? {initialAmount:15000,monthlyAmount:plan.amount,status:'The upgrade activates after the extra $150 is paid and the listing is approved. Check Stripe for current invoice and subscription status.',invoiceUrl:`https://dashboard.stripe.com/invoices/${plan.invoice}`,terms:'This includes your month-to-month exclusive construction spot and being featured in our business spotlight videos on Chris Cerney’s social media.'} : null;
 }
-module.exports = {billingTerms,customPlan,reviewDraft};
+module.exports = {plans,billingTerms,invoiceTerms,customPlan,reviewDraft};

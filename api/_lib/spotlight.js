@@ -6,7 +6,9 @@ const socials = require('../../localspotlight/social-links');
 const { bannerUrl } = require('./spotlight-banner-url');
 const { moderationConfig, callModeration } = require('./spotlight-moderation');
 const { currentPaymentIsValid } = require('./spotlight-payment');
-const { billingTerms } = require('./spotlight-custom-plans');
+const { billingTerms, invoiceTerms } = require('./spotlight-custom-plans');
+
+const { reconcileCustomBilling } = require('./spotlight-custom-billing');
 
 const MARKER = 'local_spotlight_v1';
 const API_VERSION = '2026-08-26.dahlia';
@@ -164,11 +166,12 @@ function validPaidSubscription(subscription, settings, now = Math.floor(Date.now
     const terms = billingTerms(subscription, settings);
     if (item.quantity !== 1 || !validPrice(item.price, { ...settings, priceId: terms.priceId }, terms.amount) || !Number.isInteger(item.current_period_start) || item.current_period_start <= 0 || item.current_period_start > now || !(item.current_period_end > now)) return false;
     const invoice = subscription.latest_invoice;
-    if (!invoice || typeof invoice !== 'object' || invoice.status !== 'paid' || invoice.livemode !== settings.live || invoice.currency !== PRICE.currency || invoice.amount_paid !== terms.amount || invoice.amount_due !== terms.amount || invoice.total !== terms.amount || invoice.amount_remaining !== 0 || invoice.amount_paid_off_stripe > 0 || invoice.post_payment_credit_notes_amount > 0) return false;
+    const invoicePrice = invoiceTerms(subscription, settings);
+    if (!invoice || typeof invoice !== 'object' || invoice.status !== 'paid' || invoice.livemode !== settings.live || invoice.currency !== PRICE.currency || invoice.amount_paid !== invoicePrice.amount || invoice.amount_due !== invoicePrice.amount || invoice.total !== invoicePrice.amount || invoice.amount_remaining !== 0 || invoice.amount_paid_off_stripe > 0 || invoice.post_payment_credit_notes_amount > 0) return false;
     if (id(invoice.parent?.subscription_details?.subscription) !== subscription.id || id(invoice.customer) !== id(subscription.customer)) return false;
     if (invoice.lines?.has_more || invoice.lines?.data?.length !== 1) return false;
     const line = invoice.lines.data[0];
-    if (id(line.pricing?.price_details?.price) !== terms.priceId || line.quantity !== 1 || line.amount !== terms.amount || line.currency !== PRICE.currency || line.parent?.subscription_item_details?.proration) return false;
+    if (id(line.pricing?.price_details?.price) !== invoicePrice.priceId || line.quantity !== 1 || line.amount !== invoicePrice.amount || line.currency !== PRICE.currency || line.parent?.subscription_item_details?.proration) return false;
     if (id(line.parent?.subscription_item_details?.subscription_item) !== item.id || !(line.period?.end > now) || line.period.end !== item.current_period_end || line.period.start !== item.current_period_start) return false;
     return true;
 }
@@ -431,6 +434,13 @@ function createService(stripe, settings = config(), moderation = callModeration)
     async function webhook(event) {
         if (!WEBHOOK_EVENTS.has(event.type) || event.livemode !== settings.live) return;
         const object = event.data?.object;
+        await reconcileCustomBilling(stripe, settings, event, async sub => {
+            if (!validPaidSubscription(sub, settings) || sub.metadata.spotlight_approved_profile !== publicProfileHash(readProfile(sub.metadata)) || !settings.moderationReady) return false;
+            // Wait for the durable approval checkpoint, not just Stripe metadata.
+            // A concurrent moderation worker must finish before changing its price.
+            const review = await moderation('ingest', { subscriptionId: sub.id });
+            return review.status === 'approved' && review.decision === 'approve';
+        });
         if (settings.memberBillingEnabled) {
             const meta = object?.metadata?.selects_extra ? object.metadata : object?.parent?.subscription_details?.metadata;
             if (meta?.selects_extra === 'cerney_selects_extra_v1' && /^sub_[A-Za-z0-9]+$/.test(meta.selects_base || '') && /^[0-9a-f-]{36}$/.test(meta.selects_request || '')) {

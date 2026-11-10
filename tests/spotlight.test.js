@@ -658,3 +658,14 @@ test('Hare combined renewal accepts exactly one $250 item, rejects foreign custo
  for(const edit of [s=>s.customer='cus_other',s=>s.id='sub_other',s=>s.items.data.push(structuredClone(s.items.data[0])),s=>s.items.data[0].price.unit_amount=10000,s=>s.latest_invoice.amount_paid=10000,s=>s.latest_invoice.status='open',s=>s.pause_collection={behavior:'void'},s=>s.status='canceled']) {const copy=structuredClone(sub);edit(copy);assert.equal(validPaidSubscription(copy,live),false);}
  assert.equal(validPaidSubscription(sub,settings),false);
 });
+
+test('upgraded first month remains eligible on exact initial invoice and period only',()=>{
+ const original=process.env.SPOTLIGHT_CUSTOM_PLANS_JSON;
+ try {
+  const sub=hareRenewal(),item=sub.items.data[0],inv=sub.latest_invoice;
+  const plan=JSON.parse(original)[0];Object.assign(plan,{autoUpgrade:true,initialInvoice:inv.id,periodStart:item.current_period_start,periodEnd:item.current_period_end});process.env.SPOTLIGHT_CUSTOM_PLANS_JSON=JSON.stringify([plan]);
+  Object.assign(inv,{amount_due:10000,amount_paid:10000,total:10000});inv.lines.data[0].amount=10000;inv.lines.data[0].pricing.price_details.price=settings.priceId;
+  assert.equal(validPaidSubscription(sub,{...settings,live:true}),true);
+  inv.id='in_not_initial';assert.equal(validPaidSubscription(sub,{...settings,live:true}),false);
+ } finally {process.env.SPOTLIGHT_CUSTOM_PLANS_JSON=original;}
+});

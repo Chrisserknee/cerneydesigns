@@ -1,14 +1,21 @@
 'use strict';
 
-const { billingTerms } = require('./spotlight-custom-plans');
+const { invoiceTerms } = require('./spotlight-custom-plans');
 const id = value => typeof value === 'string' ? value : value?.id || '';
 
 // Invoice status remains paid after some payment reversals. Follow its canonical
 // InvoicePayment link instead of trusting optional refund/webhook metadata.
 async function currentPaymentIsValid(stripe, subscription, settings) {
-    const { amount } = billingTerms(subscription, settings);
-    const invoiceId = id(subscription.latest_invoice);
-    const customerId = id(subscription.customer);
+    const terms = invoiceTerms(subscription, settings);
+    if (!await invoicePaymentIsValid(stripe,id(subscription.latest_invoice),id(subscription.customer),terms.amount,settings)) return false;
+    return !terms.supplement || supplementalPaymentIsValid(stripe,terms.supplement,settings);
+}
+async function supplementalPaymentIsValid(stripe, plan, settings, knownInvoice) {
+    const invoice = knownInvoice || await stripe.invoices.retrieve(plan.invoice);
+    if (invoice.id !== plan.invoice || invoice.livemode !== settings.live || id(invoice.customer) !== plan.customer || invoice.status !== 'paid' || invoice.currency !== 'usd' || invoice.total !== 15000 || invoice.amount_due !== 15000 || invoice.amount_paid !== 15000 || invoice.amount_remaining !== 0 || invoice.amount_paid_off_stripe > 0 || invoice.post_payment_credit_notes_amount > 0 || invoice.pre_payment_credit_notes_amount > 0 || invoice.parent?.subscription_details?.subscription || invoice.lines?.has_more || invoice.lines?.data?.length !== 1 || invoice.lines.data[0].amount !== 15000) return false;
+    return invoicePaymentIsValid(stripe,plan.invoice,plan.customer,15000,settings);
+}
+async function invoicePaymentIsValid(stripe, invoiceId, customerId, amount, settings) {
     const payments = await stripe.invoicePayments.list({ invoice: invoiceId, status: 'paid', limit: 2, expand: ['data.payment.payment_intent'] });
     if (payments.has_more !== false || !Array.isArray(payments.data) || payments.data.length !== 1) return false;
     const payment = payments.data[0];
@@ -32,4 +39,4 @@ async function currentPaymentIsValid(stripe, subscription, settings) {
         && ['failed', 'canceled'].includes(refund.status));
 }
 
-module.exports = { currentPaymentIsValid };
+module.exports = { currentPaymentIsValid, invoicePaymentIsValid, supplementalPaymentIsValid };
