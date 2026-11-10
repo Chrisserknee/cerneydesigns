@@ -15,6 +15,6 @@ function billingTerms(sub, settings) {
 }
 function reviewDraft(applicationId) {
   const plan = plans().find(p => p.subscription === applicationId);
-  return plan ? {initialAmount:15000,monthlyAmount:plan.amount,status:'Prepared proposal. Listing approval alone does not activate this billing change. Check Stripe for current invoice and subscription status.',invoiceUrl:`https://dashboard.stripe.com/invoices/${plan.invoice}`,terms:'Construction exclusivity is month-to-month. Includes one paid promotional video; approximately 25,000 views is a target, not a guarantee.'} : null;
+  return plan ? {initialAmount:15000,monthlyAmount:plan.amount,status:'Prepared proposal. Listing approval alone does not activate this billing change. Check Stripe for current invoice and subscription status.',invoiceUrl:`https://dashboard.stripe.com/invoices/${plan.invoice}`,terms:'Construction exclusivity is month-to-month. Includes a feature alongside other local businesses in one of our regular weekly business spotlight videos, not a dedicated Hare video. Approximately 25,000 views is a target for the overall video, not a guarantee.'} : null;
 }
 module.exports = {billingTerms,customPlan,reviewDraft};
