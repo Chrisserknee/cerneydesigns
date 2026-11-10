@@ -38,6 +38,20 @@
         const profile = data.business || {};
         $('application').hidden = false;
         $('businessName').textContent = text(profile.businessName);
+        let commercial = document.getElementById('commercialDraft');
+        if (!commercial) { commercial = document.createElement('section'); commercial.id = 'commercialDraft'; $('application').prepend(commercial); }
+        commercial.replaceChildren(); commercial.hidden = !data.commercialDraft;
+        if (data.commercialDraft) {
+            const draft = data.commercialDraft;
+            const title = document.createElement('h2'); title.textContent = 'Private custom billing draft';
+            const summary = document.createElement('p'); summary.textContent = '$150 initial balance, then one $250 monthly bill. ' + text(draft.status);
+            const terms = document.createElement('p'); terms.textContent = text(draft.terms);
+            const invoice = document.createElement('a'); invoice.textContent = 'Review draft in Stripe';
+            const invoiceUrl = link(draft.invoiceUrl);
+            if (invoiceUrl && new URL(invoiceUrl).origin === 'https://dashboard.stripe.com') { invoice.href = invoiceUrl; invoice.target = '_blank'; invoice.rel = 'noopener noreferrer'; }
+            commercial.append(title, summary, terms, invoice);
+        }
+
         $('businessCategory').textContent = text(profile.category);
         $('businessCity').textContent = text(profile.city);
         $('businessDescription').textContent = text(profile.description);

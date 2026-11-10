@@ -6,6 +6,7 @@ const socials = require('../../localspotlight/social-links');
 const { bannerUrl } = require('./spotlight-banner-url');
 const { moderationConfig, callModeration } = require('./spotlight-moderation');
 const { currentPaymentIsValid } = require('./spotlight-payment');
+const { billingTerms } = require('./spotlight-custom-plans');
 
 const MARKER = 'local_spotlight_v1';
 const API_VERSION = '2026-08-26.dahlia';
@@ -151,8 +152,8 @@ function sameOrigin(request, settings) {
 
 function id(value) { return typeof value === 'string' ? value : value?.id || ''; }
 function isSpotlight(subscription) { return subscription?.metadata?.spotlight === MARKER; }
-function validPrice(price, settings) {
-    return price && price.id === settings.priceId && price.currency === PRICE.currency && price.unit_amount === PRICE.amount && price.type === 'recurring'
+function validPrice(price, settings, amount = PRICE.amount) {
+    return price && price.id === settings.priceId && price.currency === PRICE.currency && price.unit_amount === amount && price.type === 'recurring'
         && price.billing_scheme === 'per_unit' && price.recurring?.interval === PRICE.interval && price.recurring?.interval_count === 1 && price.recurring?.usage_type === 'licensed';
 }
 
@@ -160,13 +161,14 @@ function validPaidSubscription(subscription, settings, now = Math.floor(Date.now
     if (!isSpotlight(subscription) || subscription.status !== 'active' || subscription.livemode !== settings.live || subscription.pause_collection || subscription.trial_end > now) return false;
     if (subscription.items?.has_more || subscription.items?.data?.length !== 1) return false;
     const item = subscription.items.data[0];
-    if (item.quantity !== 1 || !validPrice(item.price, settings) || !Number.isInteger(item.current_period_start) || item.current_period_start <= 0 || item.current_period_start > now || !(item.current_period_end > now)) return false;
+    const terms = billingTerms(subscription, settings);
+    if (item.quantity !== 1 || !validPrice(item.price, { ...settings, priceId: terms.priceId }, terms.amount) || !Number.isInteger(item.current_period_start) || item.current_period_start <= 0 || item.current_period_start > now || !(item.current_period_end > now)) return false;
     const invoice = subscription.latest_invoice;
-    if (!invoice || typeof invoice !== 'object' || invoice.status !== 'paid' || invoice.livemode !== settings.live || invoice.currency !== PRICE.currency || invoice.amount_paid !== PRICE.amount || invoice.amount_due !== PRICE.amount || invoice.total !== PRICE.amount || invoice.amount_remaining !== 0 || invoice.amount_paid_off_stripe > 0 || invoice.post_payment_credit_notes_amount > 0) return false;
+    if (!invoice || typeof invoice !== 'object' || invoice.status !== 'paid' || invoice.livemode !== settings.live || invoice.currency !== PRICE.currency || invoice.amount_paid !== terms.amount || invoice.amount_due !== terms.amount || invoice.total !== terms.amount || invoice.amount_remaining !== 0 || invoice.amount_paid_off_stripe > 0 || invoice.post_payment_credit_notes_amount > 0) return false;
     if (id(invoice.parent?.subscription_details?.subscription) !== subscription.id || id(invoice.customer) !== id(subscription.customer)) return false;
     if (invoice.lines?.has_more || invoice.lines?.data?.length !== 1) return false;
     const line = invoice.lines.data[0];
-    if (id(line.pricing?.price_details?.price) !== settings.priceId || line.quantity !== 1 || line.amount !== PRICE.amount || line.currency !== PRICE.currency || line.parent?.subscription_item_details?.proration) return false;
+    if (id(line.pricing?.price_details?.price) !== terms.priceId || line.quantity !== 1 || line.amount !== terms.amount || line.currency !== PRICE.currency || line.parent?.subscription_item_details?.proration) return false;
     if (id(line.parent?.subscription_item_details?.subscription_item) !== item.id || !(line.period?.end > now) || line.period.end !== item.current_period_end || line.period.start !== item.current_period_start) return false;
     return true;
 }
@@ -306,7 +308,7 @@ function createService(stripe, settings = config(), moderation = callModeration)
         let startingAfter;
         // Explicit bounded pagination avoids silent partial results as the directory grows.
         for (let page = 0; page < 20; page += 1) {
-            const result = await stripe.subscriptions.list({ price: settings.priceId, status, limit: 100, expand: ['data.latest_invoice'], ...(startingAfter ? { starting_after: startingAfter } : {}) });
+            const result = await stripe.subscriptions.list({ status, limit: 100, expand: ['data.latest_invoice'], ...(startingAfter ? { starting_after: startingAfter } : {}) });
             subscriptions.push(...result.data.filter(isSpotlight));
             if (!result.has_more) return subscriptions;
             if (!result.data.length) throw new Error('Invalid Stripe pagination');

@@ -2,6 +2,7 @@
 
 const { bodyIsTooLarge, parseBody, sendJson } = require('../http');
 const { config, sameOrigin } = require('../spotlight');
+const { reviewDraft } = require('../spotlight-custom-plans');
 const { callModeration } = require('../spotlight-moderation');
 
 function createHandler({ call = callModeration, getConfig = config } = {}) {
@@ -20,7 +21,9 @@ function createHandler({ call = callModeration, getConfig = config } = {}) {
         if (body.op === 'decide' && body.decision === 'decline' && (typeof body.reason !== 'string' || !body.reason.trim() || body.reason.trim().length > 500 || /[\u0000-\u001f\u007f<>]/.test(body.reason))) return sendJson(response, 400, { error: 'Enter a plain-text decline reason, up to 500 characters.' });
         try {
             const payload = { token: body.token, ...(body.op === 'decide' ? { decision: body.decision, reason: body.decision === 'decline' ? body.reason.trim() : '', confirmed: true, ...(typeof body.useBanner === 'boolean' ? { useBanner: body.useBanner, bannerVersion: body.bannerVersion } : {}) } : {}), ...(body.op === 'member-quote' ? { decision: body.decision, decisionId: body.decisionId, confirmed: body.confirmed === true, specialty: body.specialty, scope: body.scope, amount: body.amount } : {}) };
-            return sendJson(response, 200, await call(body.op, payload));
+            const result = await call(body.op, payload);
+            const commercialDraft = body.op === 'review' ? reviewDraft(result.applicationId) : null;
+            return sendJson(response, 200, { ...result, ...(commercialDraft ? { commercialDraft } : {}) });
         } catch (error) {
             const status = [400, 401, 403, 404, 409, 410, 422, 429, 503].includes(error.status) ? error.status : 502;
             return sendJson(response, status, { error: status === 502 ? 'Review is temporarily unavailable. Please try again.' : error.message, code: error.code || 'REVIEW_UNAVAILABLE' });

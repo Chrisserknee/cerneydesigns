@@ -1,3 +1,4 @@
+process.env.SPOTLIGHT_CUSTOM_PLANS_JSON = '[{"key": "hare-250-v1", "subscription": "sub_harefixture", "customer": "cus_harefixture", "price": "price_harefixture", "invoice": "in_harefixture", "amount": 25000}]';
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -76,4 +77,10 @@ test('Stripe network, permission and availability failures remain errors rather 
         f.stripe[resource][method] = async () => { throw outage; };
         await assert.rejects(f.check(), error => error === outage);
     }
+});
+
+test('Hare $250 renewal follows canonical payment and still rejects refunded or disputed charges',async()=>{
+ const f=fixture();Object.assign(f.subscription,{id:'sub_harefixture',livemode:true,customer:'cus_harefixture',items:{data:[{price:{id:'price_harefixture'}}]}});
+ f.payment.amount_paid=25000;Object.assign(f.intent,{amount:25000,amount_received:25000,customer:f.subscription.customer});Object.assign(f.charge,{amount:25000,amount_captured:25000,customer:f.subscription.customer});
+ assert.equal(await f.check(),true);f.charge.disputed=true;assert.equal(await f.check(),false);f.charge.disputed=false;f.charge.amount_refunded=1;assert.equal(await f.check(),false);
 });

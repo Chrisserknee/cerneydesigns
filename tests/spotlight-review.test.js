@@ -1,3 +1,4 @@
+process.env.SPOTLIGHT_CUSTOM_PLANS_JSON = '[{"key": "hare-250-v1", "subscription": "sub_harefixture", "customer": "cus_harefixture", "price": "price_harefixture", "invoice": "in_harefixture", "amount": 25000}]';
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -50,4 +51,10 @@ test('gateway request signs the exact timestamp and JSON, refuses redirects, and
 test('gateway configuration accepts only the fixed private service and a strong shared secret',()=>{
  const oldUrl=process.env.SPOTLIGHT_MODERATION_URL,oldSecret=process.env.SPOTLIGHT_MODERATION_PROXY_SECRET;
  try{process.env.SPOTLIGHT_MODERATION_URL='https://attacker.example';process.env.SPOTLIGHT_MODERATION_PROXY_SECRET='x'.repeat(40);assert.equal(moderationConfig().ready,false);process.env.SPOTLIGHT_MODERATION_URL='https://us-west1-tip-line-8c2d7.cloudfunctions.net/spotlightModerationApi';assert.equal(moderationConfig().ready,true);process.env.SPOTLIGHT_MODERATION_PROXY_SECRET='short';assert.equal(moderationConfig().ready,false);}finally{if(oldUrl===undefined)delete process.env.SPOTLIGHT_MODERATION_URL;else process.env.SPOTLIGHT_MODERATION_URL=oldUrl;if(oldSecret===undefined)delete process.env.SPOTLIGHT_MODERATION_PROXY_SECRET;else process.env.SPOTLIGHT_MODERATION_PROXY_SECRET=oldSecret;}
+});
+
+test('custom billing draft is attached only after authenticated Hare review',async()=>{
+ const result=await invoke(request({op:'review',token,applicationId:'attacker'}),async()=>({applicationId:'sub_harefixture',status:'pending'}));
+ assert.equal(result.body.commercialDraft.initialAmount,15000);assert.equal(result.body.commercialDraft.monthlyAmount,25000);
+ const other=await invoke(request({op:'review',token}),async()=>({applicationId:'sub_other'}));assert.equal(other.body.commercialDraft,undefined);
 });

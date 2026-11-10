@@ -1,3 +1,4 @@
+process.env.SPOTLIGHT_CUSTOM_PLANS_JSON = '[{"key": "hare-250-v1", "subscription": "sub_harefixture", "customer": "cus_harefixture", "price": "price_harefixture", "invoice": "in_harefixture", "amount": 25000}]';
 'use strict';
 
 const assert = require('node:assert/strict');
@@ -643,4 +644,17 @@ test('signup checkout saves normalized optional socials in both checkout and sub
  for(const [key,value] of Object.entries(expected)){assert.equal(params.metadata[key],value);assert.equal(params.subscription_data.metadata[key],value);}
  const invalid=await post(stripe,{...body,requestId:crypto.randomUUID(),profile:{...profile,instagramUrl:'https://evil.example/'}});
  assert.equal(invalid.statusCode,400);assert.equal(state.checkouts.length,1);
+});
+
+function hareRenewal() {
+ const sub = subscription(); sub.id='sub_harefixture'; sub.customer='cus_harefixture'; sub.livemode=true;
+ const item=sub.items.data[0]; item.price={...item.price,id:'price_harefixture',unit_amount:25000,livemode:true};
+ const invoice=sub.latest_invoice; Object.assign(invoice,{livemode:true,customer:sub.customer,amount_paid:25000,amount_due:25000,total:25000}); invoice.parent.subscription_details.subscription=sub.id;
+ const line=invoice.lines.data[0]; line.amount=25000;line.pricing.price_details.price=item.price.id;line.parent.subscription_item_details.subscription=sub.id;
+ return sub;
+}
+test('Hare combined renewal accepts exactly one $250 item, rejects foreign customers and old $100 invoices',()=>{
+ const live={...settings,live:true};const sub=hareRenewal();assert.equal(validPaidSubscription(sub,live),true);
+ for(const edit of [s=>s.customer='cus_other',s=>s.id='sub_other',s=>s.items.data.push(structuredClone(s.items.data[0])),s=>s.items.data[0].price.unit_amount=10000,s=>s.latest_invoice.amount_paid=10000,s=>s.latest_invoice.status='open',s=>s.pause_collection={behavior:'void'},s=>s.status='canceled']) {const copy=structuredClone(sub);edit(copy);assert.equal(validPaidSubscription(copy,live),false);}
+ assert.equal(validPaidSubscription(sub,settings),false);
 });
