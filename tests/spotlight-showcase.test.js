@@ -104,7 +104,12 @@ test('deep links, detail dialog, safe logos and normal About navigation remain u
     assert.equal(byClass(content, 'directory-phone')[0].href, 'tel:8315550100');
     page.elements.closeBusinessDialog.events.click(); assert.equal(page.elements.businessDialog.open, false);
     page.navigate('#about'); assert.equal(page.sections().length, 5);
-    assert.equal(byClass(page.elements.businessGrid, 'expanded-logo').length, 1);
+    const images = byClass(page.elements.businessGrid, 'expanded-logo');
+    assert.equal(images.length, 2);
+    assert.ok(images.every(image => image.src.startsWith('https://')));
+    const fallback = byClass(page.elements.businessGrid, 'is-banner-fallback');
+    assert.equal(fallback.length, 1);
+    assert.equal(fallback[0].src, 'https://cerneyselects.com/localspotlight/banners/example.webp');
 });
 
 test('empty categories remain visible and a failed request can be retried without filters', async () => {

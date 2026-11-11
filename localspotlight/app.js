@@ -243,9 +243,10 @@
         tile.setAttribute('aria-label', `View ${profile.businessName} details`);
         tile.setAttribute('aria-haspopup', 'dialog');
         const art = node('span', 'business-tile-art');
-        const src = logoUrl(profile.logoUrl);
+        const originalLogo = logoUrl(profile.logoUrl);
+        const src = originalLogo || logoUrl(profile.bannerUrl);
         if (src) {
-            const image = node('img', 'expanded-logo');
+            const image = node('img', originalLogo ? 'expanded-logo' : 'expanded-logo is-banner-fallback');
             image.alt = ''; image.src = src;
             image.loading = index < 12 ? 'eager' : 'lazy';
             image.decoding = 'async'; image.referrerPolicy = 'no-referrer';
