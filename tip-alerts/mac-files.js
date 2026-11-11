@@ -56,6 +56,10 @@ async function open(target){
   for(const b of $('rootTabs').children)b.setAttribute('aria-current',String(roots.find(x=>x.label&&b.textContent.startsWith(x.label))?.id===rootID));
   const crumbs=$('crumbs');crumbs.replaceChildren();r.folder.crumbs.forEach((c,i)=>{if(i)crumbs.append(E('span','›'));crumbs.append(i===r.folder.crumbs.length-1?E('strong',c.name):button(c.name,()=>open({folder:c.id})));});
   $('uploadBox').hidden=!r.folder.canUpload;$('newStory').hidden=!r.folder.canCreateStory;
+  // iPhone Uploads takes files directly; story folders put them in "Phone Uploads".
+  document.querySelector('#uploadBox .lead').textContent=r.folder.flat?'Upload to your Mac':'Add to this story';
+  document.querySelector('#drop .drop-hint').textContent=r.folder.flat?'Goes straight into iPhone Uploads on your Mac · never overwrites':'Saved in this story’s “Phone Uploads” folder · never overwrites';
+  $('note').placeholder=r.folder.flat?'Note for these files (optional). Saved in “Upload Notes.md”.':'Context for these files (optional). Saved in the story’s “Story Context.md”.';
   const list=$('entries');list.replaceChildren();
   if(!r.entries.length)list.append(E('li',r.folder.canUpload?'No files yet. Upload some above.':'Nothing here yet.','empty'));
   for(const e of r.entries){const li=E('li'),b=button('',()=>e.type==='folder'?open({folder:e.id}):view(e),'entry');
