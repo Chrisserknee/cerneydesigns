@@ -87,3 +87,8 @@ footer{font-size:12px;margin-top:32px}
 
 /* Story Tracker reuses the private resumable upload path, without submitting a production job. */
 .materials header,.materials #new,.materials #threads,.materials #more,.materials #instruction,.materials label[for="instruction"],.materials #send,.materials #retry,.materials #styleBox,.materials #sources,.materials #reports,.materials #convo,.materials footer{display:none!important}
+
+/* The AI composer is retired: the desk shows finished reports and files only. Story materials mode keeps its file area. */
+html:not(.materials) #compose,html:not(.materials) #new{display:none!important}
+.desk-note{font-size:14px;color:var(--muted);margin:4px 0 0}
+html.materials .desk-note{display:none}
