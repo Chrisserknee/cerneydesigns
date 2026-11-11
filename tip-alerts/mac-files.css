@@ -1,0 +1,27 @@
+#macState{font-size:12px;color:var(--muted);text-align:right}
+.root-tabs{display:flex;gap:8px;overflow-x:auto;margin:6px 0 4px}
+.root-tabs button{flex:0 0 auto;background:transparent;color:inherit;border:1px solid var(--line)}
+.root-tabs button[aria-current=true]{border:2px solid #527c91;background:var(--soft)}
+.crumbs{display:flex;flex-wrap:wrap;gap:4px;font-size:13px;margin:10px 0}
+.crumbs button{background:transparent;color:inherit;padding:4px 6px;text-decoration:underline}
+.crumbs span{color:var(--muted);padding:4px 0}
+.inline{display:flex;gap:8px}.inline input{flex:1}
+.entries,.paused{list-style:none;margin:12px 0;padding:0}
+.entries li{border-bottom:1px solid var(--line)}
+.entries button.entry{display:flex;width:100%;gap:12px;align-items:center;text-align:left;background:transparent;color:inherit;padding:12px 4px;border-radius:0}
+.entry .icon{flex:0 0 34px;height:34px;border-radius:8px;background:var(--soft);display:flex;align-items:center;justify-content:center;font-size:17px}
+.entry .meta{flex:1;min-width:0}
+.entry .name{display:block;font-weight:600;overflow-wrap:anywhere}
+.entry small{display:block;margin-top:2px;font-size:12px}
+.paused li{padding:8px 0;font-size:13px;border-bottom:1px solid var(--line)}
+.paused button{margin-top:6px}
+.empty{color:var(--muted);font-size:14px;padding:12px 0}
+dialog{width:min(720px,calc(100vw - 24px));max-height:calc(100vh - 40px);border:1px solid var(--line);border-radius:16px;padding:14px;background:var(--card);color:inherit}
+dialog::backdrop{background:rgba(0,0,0,.55)}
+.viewer-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;overflow-wrap:anywhere}
+#viewerBody img,#viewerBody video{display:block;width:100%;max-height:62vh;object-fit:contain;border-radius:10px;background:#000}
+#viewerBody audio{width:100%}
+#viewerBody p{font-size:13px;color:var(--muted)}
+#viewerActions{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+#viewerActions button,#viewerActions a{width:100%;text-align:center}
+#viewerActions progress{width:100%}

@@ -15,7 +15,7 @@ module.exports = async (request, response) => {
     let body;
     try { body = parseBody(request); if (Buffer.byteLength(JSON.stringify(body)) > (body?.op==='tracker-edit'?65000:body?.op==='producer-media-part'?2900000:body?.op==='producer-media-finish'?100000:String(body?.op||'').startsWith('field-')?780000:String(body?.op||'').startsWith('producer-')?30000:8192)) return sendJson(response,413,{error:'Request too large.'}); }
     catch { return sendJson(response,400,{error:'Invalid request.'}); }
-    const ops = ['pair','status','subscribe','unsubscribe','logout','list','tip','test','devices','revoke-device','thumbnail','tip-media','newsroom','scanner','scanner-audio','field-save','field-get','field-audio-part','field-audio-finish','field-audio-read','producer-catalog','producer-list','producer-get','producer-send','producer-cancel','producer-media-part','producer-media-finish','producer-media-status','producer-artifact'];
+    const ops = ['pair','status','subscribe','unsubscribe','logout','list','tip','test','devices','revoke-device','thumbnail','tip-media','newsroom','scanner','scanner-audio','field-save','field-get','field-audio-part','field-audio-finish','field-audio-read','producer-catalog','producer-list','producer-get','producer-send','producer-cancel','producer-media-part','producer-media-finish','producer-media-status','producer-mac-ticket','producer-artifact'];
     ops.push('native-status','native-register','native-unregister','native-test');
     ops.push('facebook-media-list','facebook-media-read','tracker-list','tracker-get','tracker-status','tracker-separate','tracker-edit','tracker-pin','producer-media-read');
     if (!ops.includes(body?.op)) return sendJson(response,400,{error:'Unknown request.'});

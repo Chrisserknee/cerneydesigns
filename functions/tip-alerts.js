@@ -12,6 +12,7 @@ const { logger } = require('firebase-functions');
 const {defineSecret}=require('firebase-functions/params');
 const {gatewayAuthenticated}=require('./request-auth');
 const proxySecret=defineSecret('TIP_ALERTS_PROXY_SECRET');
+const macTransferKey=defineSecret('MAC_TRANSFER_SIGNING_KEY');
 const apnsSecret=defineSecret('CERNEY_TIPS_APNS_AUTH');
 const apns=require('./apns-transport').createAPNs({getCredentials:()=>apnsSecret.value()});
 const {nativeDevices}=require('./native-push');
@@ -27,6 +28,7 @@ const {monitorStatus:facebookMonitorStatus}=require('./facebook-reports');
 const facebookMedia=require('./facebook-media').createFacebookMedia({read,bucket:()=>bucket(),root:ROOT});
 const fieldHandler=require('./field-notes').createFieldNotes({read,write,bucket:()=>bucket(),root:ROOT});
 const {threadMetadata,threadSummary,createProducerDesk}=require('./producer-desk');
+const macTicket=require('./mac-transfer-ticket').createMacTicket({read,signingKey:()=>{try{return macTransferKey.value()||null;}catch{return null;}}});
 const producerHandler=createProducerDesk({read,write,list:producerThreads,bucket:()=>bucket(),root:ROOT,onMediaSaved:(id,assets)=>tracker.recordAssets(id,assets)});
 const tracker=require('./story-tracker').createStoryTracker({read,write,collect:async()=>{
     const [tips,research,incidents,scanner]=await Promise.all([inboxDocuments(),inboxDocuments('research/'),inboxDocuments('incidents/'),read('scanner/feed.json')]);
@@ -306,6 +308,7 @@ async function handleApi(req, res) {
         }
         if(body.op==='scanner')return res.json(require('./scanner-feed').scannerFeed((await read('scanner/feed.json'))?.data));
         if(String(body.op||'').startsWith('tracker-'))return res.json(await tracker.handle(body));
+        if(body.op==='producer-mac-ticket')return res.json(await macTicket(device));
         if(String(body.op||'').startsWith('producer-'))return res.json(await producerHandler(body,device));
         if(String(body.op||'').startsWith('field-'))return res.json(await fieldHandler(body));
         if(['facebook-media-list','facebook-media-read'].includes(body.op))return res.json(await facebookMedia(body));
@@ -422,5 +425,5 @@ async function secureHandleApi(req,res) {
     if(req.body?.op==='upload-authorize'){try{const r=await require('./upload-admission').authorize(req.body);return res.status(r.status).json(r.body);}catch{return res.status(503).json({error:'Upload protection unavailable. Please try again.'});}}
     return handleApi(req,res);
 }
-exports.tipAlertsApi = onRequest({...options,memory:'512MiB',concurrency:16,invoker:'public',secrets:[proxySecret,apnsSecret]},secureHandleApi);
+exports.tipAlertsApi = onRequest({...options,memory:'512MiB',concurrency:16,invoker:'public',secrets:[proxySecret,apnsSecret,macTransferKey]},secureHandleApi);
 exports.refreshStoryTracker = onSchedule({...options,memory:'512MiB',maxInstances:1,schedule:'every 5 minutes'},async()=>{await tracker.sync();});
