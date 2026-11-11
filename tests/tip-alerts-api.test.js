@@ -71,7 +71,7 @@ test('Blob image previews are restricted to the inbox, news publisher and busine
  const inbox=config.headers.find(rule=>rule.source==='/tip-alerts/(.*)');
  assert.equal(inbox.headers.find(h=>h.key==='Cache-Control').value,'no-store');
  const policy=inbox.headers.find(h=>h.key==='Content-Security-Policy').value;
- assert.match(policy,/img-src 'self' blob:;/);assert.match(policy,/connect-src 'self';/);assert.match(policy,/script-src 'self';/);
+ assert.match(policy,/img-src 'self' blob:;/);assert.match(policy,/connect-src 'self'( https:\/\/cerney-mac\.[a-z0-9-]+\.ts\.net)?;/);assert.match(policy,/script-src 'self';/);
  const publisher=config.headers.find(rule=>rule.source==='/admin/news/(.*)');
  assert(publisher.headers.some(h=>h.key==='Content-Security-Policy' && h.value.includes('media-src \'self\' blob:')));
  const signup=config.headers.find(rule=>rule.source==='/spotlightsignup/(.*)');
@@ -93,7 +93,7 @@ test('large Producer uploads fit the proxy, and resume status is authenticated',
  const status=proxy(false,{parts:[]});await status.run(req({op:'producer-media-status',id:'a'.repeat(64),assetID:'c'.repeat(64),reply:{text:'forged'}},cookie),status.res);assert.equal(status.res.code,200);assert.equal(status.calls[0].body.assetID,'c'.repeat(64));assert.equal(status.calls[0].body.reply,undefined);
  const anon=proxy();await anon.run(req({op:'producer-media-status',id:'a'.repeat(64),assetID:'c'.repeat(64)}),anon.res);assert.equal(anon.res.code,401);assert.equal(anon.calls.length,0);
 });
-test('Producer review videos can play from private blob URLs without loosening other sources',()=>{const config=JSON.parse(fs.readFileSync(__dirname+'/../vercel.json','utf8'));const csp=config.headers.find(x=>x.source==='/tip-alerts/(.*)').headers.find(x=>x.key==='Content-Security-Policy').value;assert.match(csp,/media-src 'self' blob:;/);assert.match(csp,/connect-src 'self';/);assert.match(csp,/default-src 'none'/);});
+test('Producer review videos can play from private blob URLs without loosening other sources',()=>{const config=JSON.parse(fs.readFileSync(__dirname+'/../vercel.json','utf8'));const csp=config.headers.find(x=>x.source==='/tip-alerts/(.*)').headers.find(x=>x.key==='Content-Security-Policy').value;assert.match(csp,/media-src 'self' blob:;/);assert.match(csp,/connect-src 'self'( https:\/\/cerney-mac\.[a-z0-9-]+\.ts\.net)?;/);assert.doesNotMatch(csp,/\*/);assert.match(csp,/default-src 'none'/);});
 
 test('Story Tracker uses the paired device and forwards only tracker fields',async()=>{
  const id='a'.repeat(64),cookie={cookie:'cc_tip_device='+'x'.repeat(43)};
