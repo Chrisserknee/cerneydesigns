@@ -28,7 +28,9 @@
     function animateCategoryResults() {
         if (reducedMotion.matches) return;
         const grid = byId('businessGrid');
-        const items = byId('directoryEmpty').hidden ? Array.from(grid.children) : [byId('directoryEmpty')];
+        const items = byId('directoryEmpty').hidden
+            ? Array.from(showcaseDirectory ? grid.querySelectorAll('.business-tile') : grid.children)
+            : [byId('directoryEmpty')];
         // Animate only the first visible cards, so long directories stay light.
         items.filter(item => {
             const bounds = item.getBoundingClientRect();
@@ -38,7 +40,7 @@
             categoryAnimations.push(item.animate([
                 { opacity: 0, transform: 'translateY(10px)' },
                 { opacity: 1, transform: 'translateY(0)' },
-            ], { duration: 280, delay: index * 24, easing: 'cubic-bezier(.2,.7,.2,1)', fill: 'backwards' }));
+            ], { duration: 360, delay: index * 35, easing: 'cubic-bezier(.2,.7,.2,1)', fill: 'backwards' }));
         });
     }
 
@@ -304,7 +306,7 @@
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), 25000);
         try {
-            const response = await fetch(isPreview ? PREVIEW_DATA : API, { credentials: 'same-origin', cache: 'no-store', headers: { Accept: 'application/json' }, signal: controller.signal });
+            const response = await fetch(isPreview ? PREVIEW_DATA : API, { credentials: 'same-origin', cache: isPreview ? 'no-store' : 'default', headers: { Accept: 'application/json' }, signal: controller.signal });
             const data = await response.json().catch(() => null);
             if (!response.ok || !data || typeof data !== 'object') throw new Error('Listings unavailable');
             return data;
@@ -450,6 +452,7 @@
             directoryLoaded = true;
             if (isPreview) applyPreview();
             else { listings = allListings; populateCities(); renderDirectory(); }
+            animateCategoryResults();
         } catch {
             if (!directoryLoaded) {
                 byId('businessGrid').replaceChildren();

@@ -137,5 +137,8 @@ export default async function middleware(request: Request) {
         const reviewCsp = directoryCsp.replace("img-src 'self' data: https:", "img-src 'self' data: https://firebasestorage.googleapis.com");
         return next({ headers: { ...previewHeaders, 'Content-Security-Policy': reviewCsp, 'Referrer-Policy': 'no-referrer' } });
     }
+    // Let the directory handler cache successful public GETs only; errors,
+    // writes and all private handlers still explicitly return no-store.
+    if (publicSite && selects && url.pathname === '/api/spotlight' && request.method === 'GET' && !url.search) return next();
     return next({ headers: publicSite && !privateExamples ? { 'Cache-Control': 'no-store' } : previewHeaders });
 }

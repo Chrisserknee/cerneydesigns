@@ -58,7 +58,7 @@ function config() {
     const enabled = moderationReady && process.env.SPOTLIGHT_ENABLED === 'true' && Boolean(secret && signingSecret.length >= 32 && /^price_[A-Za-z0-9]+$/.test(priceId) && webhookSecret && /^bpc_[A-Za-z0-9]+$/.test(portalConfigurationId) && siteUrl);
     const memberExtrasEnabled = moderationReady && process.env.SPOTLIGHT_MEMBER_EXTRAS_ENABLED === 'true';
     const memberBillingEnabled = memberExtrasEnabled && process.env.SPOTLIGHT_MEMBER_BILLING_ENABLED === 'true';
-    return { secret, signingSecret, priceId, webhookSecret, portalConfigurationId, siteUrl, portalLoginUrl, enabled, moderationReady, memberExtrasEnabled, memberBillingEnabled, live: /^(?:sk|rk)_live_/.test(secret) };
+    return { secret, signingSecret, priceId, webhookSecret, portalConfigurationId, siteUrl, portalLoginUrl, enabled, moderationReady, memberExtrasEnabled, memberBillingEnabled, publicDirectory: process.env.CERNEYSELECTS_PUBLIC === 'true', live: /^(?:sk|rk)_live_/.test(secret) };
 }
 
 function safeStripeUrl(value, hostname) {

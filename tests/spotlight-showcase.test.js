@@ -29,17 +29,24 @@ class Element {
     showModal() { this.open = true; }
     close() { this.open = false; this.events.close?.(); }
     remove() { this.removed = true; }
+    querySelectorAll(selector) { return byClass(this, selector.slice(1)); }
+    getBoundingClientRect() { return { top: 150, bottom: 300 }; }
+    animate(frames, options) {
+        this.animation = { frames, options, canceled: false, cancel() { this.canceled = true; } };
+        return this.animation;
+    }
 }
 const descendants = element => element.children.flatMap(child => [child, ...descendants(child)]);
 const byClass = (element, name) => descendants(element).filter(child => child.classList.contains(name));
-async function browser(listings, hash = '') {
+async function browser(listings, hash = '', reduceMotion = true) {
     const elements = Object.fromEntries([...html.matchAll(/id="([^"]+)"/g)].map(([, id]) => [id, new Element()]));
     const body = new Element('body'); body.className = 'directory-first category-showcase';
     const events = {}, intervals = [], calls = [];
     let response = { ok: true, listings }, date = new Date('2026-11-06T20:00:00Z');
     const window = {
         location: { origin: 'https://cerneyselects.com', pathname: '/', hash },
-        matchMedia: () => ({ matches: true, addEventListener() {} }),
+        innerHeight: 844,
+        matchMedia: query => ({ matches: query.includes('reduced-motion') ? reduceMotion : true, addEventListener() {} }),
         addEventListener: (name, fn) => { events[name] = fn; }, scrollTo() {},
         CerneySelectsCategories: categories,
         CerneySelectsDailyOrder: { order: items => daily.order(items, date), dayNumber: () => daily.dayNumber(date) },
@@ -67,7 +74,7 @@ test('live response renders all 18 businesses across five ranked categories, inc
     const records = Array.from({ length: 18 }, (_, i) => listing(i, i < 10 ? 'Professional Services' : ['Home & Property', 'Auto & Transportation', 'Food & Restaurants', 'Drinks & Nightlife', 'Shopping & Local Makers', 'Farms, Outdoors & Local Living', 'Family & Community', 'Health & Wellness'][i - 10]));
     const page = await browser(records);
     assert.equal(page.calls[0].url, '/api/spotlight');
-    assert.equal(page.calls[0].options.cache, 'no-store');
+    assert.equal(page.calls[0].options.cache, 'default');
     assert.equal(page.sections().length, 5);
     assert.deepEqual(page.sections().map(s => byClass(s, 'business-tile').length), [12, 2, 2, 1, 1]);
     assert.equal(byClass(page.elements.businessGrid, 'business-tile').length, 18);
@@ -134,4 +141,19 @@ test('verified partner badge renders on the card and detail view, unknown labels
     assert.match(tile.attrs['aria-label'], /Exclusive Construction Partner/);
     tile.events.click();
     assert.equal(byClass(page.elements.businessDialogContent, 'membership-badge').length, 1);
+});
+
+test('initial cards enter with a short stagger and reduced motion skips animation', async () => {
+    const records = Array.from({ length: 12 }, (_, i) => listing(i));
+    const page = await browser(records, '', false);
+    const tiles = byClass(page.elements.businessGrid, 'business-tile');
+    assert.equal(tiles.filter(tile => tile.animation).length, 8);
+    assert.equal(tiles[0].animation.options.duration, 360);
+    assert.equal(tiles[1].animation.options.delay, 35);
+    assert.equal(tiles[0].animation.frames[1].opacity, 1);
+    const previous = tiles[0].animation;
+    page.navigate('#category/professional-services');
+    assert.equal(previous.canceled, true);
+    const reduced = await browser(records, '', true);
+    assert.ok(byClass(reduced.elements.businessGrid, 'business-tile').every(tile => !tile.animation));
 });

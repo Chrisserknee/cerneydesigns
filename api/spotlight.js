@@ -14,7 +14,16 @@ function createHandler({ makeStripe = createStripe, getConfig = config, authenti
         try {
             if (request.method === 'GET') {
                 const service = createService(settings.secret ? makeStripe(settings) : null, settings);
-                return sendJson(response, 200, await service.directory());
+                const directory = await service.directory();
+                // Only the public directory is shared. Keep owner/admin/payment
+                // responses and provider failures uncached. Never cache before
+                // the canonical approval and current-payment checks succeed.
+                const host = String(request.headers.host || '').toLowerCase();
+                if (settings.publicDirectory && ['cerneyselects.com', 'www.cerneyselects.com'].includes(host) && settings.secret && settings.priceId) {
+                    response.setHeader('Vercel-CDN-Cache-Control', 'public, s-maxage=30, stale-while-revalidate=30');
+                    return sendJson(response, 200, directory, 'public, max-age=0, must-revalidate');
+                }
+                return sendJson(response, 200, directory);
             }
             if (!sameOrigin(request, settings)) return sendJson(response, 403, { error: 'Request origin is not allowed.' });
             if (!String(request.headers?.['content-type'] || '').toLowerCase().startsWith('application/json')) return sendJson(response, 415, { error: 'JSON request required.' });

@@ -434,6 +434,34 @@ test('missing configuration leaves an empty directory with checkout disabled', a
     assert.equal(res.statusCode, 200); assert.deepEqual(res.body.listings, []); assert.equal(res.body.checkoutEnabled, false);
 });
 
+test('only successful public directory reads receive a bounded shared cache', async () => {
+    const { stripe, state } = mockStripe();
+    state.subscription.metadata.spotlight_paid_invoice = state.subscription.latest_invoice.id;
+    const get = async (host) => {
+        const res = recorder();
+        await handler(stripe, { publicDirectory: true })({ method: 'GET', headers: { host } }, res);
+        return res;
+    };
+    const publicResponse = await get('cerneyselects.com');
+    assert.equal(publicResponse.body.listings.length, 1);
+    assert.equal(publicResponse.headers['vercel-cdn-cache-control'], 'public, s-maxage=30, stale-while-revalidate=30');
+    assert.equal(publicResponse.headers['cache-control'], 'public, max-age=0, must-revalidate');
+    assert.equal(publicResponse.headers['set-cookie'], undefined);
+    const preview = await get('preview.cerneyselects.com');
+    assert.equal(preview.headers['cache-control'], 'no-store');
+    assert.equal(preview.headers['vercel-cdn-cache-control'], undefined);
+    const owner = await post(stripe, { op: 'status' }, cookie());
+    assert.equal(owner.headers['cache-control'], 'no-store');
+    assert.equal(owner.headers['vercel-cdn-cache-control'], undefined);
+    state.chargeChanges = { disputed: true };
+    assert.equal((await get('cerneyselects.com')).body.listings.length, 0);
+    stripe.charges.retrieve = async () => { throw new Error('provider unavailable'); };
+    const failed = await get('cerneyselects.com');
+    assert.equal(failed.statusCode, 502);
+    assert.equal(failed.headers['cache-control'], 'no-store');
+    assert.equal(failed.headers['vercel-cdn-cache-control'], undefined);
+});
+
 test('directory, owner status and admin visibility reflect current refunds and disputes without webhook delivery', async () => {
     const { stripe, state } = mockStripe();
     state.subscription.metadata.spotlight_paid_invoice = state.subscription.latest_invoice.id;

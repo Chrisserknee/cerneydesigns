@@ -14,3 +14,14 @@ test('review routes permit sanitized banner images while retaining private heade
         assert.equal(response.headers.get('referrer-policy'), 'no-referrer');
     }
 });
+
+test('only the public directory GET delegates cache policy to its handler', async () => {
+    const directory = await middleware(new Request('https://cerneyselects.com/api/spotlight'));
+    assert.equal(directory.headers.get('cache-control'), null);
+    for (const path of ['/api/spotlight?handler=logo', '/api/spotlight-review', '/apply/']) {
+        const response = await middleware(new Request('https://cerneyselects.com' + path));
+        assert.match(response.headers.get('cache-control'), /no-store/);
+    }
+    const write = await middleware(new Request('https://cerneyselects.com/api/spotlight', { method: 'POST' }));
+    assert.match(write.headers.get('cache-control'), /no-store/);
+});
