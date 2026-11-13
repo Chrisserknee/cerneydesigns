@@ -2,10 +2,11 @@
 const {createHmac,timingSafeEqual}=require('node:crypto');
 const {pipeline}=require('node:stream/promises');
 const {ID,SITE,isPublic}=require('./news-core');
+const {HLS,QUALITY_ID,masterPlaylist,signedPlaylist}=require('./news-video-core');
 
 // Small published images keep a stable URL and can be reused on the device.
 // Previews, unpublished material, and large/ranged media keep the existing path.
-function createNewsMediaHandler({catalog,readUpload,fileFor,previewSecret,now=Date.now}) {
+function createNewsMediaHandler({catalog,readUpload,fileFor,previewSecret,readRenditions=async()=>null,fileForRendition,now=Date.now}) {
     return async(req,res)=>{
         res.set({'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Access-Control-Allow-Origin':SITE,'Accept-Ranges':'bytes'});
         if (!['GET','HEAD'].includes(req.method)) return res.status(405).end();
@@ -29,6 +30,24 @@ function createNewsMediaHandler({catalog,readUpload,fileFor,previewSecret,now=Da
             const file=fileFor(record);
             const [metadata]=await file.getMetadata();
             if (Number(metadata.size)!==record.size || metadata.contentType!==record.type || !metadata.generation || (record.generation && String(record.generation)!==String(metadata.generation))) return res.status(404).end();
+            if(req.query.variant!==undefined) {
+                const variant=String(req.query.variant);
+                if(preview||!(variant==='adaptive'||QUALITY_ID.test(variant)))return res.status(404).end();
+                const data=await readRenditions(record);
+                if(!data)return res.status(404).end();
+                let playlist;
+                if(variant==='adaptive')playlist=masterPlaylist(req.query.post,id,data);
+                else {
+                    const level=data.levels.find(v=>v.id===variant);
+                    if(!level||!fileForRendition)return res.status(404).end();
+                    const asset=fileForRendition(record,level),[assetMetadata]=await asset.getMetadata();
+                    if(String(assetMetadata.generation)!==level.generation||Number(assetMetadata.size)!==level.bytes||assetMetadata.contentType!=='video/mp4')return res.status(404).end();
+                    const [url]=await asset.getSignedUrl({version:'v4',action:'read',expires:now()+15*60000,queryParams:{generation:level.generation}});
+                    playlist=signedPlaylist(level,url);
+                }
+                res.set({'Content-Type':HLS,'Content-Length':String(Buffer.byteLength(playlist))});
+                return req.method==='HEAD'?res.status(200).end():res.status(200).send(playlist);
+            }
             const smallPublicImage=!preview && record.type.startsWith('image/') && record.size<=1024**2 && !req.headers.range;
             if (smallPublicImage) {
                 const etag='"news-'+id+'-'+metadata.generation+'"';

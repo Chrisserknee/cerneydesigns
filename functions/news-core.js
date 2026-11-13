@@ -39,7 +39,7 @@ function rangeRequest(value, size) {
     return {start,end};
 }
 
-function createNewsService({store, media, sendEmail, secret, now=Date.now}) {
+function createNewsService({store, media, sendEmail, secret, decoratePost=publicPost, now=Date.now}) {
     const stamp = () => new Date(now()).toISOString();
     const memberId = email => createHmac('sha256',secret()).update('news-member:'+email).digest('hex');
     async function mutate(key, transform) {
@@ -158,7 +158,7 @@ function createNewsService({store, media, sendEmail, secret, now=Date.now}) {
             if (['video','image'].includes(body.type)) posts=posts.filter(p=>p.media.some(m=>m.type.startsWith(body.type+'/')));
             if (body.query) { const q=text(body.query,100).toLowerCase();posts=posts.filter(p=>[p.title,p.caption,p.location,p.topic].join(' ').toLowerCase().includes(q)); }
             const offset=Math.max(0,Math.min(1000,Number(body.offset)||0));
-            return {posts:posts.slice(offset,offset+30).map(publicPost),nextOffset:posts.length>offset+30 ? offset+30 : null};
+            return {posts:await Promise.all(posts.slice(offset,offset+30).map(decoratePost)),nextOffset:posts.length>offset+30 ? offset+30 : null};
         }
         if (body.op==='admin-list') {
             admin(body);
@@ -191,7 +191,7 @@ function createNewsService({store, media, sendEmail, secret, now=Date.now}) {
         const current=await member(body.session);
         if (body.op==='status') return memberView(current);
         if (!current) fail(401,'Join or sign in to save stories.');
-        if (body.op==='saved-feed') return {posts:(await catalog()).posts.filter(p=>isPublic(p,now()) && current.saved?.includes(p.id)).sort((a,b)=>current.saved.indexOf(a.id)-current.saved.indexOf(b.id)).map(publicPost),nextOffset:null};
+        if (body.op==='saved-feed') return {posts:await Promise.all((await catalog()).posts.filter(p=>isPublic(p,now()) && current.saved?.includes(p.id)).sort((a,b)=>current.saved.indexOf(a.id)-current.saved.indexOf(b.id)).map(decoratePost)),nextOffset:null};
         if (body.op==='save-story') {
             if (!ID.test(body.id || '') || !(await catalog()).posts.some(p=>p.id===body.id && isPublic(p,now()))) fail(404,'This story is unavailable.');
             const record=await mutate('members/'+current.id+'.json', old=>{

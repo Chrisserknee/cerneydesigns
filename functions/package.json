@@ -10,6 +10,8 @@
     "test": "node --test tip-context.test.js index.test.js delivery.test.js bridge.test.js drive-transfer.test.js ../upload/upload.test.cjs ../submit-story/submit-story.test.cjs tip-alerts.test.js native-push.test.js upload-policy.test.js upload-admission.test.js upload-gateway.test.js tip-inbox-context.test.js"
   },
   "dependencies": {
+    "ffmpeg-static": "5.3.0",
+    "ffprobe-static": "3.1.0",
     "firebase-admin": "^14.3.0",
     "firebase-functions": "^7.3.2",
     "google-auth-library": "^9.15.1",
