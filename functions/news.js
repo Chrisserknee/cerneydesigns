@@ -7,6 +7,7 @@ const {GoogleAuth} = require('google-auth-library');
 const {gatewayAuthenticated} = require('./request-auth');
 const {createNewsService,SITE} = require('./news-core');
 const {createNewsMediaHandler}=require('./news-media');
+const {assetPath,createRenditionReader,decorateVideoPost}=require('./news-video-delivery');
 const proxySecret=defineSecret('TIP_ALERTS_PROXY_SECRET');
 const emailSecret=defineSecret('SPONSORSHIP_RESEND_API_KEY');
 const ROOT='_news/v1/';
@@ -62,7 +63,8 @@ async function sendEmail(job) {
     const receipt=await response.json();
     if (typeof receipt.id!=='string') throw new Error('Email receipt unavailable');
 }
-const service=createNewsService({store,media,sendEmail,secret:()=>proxySecret.value()});
+const readRenditions=createRenditionReader({read:name=>store.read(name)});
+const service=createNewsService({store,media,sendEmail,secret:()=>proxySecret.value(),decoratePost:decorateVideoPost(readRenditions)});
 
 exports.newsApi=onRequest({...options,secrets:[proxySecret,emailSecret],invoker:'public'},async(req,res)=>{
     res.set('Cache-Control','no-store');
@@ -79,7 +81,9 @@ exports.newsMedia=onRequest({...options,secrets:[proxySecret],invoker:'public'},
     catalog:()=>service.catalog(),
     readUpload:async id=>(await store.read('uploads/'+id+'.json'))?.data,
     fileFor:record=>bucket().file(ROOT+'media/'+record.id,record.generation ? {generation:record.generation} : {}),
-    previewSecret:()=>proxySecret.value()
+    previewSecret:()=>proxySecret.value(),
+    readRenditions,
+    fileForRendition:(record,level)=>bucket().file(assetPath(record,level),{generation:level.generation})
 }));
 
 exports.sendNewsUpdates=onSchedule({...options,schedule:'every 5 minutes',secrets:[proxySecret,emailSecret]},()=>service.deliverUpdates());
