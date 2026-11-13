@@ -84,12 +84,13 @@ function storageFixture(){
     const rows=new Map();let generation=10;
     const put=(name,bytes,type='application/json',gen=String(++generation))=>rows.set(name,{bytes:Buffer.from(bytes),type,generation:gen});
     put(`_news/v1/uploads/${MEDIA}.json`,JSON.stringify({...original,generation:undefined}));put(`_news/v1/media/${MEDIA}`,'0123456789','video/mp4','7');
-    const bucket={file(name,options={}){return {async getMetadata(){const r=rows.get(name);if(!r||(options.generation&&r.generation!==options.generation))throw {code:404};return [{generation:r.generation,size:String(r.bytes.length),contentType:r.type,md5Hash:createHash('md5').update(r.bytes).digest('base64')}];},async download(){await this.getMetadata();return [rows.get(name).bytes];},async save(bytes,opts){const old=rows.get(name),expected=opts.preconditionOpts?.ifGenerationMatch;if(expected!==undefined&&String(expected)!==(old?.generation||'0'))throw {code:412};put(name,bytes,opts.contentType);},async getSignedUrl(){return ['https://storage.googleapis.com/fixture/source'];}};},async upload(path,options){if(rows.has(options.destination))throw {code:412};put(options.destination,await readFile(path),'video/mp4');}};
+    const bucket={file(name,options={}){return {async getMetadata(){const r=rows.get(name);if(!r||(options.generation&&r.generation!==options.generation))throw {code:404};return [{generation:r.generation,size:String(r.bytes.length),contentType:r.type,md5Hash:createHash('md5').update(r.bytes).digest('base64')}];},async download(opts={}){await this.getMetadata();const bytes=rows.get(name).bytes;if(opts.destination)await writeFile(opts.destination,bytes);return [bytes];},async save(bytes,opts){const old=rows.get(name),expected=opts.preconditionOpts?.ifGenerationMatch;if(expected!==undefined&&String(expected)!==(old?.generation||'0'))throw {code:412};put(name,bytes,opts.contentType);},async getSignedUrl(){return ['https://storage.googleapis.com/fixture/source'];}};},async upload(path,options){if(rows.has(options.destination))throw {code:412};put(options.destination,await readFile(path),'video/mp4');}};
     return {bucket,rows};
 }
 test('new uploads queue each available tier once; rendition failure retries once and preserves originals',async()=>{
     const {bucket,rows}=storageFixture();let attempts=0;
-    const process=createVideoProcessor({bucket,probe:async()=>probe,encode:async({directory,level:choice})=>{
+    const process=createVideoProcessor({bucket,probe:async path=>{assert.equal((await readFile(path)).toString(),'0123456789');return probe;},encode:async({input,directory,level:choice})=>{
+        assert.equal((await readFile(input)).toString(),'0123456789');
         if(++attempts===1)throw Error('Transient encode error');
         const file=join(directory,'video.mp4');await writeFile(file,'012345678901');return {...level,...choice,file};
     }});
@@ -111,4 +112,14 @@ test('permanent failures stop after two attempts and transient probe errors can 
     const event={name:`_news/v1/video-jobs/${MEDIA}/7/q360.json`,generation:'20'};
     await assert.rejects(process(event));assert.equal((await process(event)).status,'failed');assert.equal((await process(event)).status,'attempt-limit');assert.equal(tries,2);
     assert.ok(rows.has(`_news/v1/media/${MEDIA}`));
+});
+
+test('unreadable source probing stops after two attempts without touching the original',async()=>{
+    const {bucket,rows}=storageFixture();let calls=0;
+    const process=createVideoProcessor({bucket,probe:async()=>{calls++;throw Error('Unreadable source');}});
+    const source={name:`_news/v1/media/${MEDIA}`,generation:'7',contentType:'video/mp4',size:10};
+    await assert.rejects(process(source),/probe retry required/);
+    assert.equal((await process(source)).status,'failed');
+    assert.equal((await process(source)).status,'original-only');
+    assert.equal(calls,2);assert.ok(rows.has(`_news/v1/media/${MEDIA}`));
 });

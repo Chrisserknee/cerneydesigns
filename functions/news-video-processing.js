@@ -1,5 +1,5 @@
 'use strict';
-const {mkdtemp,rm}=require('node:fs/promises');
+const {mkdtemp,rm,stat}=require('node:fs/promises');
 const {tmpdir}=require('node:os');
 const {join}=require('node:path');
 const {createHash}=require('node:crypto');
@@ -36,6 +36,14 @@ function createVideoProcessor({bucket,ffmpeg,ffprobe,probe=probeSource,encode=en
         }
     }
     const indexName=target=>`renditions/${target.id}/${target.generation}.json`;
+    async function localSource(input,directory) {
+        // Static Linux media binaries can crash in their DNS resolver. Let the
+        // Storage SDK perform authenticated I/O, and give media tools local bytes.
+        const path=join(directory,'source.mp4');
+        await input.file.download({destination:path,validation:'md5'});
+        if((await stat(path)).size!==input.size)throw Error('Downloaded source size mismatch');
+        return path;
+    }
     async function original(target) {
         const upload=(await read(`uploads/${target.id}.json`))?.data;
         if(!upload||upload.id!==target.id||!['video/mp4','video/webm'].includes(upload.type))throw Error('Unrecognized owner video');
@@ -47,14 +55,33 @@ function createVideoProcessor({bucket,ffmpeg,ffprobe,probe=probeSource,encode=en
         const input=await original(target),name=indexName(target);
         let index=(await read(name))?.data;
         if(!index){
-            const [url]=await input.file.getSignedUrl({version:'v4',action:'read',expires:now()+15*60000,queryParams:{generation:target.generation}});
-            const inspected=await probe(url,ffprobe);
-            let source;
-            try{source=sourceInfo(inspected);}catch{
-                try{await write(name,{pipeline:PIPELINE,mediaId:target.id,sourceGeneration:target.generation,sourceSize:input.size,status:'unsupported',levels:[]},0);}catch(error){if(Number(error.code)!==412)throw error;}
-                return {status:'original-only'};
+            const claimName=`video-claims/${target.id}/${target.generation}/probe.json`;
+            let acquired=false,directory;
+            const claim=await mutate(claimName,old=>{
+                acquired=false;
+                if((old?.attempts||0)>=MAX_ATTEMPTS)return null;
+                if(old?.status==='processing'&&old.expiresAt>now())throw Error('Video probe already running');
+                acquired=true;return {status:'processing',attempts:(old?.attempts||0)+1,expiresAt:now()+LEASE_MS};
+            });
+            if(!acquired)return {status:'attempt-limit'};
+            try {
+                directory=await mkdtemp(join(tmpdir(),'cerney-news-probe-'));
+                const inspected=await probe(await localSource(input,directory),ffprobe);
+                let source;
+                try{source=sourceInfo(inspected);}catch{
+                    await mutate(name,old=>old||{pipeline:PIPELINE,mediaId:target.id,sourceGeneration:target.generation,sourceSize:input.size,status:'unsupported',levels:[]});
+                    return {status:'original-only'};
+                }
+                index=await mutate(name,old=>old||{pipeline:PIPELINE,mediaId:target.id,sourceGeneration:target.generation,sourceSize:input.size,source,status:'processing',levels:[]});
+                await mutate(claimName,current=>({...current,status:'complete'}));
+            }catch(error){
+                await mutate(claimName,current=>({...current,status:'failed',expiresAt:0}));
+                if(claim.attempts<MAX_ATTEMPTS)throw Error('Video probe retry required');
+                await mutate(name,old=>old||{pipeline:PIPELINE,mediaId:target.id,sourceGeneration:target.generation,sourceSize:input.size,status:'probe-failed',levels:[]});
+                return {status:'failed'};
+            }finally{
+                if(directory)await rm(directory,{recursive:true,force:true});
             }
-            index=await mutate(name,old=>old||{pipeline:PIPELINE,mediaId:target.id,sourceGeneration:target.generation,sourceSize:input.size,source,status:'processing',levels:[]});
         }
         if(!index.source)return {status:'original-only'};
         for(const level of qualityLevels(index.source)) {
@@ -83,9 +110,8 @@ function createVideoProcessor({bucket,ffmpeg,ffprobe,probe=probeSource,encode=en
         try {
             const input=await original(target);
             if(input.size!==index.sourceSize)throw Error('Source changed');
-            const [url]=await input.file.getSignedUrl({version:'v4',action:'read',expires:now()+15*60000,queryParams:{generation:target.generation}});
             directory=await mkdtemp(join(tmpdir(),'cerney-news-video-'));
-            const encoded=await encode({input:url,directory,source:index.source,level,ffmpeg,ffprobe});
+            const encoded=await encode({input:await localSource(input,directory),directory,source:index.source,level,ffmpeg,ffprobe});
             const digest=await md5File(encoded.file),destination=assetPath(input,level);
             try{await bucket.upload(encoded.file,{destination,resumable:true,validation:'md5',metadata:{contentType:'video/mp4',cacheControl:'private,no-store'},preconditionOpts:{ifGenerationMatch:0}});}
             catch(error){if(Number(error.code)!==412)throw error;}
