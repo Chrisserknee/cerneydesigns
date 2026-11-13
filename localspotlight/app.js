@@ -76,6 +76,7 @@
         const source = profile && typeof profile === 'object' ? profile : {};
         return {
             id: string(source.id, 100),
+            membershipBadge: ['exclusive-construction', 'featured-partner'].includes(source.membershipBadge) ? source.membershipBadge : '',
             businessName: string(source.businessName, 100), category: isPreview ? string(source.category, 100) : window.CerneySelectsCategories.display(string(source.category, 100)),
             city: string(source.city, 80), address: string(source.address, 200), description: string(source.description, 1000),
             website: string(source.website, 300), phone: string(source.phone, 40), logoUrl: string(source.logoUrl, 500), bannerUrl: string(source.bannerUrl, 500),
@@ -135,6 +136,15 @@
         return mark;
     }
 
+    function partnerBadge(profile) {
+        if (!profile.membershipBadge) return null;
+        const badge = node('span', 'membership-badge');
+        const exclusive = profile.membershipBadge === 'exclusive-construction';
+        badge.append(node('span', 'membership-badge-eyebrow', exclusive ? 'Exclusive' : 'Featured'),
+            node('span', 'membership-badge-title', exclusive ? 'Construction Partner' : 'Business Partner'));
+        return badge;
+    }
+
     function businessCard(profile, index) {
         if (mode === 'text') {
             const row = node('article', 'directory-text-row');
@@ -166,6 +176,8 @@
             card.append(top);
         }
         const body = node('div', 'directory-card-body');
+        const badge = partnerBadge(profile);
+        if (badge) body.append(badge);
         body.append(node('p', 'directory-card-category', profile.category || 'Local business'), businessName(profile), node('p', 'directory-city', profile.city));
         if (profile.description) body.append(node('p', 'directory-description', profile.description));
         if (profile.address) {
@@ -261,6 +273,12 @@
         const arrow = node('span', 'business-tile-arrow', '↗');
         arrow.setAttribute('aria-hidden', 'true');
         tile.append(art, copy, node('span', 'business-tile-city', profile.city), arrow);
+        const badge = partnerBadge(profile);
+        if (badge) {
+            tile.classList.add('has-membership-badge');
+            tile.append(badge);
+            tile.setAttribute('aria-label', `View ${profile.businessName} details, ${profile.membershipBadge === 'exclusive-construction' ? 'Exclusive Construction Partner' : 'Featured Business Partner'}`);
+        }
         tile.dataset.analyticsAction = 'business_open';
         tile.dataset.analyticsTarget = profile.businessName.toLowerCase().replace(/[^a-z0-9 ._&/-]/g, '').slice(0, 90);
         tile.addEventListener('click', () => openBusiness(profile, index));

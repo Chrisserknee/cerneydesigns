@@ -9,6 +9,7 @@ const { currentPaymentIsValid } = require('./spotlight-payment');
 const { billingTerms, invoiceTerms } = require('./spotlight-custom-plans');
 
 const { reconcileCustomBilling } = require('./spotlight-custom-billing');
+const { membershipBadge } = require('./spotlight-badges');
 
 const MARKER = 'local_spotlight_v1';
 const API_VERSION = '2026-08-26.dahlia';
@@ -324,11 +325,18 @@ function createService(stripe, settings = config(), moderation = callModeration)
         const subscriptions = settings.secret && settings.priceId ? await listSubscriptions() : [];
         const states = await publicationStates(subscriptions);
         const members = subscriptions.filter((_, index) => states[index]);
-        const listings = members.map(publicListing);
+        const listings = members.map(sub => {
+            const badge = membershipBadge(sub, settings);
+            return { ...publicListing(sub), ...(badge ? { membershipBadge: badge } : {}) };
+        });
         if (settings.memberBillingEnabled) {
             for (let start = 0; start < members.length; start += 4) await Promise.all(members.slice(start, start + 4).map(async (sub, offset) => {
                 const featured = await moderation('member-entitlement', { subscriptionId: sub.id });
-                if (featured?.specialty && featured.area === 'Monterey County') listings[start + offset].featured = { specialty: featured.specialty, area: featured.area };
+                if (featured?.specialty && featured.area === 'Monterey County') {
+                    listings[start + offset].featured = { specialty: featured.specialty, area: featured.area };
+                    // A verified active $150/month add-on plus the published $100 base plan.
+                    if (['featured', 'mustache'].includes(featured.offer) && !listings[start + offset].membershipBadge) listings[start + offset].membershipBadge = 'featured-partner';
+                }
             }));
         }
         return { listings: listings.sort((a, b) => Number(!!b.featured) - Number(!!a.featured) || a.businessName.localeCompare(b.businessName)), checkoutEnabled: settings.enabled, price: PRICE, portalLoginUrl: settings.portalLoginUrl };

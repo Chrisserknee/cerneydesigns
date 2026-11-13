@@ -64,3 +64,17 @@ body.category-showcase { background: radial-gradient(ellipse at 12% 0%,#24465f 0
 
 /* Keep Jglow’s approved longer bio readable and close to other listing sizes. */
 .cerneyselects-site.directory-page .business-dialog .jglow-reviewed-bio .directory-description { font-size: .8rem; line-height: 1.55; }
+
+/* Paid partner labels: compact blue ribbon, separate from the business logo. */
+.membership-badge { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 2px; width: fit-content; max-width: 100%; box-sizing: border-box; padding: 7px 12px; border: 1px solid #b9e3ffb3; border-left: 3px solid #b9e3ff; border-radius: 5px 12px 12px 5px; background: linear-gradient(115deg,#153d5c,#27688d); box-shadow: 0 3px 12px #04142050,inset 0 1px #ffffff20; color: #fff; text-align: left; text-shadow: none; }
+.membership-badge-eyebrow { font: 750 8px/1.1 Inter,sans-serif; letter-spacing: .16em; text-transform: uppercase; color: #bfe6ff; }
+.membership-badge-title { font: 650 10px/1.2 Inter,sans-serif; letter-spacing: .015em; }
+.category-showcase .has-membership-badge { padding-top: 59px; border-color: #b9e3ff; }
+.category-showcase .business-tile > .membership-badge { position: absolute; top: 10px; left: 12px; right: 12px; z-index: 2; }
+.directory-card-body > .membership-badge { margin-bottom: 14px; }
+@media(max-width:600px) {
+ .category-showcase .has-membership-badge { padding-top: 54px; }
+ .category-showcase .business-tile > .membership-badge { top: 8px; left: 8px; right: 8px; padding: 5px 7px; gap: 2px; }
+ .category-showcase .business-tile .membership-badge-title { font-size: clamp(8px,2.3vw,10px); }
+ .category-showcase .business-tile .membership-badge-eyebrow { font-size: 7px; }
+}

@@ -124,3 +124,14 @@ test('empty categories remain visible and a failed request can be retried withou
     assert.equal(page.elements.businessSearch, undefined);
     assert.equal(page.elements.cityFilter, undefined);
 });
+
+test('verified partner badge renders on the card and detail view, unknown labels are ignored', async () => {
+    const page = await browser([{ ...listing(0), membershipBadge: 'exclusive-construction' }, { ...listing(1), membershipBadge: '<script>fake</script>' }]);
+    const badges = byClass(page.elements.businessGrid, 'membership-badge');
+    assert.equal(badges.length, 1);
+    assert.equal(byClass(badges[0], 'membership-badge-title')[0].textContent, 'Construction Partner');
+    const tile = byClass(page.elements.businessGrid, 'has-membership-badge')[0];
+    assert.match(tile.attrs['aria-label'], /Exclusive Construction Partner/);
+    tile.events.click();
+    assert.equal(byClass(page.elements.businessDialogContent, 'membership-badge').length, 1);
+});
