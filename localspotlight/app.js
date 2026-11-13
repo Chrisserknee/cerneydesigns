@@ -140,6 +140,7 @@
         if (!profile.membershipBadge) return null;
         const badge = node('span', 'membership-badge');
         const exclusive = profile.membershipBadge === 'exclusive-construction';
+        if (exclusive) badge.classList.add('membership-badge-exclusive');
         badge.append(node('span', 'membership-badge-eyebrow', exclusive ? 'Exclusive' : 'Featured'),
             node('span', 'membership-badge-title', exclusive ? 'Construction Partner' : 'Business Partner'));
         return badge;
@@ -178,6 +179,7 @@
         const body = node('div', 'directory-card-body');
         const badge = partnerBadge(profile);
         if (badge) body.append(badge);
+        if (profile.membershipBadge === 'exclusive-construction') card.classList.add('exclusive-partner-card');
         body.append(node('p', 'directory-card-category', profile.category || 'Local business'), businessName(profile), node('p', 'directory-city', profile.city));
         if (profile.description) body.append(node('p', 'directory-description', profile.description));
         if (profile.address) {
@@ -276,6 +278,7 @@
         const badge = partnerBadge(profile);
         if (badge) {
             tile.classList.add('has-membership-badge');
+            if (profile.membershipBadge === 'exclusive-construction') tile.classList.add('exclusive-partner-card');
             tile.append(badge);
             tile.setAttribute('aria-label', `View ${profile.businessName} details, ${profile.membershipBadge === 'exclusive-construction' ? 'Exclusive Construction Partner' : 'Featured Business Partner'}`);
         }
