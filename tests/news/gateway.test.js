@@ -15,3 +15,9 @@ test('comment moderation uses existing administrator gate and a separate signed 
   const captured=allowed.read();assert.match(captured.url,/\/newsComments$/);assert.equal(captured.body.scope,'comments-v1');assert.equal(captured.body.op,op.replace('admin-comments-','admin-'));assert.equal(captured.body.admin,true);
  }
 });
+test('push broadcasts require administrator authentication and use their own signed scope',async()=>{
+ for(const op of ['admin-push-status','admin-push-send']){
+  const denied=gateway();await denied.handler(req({op,admin:true,confirm:true}),denied.res);assert.equal(denied.res.code,401);assert.equal(denied.read(),undefined);
+  const allowed=gateway(true);await allowed.handler(req({op,scope:'forged'}),allowed.res);const captured=allowed.read();assert.match(captured.url,/\/newsPush$/);assert.equal(captured.body.scope,'push-v1');assert.equal(captured.body.op,op.replace('admin-push-','admin-'));
+ }
+});

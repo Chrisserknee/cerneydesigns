@@ -1,0 +1,8 @@
+{
+  "name": "cerney-news-push",
+  "private": true,
+  "main": "index.js",
+  "engines": { "node": "22" },
+  "scripts": { "test": "node --test core.test.js http.test.js" },
+  "dependencies": { "firebase-admin": "^14.3.0", "firebase-functions": "^7.3.2" }
+}

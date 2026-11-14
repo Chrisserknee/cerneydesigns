@@ -22,3 +22,5 @@ firebase.booking.json
 
 functions-comments/
 firebase.comments.json
+functions-push/
+firebase.push.json

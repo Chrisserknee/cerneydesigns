@@ -5,6 +5,7 @@ const {bodyIsTooLarge,parseBody,sendJson}=require('./_lib/http');
 const SITE='https://www.chriscerney.org';
 const BACKEND='https://us-west1-tip-line-8c2d7.cloudfunctions.net/newsApi';
 const COMMENTS_BACKEND='https://us-west1-tip-line-8c2d7.cloudfunctions.net/newsComments';
+const PUSH_BACKEND='https://us-west1-tip-line-8c2d7.cloudfunctions.net/newsPush';
 const COOKIE='cc_news_session';
 const cookie=value=>`${COOKIE}=${value}; Max-Age=${value ? 2592000 : 0}; Path=/api/news; HttpOnly; Secure; SameSite=Strict`;
 const readCookie=req=>String(req.headers.cookie || '').split(';').map(s=>s.trim()).find(s=>s.startsWith(COOKIE+'='))?.slice(COOKIE.length+1) || '';
@@ -26,7 +27,7 @@ module.exports=async(req,res)=>{
         try { body=parseBody(req); } catch { return sendJson(res,400,{error:'Invalid JSON.'}); }
         if (!body || Array.isArray(body) || typeof body!=='object') return sendJson(res,400,{error:'Invalid request.'});
     } else return sendJson(res,405,{error:'Method not allowed.'});
-    const allowed=['feed','admin-list','admin-upload','admin-save','admin-preview','admin-export','admin-comments-list','admin-comments-moderate','signin','confirm','unsubscribe','status','saved-feed','save-story','preferences','logout','delete-account'];
+    const allowed=['feed','admin-list','admin-upload','admin-save','admin-preview','admin-export','admin-comments-list','admin-comments-moderate','admin-push-status','admin-push-send','signin','confirm','unsubscribe','status','saved-feed','save-story','preferences','logout','delete-account'];
     if (!allowed.includes(body.op)) return sendJson(res,400,{error:'Unknown request.'});
     // Never trust an admin flag, session, scope or network identity from JSON.
     const payload={...body,scope:'news-v1',admin:false,session:readCookie(req),clientKey:''};
@@ -40,10 +41,12 @@ module.exports=async(req,res)=>{
     }
     const comments=body.op.startsWith('admin-comments-');
     if (comments) { payload.op=body.op.replace('admin-comments-','admin-'); payload.scope='comments-v1'; }
+    const push=body.op.startsWith('admin-push-');
+    if (push) { payload.op=body.op.replace('admin-push-','admin-'); payload.scope='push-v1'; }
     try {
         const raw=JSON.stringify(payload),timestamp=String(Date.now());
         const signature=createHmac('sha256',secret).update(timestamp+'.'+raw).digest('hex');
-        const response=await fetch(comments ? COMMENTS_BACKEND : BACKEND,{method:'POST',redirect:'error',signal:AbortSignal.timeout(25000),headers:{'Content-Type':'application/json','X-Tip-Timestamp':timestamp,'X-Tip-Signature':signature},body:raw});
+        const response=await fetch(push ? PUSH_BACKEND : comments ? COMMENTS_BACKEND : BACKEND,{method:'POST',redirect:'error',signal:AbortSignal.timeout(25000),headers:{'Content-Type':'application/json','X-Tip-Timestamp':timestamp,'X-Tip-Signature':signature},body:raw});
         const result=await response.json();
         if (response.ok && body.op==='confirm') {
             if (!/^[A-Za-z0-9_-]{43}$/.test(result.sessionToken || '')) throw new Error('Invalid session');
