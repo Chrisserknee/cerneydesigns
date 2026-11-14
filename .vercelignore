@@ -19,3 +19,6 @@ firebase.cerneyselects.json
 
 functions-booking/
 firebase.booking.json
+
+functions-comments/
+firebase.comments.json
