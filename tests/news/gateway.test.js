@@ -8,3 +8,16 @@ test('gateway overrides client trust fields, signs exact payload and separates t
 test('session tokens become secure cookies and are never returned to page JS',async()=>{const f=gateway(false,{authenticated:true,sessionToken:'a'.repeat(43)});await f.handler(req({op:'confirm'}),f.res);assert.match(f.res.headers['Set-Cookie'],/Path=\/api\/news; HttpOnly; Secure; SameSite=Strict/);assert.equal(f.res.data.sessionToken,undefined);assert.equal(f.res.headers['Cache-Control'],'no-store');});
 test('public feed is the only JSON GET path and never accepts admin routing from query',async()=>{const f=gateway(true);await f.handler({method:'GET',headers:{},query:{op:'admin-list'}},f.res);assert.equal(f.res.code,400);assert.equal(f.read(),undefined);});
 test('RSS escapes story content and never emits executable markup',()=>{const f=gateway();const xml=f.handler.rss([{title:'<script>x</script>',caption:'A & B',permalink:'https://example.test/?x=1&y=2',publishAt:'2026-10-19T00:00:00Z'}]);assert(!xml.includes('<script>'));assert(xml.includes('&lt;script&gt;'));assert(xml.includes('A &amp; B'));});
+test('comment moderation uses existing administrator gate and a separate signed scope',async()=>{
+ for(const op of ['admin-comments-list','admin-comments-moderate']) {
+  const denied=gateway();await denied.handler(req({op,admin:true}),denied.res);assert.equal(denied.res.code,401);assert.equal(denied.read(),undefined);
+  const allowed=gateway(true);await allowed.handler(req({op,scope:'forged'}),allowed.res);
+  const captured=allowed.read();assert.match(captured.url,/\/newsComments$/);assert.equal(captured.body.scope,'comments-v1');assert.equal(captured.body.op,op.replace('admin-comments-','admin-'));assert.equal(captured.body.admin,true);
+ }
+});
+test('push broadcasts require administrator authentication and use their own signed scope',async()=>{
+ for(const op of ['admin-push-status','admin-push-send']){
+  const denied=gateway();await denied.handler(req({op,admin:true,confirm:true}),denied.res);assert.equal(denied.res.code,401);assert.equal(denied.read(),undefined);
+  const allowed=gateway(true);await allowed.handler(req({op,scope:'forged'}),allowed.res);const captured=allowed.read();assert.match(captured.url,/\/newsPush$/);assert.equal(captured.body.scope,'push-v1');assert.equal(captured.body.op,op.replace('admin-push-','admin-'));
+ }
+});
