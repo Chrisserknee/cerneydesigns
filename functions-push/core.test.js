@@ -10,7 +10,7 @@ function fixture(){
  const service=createPushService({store,secret:()=> 'test-only-secret'.repeat(3),now:()=>now,send:async m=>{messages.push(m);if(provider==='throw')throw new Error('provider outage');if(provider==='invalid')return {status:'error',details:{error:'DeviceNotRegistered'}};return {status:'ok',id:'ticket-'+messages.length};},receipts:async ids=>Object.fromEntries(ids.map(id=>[id,provider==='invalid'?{status:'error',details:{error:'DeviceNotRegistered'}}:{status:'ok'}]))});
  return {...service,post,store,records,messages,advance:ms=>{now+=ms;},publish:()=>{now+=1000;post.id=randomUUID();post.publishAt=new Date(now).toISOString();},provider:p=>{provider=p;}};
 }
-const register=(f,context=a,changes={})=>f.handle({op:'register',consent:true,platform:'ios',reports:true,breaking:true,pushToken:'ExpoPushToken[test-token-12345678]',...changes},context);
+const register=(f,context=a,changes={})=>f.handle({op:'register',revision:1,consent:true,platform:'ios',reports:true,breaking:true,pushToken:'ExpoPushToken[test-token-12345678]',...changes},context);
 test('registration needs explicit consent and valid token; status never leaks tokens or identity',async()=>{
  const f=fixture();await assert.rejects(register(f,a,{consent:false}),{status:400});await assert.rejects(register(f,a,{pushToken:'invalid'}),{status:400});
  await register(f);const status=await f.handle({op:'status'},a);assert.equal(status.enabled,true);assert(!JSON.stringify(status).includes('ExpoPushToken'));assert(!JSON.stringify(status).includes(a.token));
@@ -22,7 +22,7 @@ test('no historical report replay; new published selected reports queue once and
  f.advance(20000);await f.checkReceipts();assert.equal((await f.store.list('receipts/')).length,0);assert.equal((await f.store.list('deliveries/'))[0].state,'accepted');
 });
 test('disabled devices, deselected reports, drafts and publisher notify=false do not receive reports',async()=>{
- for(const change of ['disable','pref','draft','notify']){const f=fixture();await register(f,a,change==='pref'?{reports:false}:{});f.publish();if(change==='disable')await f.handle({op:'disable'},a);if(change==='draft')f.post.status='draft';if(change==='notify')f.post.notify=false;await f.drain();assert.equal(f.messages.length,0,change);}
+ for(const change of ['disable','pref','draft','notify']){const f=fixture();await register(f,a,change==='pref'?{reports:false}:{});f.publish();if(change==='disable')await f.handle({op:'disable',revision:2},a);if(change==='draft')f.post.status='draft';if(change==='notify')f.post.notify=false;await f.drain();assert.equal(f.messages.length,0,change);}
 });
 test('breaking is explicit, authenticated, linked to public story and respects choice',async()=>{
  const f=fixture();await register(f,a,{breaking:false});
@@ -43,4 +43,9 @@ test('test targets only requesting device, and accepted provider receipt is dist
 });
 test('a failed receipt for an old rotated token does not disable a fresh token',async()=>{
  const f=fixture();await register(f);await f.handle({op:'test'},a);await register(f,a,{pushToken:'ExpoPushToken[new-token-12345678]'});f.advance(20000);f.provider('invalid');await f.checkReceipts();assert.equal((await f.handle({op:'status'},a)).enabled,true);
+});
+
+test('late background registration cannot reverse an opt-out or overwrite newer choices',async()=>{
+ const f=fixture();await register(f);await f.handle({op:'disable',revision:2},a);await register(f,a,{revision:1});await register(f,a,{revision:2});assert.equal((await f.handle({op:'status'},a)).enabled,false);
+ await register(f,a,{revision:3,reports:false,breaking:true});await register(f,a,{revision:1,reports:true});assert.equal((await f.handle({op:'status'},a)).reports,false);
 });

@@ -12,7 +12,7 @@ function createPushService({store,secret,send,receipts,now=Date.now}) {
  const stamp=()=>new Date(now()).toISOString();
  async function mutate(key,fn){for(let i=0;i<8;i++){const old=await store.read(key);const next=fn(old?.data);try{await store.write(key,next,old?.generation||0);return next;}catch(e){if(Number(e.code)!==412||i===7)throw e;}}}
  async function limit(key,max,period){await mutate('limits/'+hash(key)+'.json',old=>{const r=old&&old.until>now()?old:{count:0,until:now()+period};if(r.count>=max)fail(429,'Please wait a few minutes before trying again.');return {...r,count:r.count+1};});}
- function status(d){return {enabled:!!(d?.enabled&&d.token),reports:d?.reports??true,breaking:d?.breaking??true,lastTest:d?.lastTest?{state:d.lastTest.state,error:d.lastTest.error||null,at:d.lastTest.at}:null};}
+ function status(d){return {enabled:!!(d?.enabled&&d.token),revision:d?.revision||0,reports:d?.reports??true,breaking:d?.breaking??true,lastTest:d?.lastTest?{state:d.lastTest.state,error:d.lastTest.error||null,at:d.lastTest.at}:null};}
  async function recordTicket(d,key,message){
   const lease=randomUUID();let claimed=false;
   await mutate(key,old=>{claimed=false;if(old)return old;claimed=true;return {deviceId:d.id,tokenHash:hash(d.token),eventId:message.data.eventId,state:'sending',at:stamp(),lease};});
@@ -48,14 +48,18 @@ function createPushService({store,secret,send,receipts,now=Date.now}) {
   if(!id)fail(401,'This device could not be identified.');
   if(op==='status')return status((await store.read(deviceKey(id)))?.data);
   if(op==='register'){
-   if(body.consent!==true||body.platform!=='ios'||!PUSH.test(body.pushToken||'')||typeof body.reports!=='boolean'||typeof body.breaking!=='boolean'||(!body.reports&&!body.breaking))fail(400,'Choose at least one notification type and allow notifications.');
+   if(!Number.isSafeInteger(body.revision)||body.revision<1||body.consent!==true||body.platform!=='ios'||!PUSH.test(body.pushToken||'')||typeof body.reports!=='boolean'||typeof body.breaking!=='boolean'||(!body.reports&&!body.breaking))fail(400,'Choose at least one notification type and allow notifications.');
    await limit('register:'+context.clientKey,60,3600000);
-   await mutate(deviceKey(id),old=>({id,token:body.pushToken,enabled:true,reports:body.reports,breaking:body.breaking,reportsAfter:old?.enabled&&old?.reports?old.reportsAfter:now(),breakingAfter:old?.enabled&&old?.breaking?old.breakingAfter:now(),createdAt:old?.createdAt||stamp(),updatedAt:stamp(),lastTest:old?.lastTest||null}));
-   await mutate('tokens/'+hash(body.pushToken)+'.json',()=>({deviceId:id}));
+   const device=await mutate(deviceKey(id),old=>{
+    if(old?.revision>body.revision||(old?.revision===body.revision&&!old.enabled))return old;
+    return {id,revision:body.revision,token:body.pushToken,enabled:true,reports:body.reports,breaking:body.breaking,reportsAfter:old?.enabled&&old?.reports?old.reportsAfter:now(),breakingAfter:old?.enabled&&old?.breaking?old.breakingAfter:now(),createdAt:old?.createdAt||stamp(),updatedAt:stamp(),lastTest:old?.lastTest||null};
+   });
+   if(device.enabled&&device.revision===body.revision&&device.token===body.pushToken)await mutate('tokens/'+hash(body.pushToken)+'.json',()=>({deviceId:id}));
    return status((await store.read(deviceKey(id))).data);
   }
   if(op==='disable'){
-   const d=await mutate(deviceKey(id),old=>({...old,id,enabled:false,token:null,updatedAt:stamp()}));return status(d);
+   if(!Number.isSafeInteger(body.revision)||body.revision<1)fail(400,'Invalid notification preference version.');
+   const d=await mutate(deviceKey(id),old=>old?.revision>body.revision?old:{...old,id,revision:body.revision,enabled:false,token:null,updatedAt:stamp()});return status(d);
   }
   if(op==='test'){
    const d=(await store.read(deviceKey(id)))?.data;
