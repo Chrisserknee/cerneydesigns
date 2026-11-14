@@ -54,14 +54,22 @@ function createProviders({ stripe, settings, fetchImpl = globalThis.fetch }) {
     if (!keyPattern.test(settings.stripeKey || '')) throw error('Stripe mode does not match this moderation service.', 503, 'MODE_MISMATCH');
     if (!stripe) { const Stripe = require('stripe'); stripe = new Stripe(settings.stripeKey, { apiVersion: '2026-08-26.dahlia', timeout: 15000, maxNetworkRetries: 2 }); }
     const getSubscription = (subscriptionId) => stripe.subscriptions.retrieve(subscriptionId, { expand: ['latest_invoice'] });
+    function terms(subscription) {
+        const priceId = subscription.items?.data?.[0]?.price?.id;
+        if (priceId === settings.priceId) return { priceId, amount: 10000 };
+        if (settings.featuredMembershipPriceId && priceId === settings.featuredMembershipPriceId) return { priceId, amount: 25000 };
+        throw error('Unknown membership price.', 409, 'PAYMENT_MISMATCH');
+    }
     function validateSubscription(subscription) {
+        const { priceId, amount } = terms(subscription);
         const items = subscription.items;
         const price = items?.data?.[0]?.price;
-        if (subscription.livemode !== live || subscription.metadata?.spotlight !== MARKER || items?.has_more || items?.data?.length !== 1 || items.data[0].quantity !== 1 || price?.id !== settings.priceId || price.currency !== 'usd' || price.unit_amount !== 10000 || price.type !== 'recurring' || price.recurring?.interval !== 'month' || price.recurring?.interval_count !== 1 || price.recurring?.usage_type !== 'licensed') throw error('Subscription does not match Cerney Selects.', 409, 'PAYMENT_MISMATCH');
+        if (subscription.livemode !== live || subscription.metadata?.spotlight !== MARKER || items?.has_more || items?.data?.length !== 1 || items.data[0].quantity !== 1 || price?.id !== priceId || price.currency !== 'usd' || price.unit_amount !== amount || price.type !== 'recurring' || price.recurring?.interval !== 'month' || price.recurring?.interval_count !== 1 || price.recurring?.usage_type !== 'licensed') throw error('Subscription does not match Cerney Selects.', 409, 'PAYMENT_MISMATCH');
     }
     function validateInvoice(invoice, subscription, initial = false) {
+        const { priceId, amount } = terms(subscription);
         const line = invoice.lines?.data?.[0];
-        if (invoice.livemode !== live || invoice.status !== 'paid' || invoice.currency !== 'usd' || invoice.amount_paid !== 10000 || invoice.amount_due !== 10000 || invoice.total !== 10000 || invoice.amount_remaining !== 0 || invoice.amount_paid_off_stripe > 0 || invoice.post_payment_credit_notes_amount > 0 || id(invoice.customer) !== id(subscription.customer) || id(invoice.parent?.subscription_details?.subscription) !== subscription.id || (initial && invoice.billing_reason !== 'subscription_create') || invoice.lines?.has_more || invoice.lines?.data?.length !== 1 || line.amount !== 10000 || line.currency !== 'usd' || line.quantity !== 1 || id(line.pricing?.price_details?.price) !== settings.priceId || line.parent?.subscription_item_details?.proration || id(line.parent?.subscription_item_details?.subscription_item) !== subscription.items.data[0].id || !Number.isInteger(line.period?.start) || !Number.isInteger(line.period?.end) || line.period.end <= line.period.start) throw error('Payment does not match the application.', 409, 'PAYMENT_MISMATCH');
+        if (invoice.livemode !== live || invoice.status !== 'paid' || invoice.currency !== 'usd' || invoice.amount_paid !== amount || invoice.amount_due !== amount || invoice.total !== amount || invoice.amount_remaining !== 0 || invoice.amount_paid_off_stripe > 0 || invoice.post_payment_credit_notes_amount > 0 || id(invoice.customer) !== id(subscription.customer) || id(invoice.parent?.subscription_details?.subscription) !== subscription.id || (initial && invoice.billing_reason !== 'subscription_create') || invoice.lines?.has_more || invoice.lines?.data?.length !== 1 || line.amount !== amount || line.currency !== 'usd' || line.quantity !== 1 || id(line.pricing?.price_details?.price) !== priceId || line.parent?.subscription_item_details?.proration || id(line.parent?.subscription_item_details?.subscription_item) !== subscription.items.data[0].id || !Number.isInteger(line.period?.start) || !Number.isInteger(line.period?.end) || line.period.end <= line.period.start) throw error('Payment does not match the application.', 409, 'PAYMENT_MISMATCH');
     }
     function validateRefund(refund, paymentIntentId) {
         if (!refund || id(refund.payment_intent) !== paymentIntentId || refund.currency !== 'usd' || !Number.isSafeInteger(refund.amount) || refund.amount <= 0 || !['pending', 'requires_action', 'succeeded', 'failed', 'canceled'].includes(refund.status)) throw error('Refund details need manual review.', 409, 'REFUND_REVIEW');
@@ -88,6 +96,7 @@ function createProviders({ stripe, settings, fetchImpl = globalThis.fetch }) {
     }
     async function inspectInitial(subscriptionId) {
         const subscription = await getSubscription(subscriptionId);
+        const { amount } = terms(subscription);
         // A paid applicant can cancel before the first webhook arrives. Capture
         // explicitly pending applications for operator review, without importing
         // old canceled Spotlight subscriptions into the new approval workflow.
@@ -98,17 +107,17 @@ function createProviders({ stripe, settings, fetchImpl = globalThis.fetch }) {
         const payments = await stripe.invoicePayments.list({ invoice: invoice.id, status: 'paid', limit: 100, expand: ['data.payment.payment_intent'] });
         const payment = payments.data?.[0];
         const intent = payment?.payment?.payment_intent;
-        if (payments.has_more || payments.data?.length !== 1 || payment.status !== 'paid' || payment.livemode !== live || payment.amount_paid !== 10000 || payment.currency !== 'usd' || id(payment.invoice) !== invoice.id || payment.payment.type !== 'payment_intent' || !intent || typeof intent !== 'object' || intent.livemode !== live || intent.status !== 'succeeded' || intent.amount_received !== 10000 || intent.currency !== 'usd' || id(intent.customer) !== id(subscription.customer)) throw error('Initial Stripe payment needs review.', 409, 'PAYMENT_MISMATCH');
+        if (payments.has_more || payments.data?.length !== 1 || payment.status !== 'paid' || payment.livemode !== live || payment.amount_paid !== amount || payment.currency !== 'usd' || id(payment.invoice) !== invoice.id || payment.payment.type !== 'payment_intent' || !intent || typeof intent !== 'object' || intent.livemode !== live || intent.status !== 'succeeded' || intent.amount_received !== amount || intent.currency !== 'usd' || id(intent.customer) !== id(subscription.customer)) throw error('Initial Stripe payment needs review.', 409, 'PAYMENT_MISMATCH');
         const customer = await stripe.customers.retrieve(id(subscription.customer));
         if (customer.deleted || customer.livemode !== live || !ADDRESS.test(customer.email || '') || customer.email.length > 254) throw error('Applicant email is unavailable.', 409, 'EMAIL_REQUIRED');
         if ((await refunds(intent.id)).some((refund) => !['failed', 'canceled'].includes(refund.status))) throw error('Initial payment has already been refunded.', 409, 'PAYMENT_REFUNDED');
         const profile = profileFrom(subscription.metadata);
-        return { subscriptionId: subscription.id, customerId: customer.id, initialInvoiceId: invoice.id, paymentIntentId: intent.id, profile, profileHash: profileHash(profile), customerEmail: customer.email, paidAmount: 10000, currency: 'usd', paidAt: (invoice.status_transitions?.paid_at || invoice.created) * 1000, periodEnd: subscription.items.data[0].current_period_end * 1000 };
+        return { subscriptionId: subscription.id, customerId: customer.id, initialInvoiceId: invoice.id, paymentIntentId: intent.id, profile, profileHash: profileHash(profile), customerEmail: customer.email, paidAmount: amount, currency: 'usd', paidAt: (invoice.status_transitions?.paid_at || invoice.created) * 1000, periodEnd: subscription.items.data[0].current_period_end * 1000 };
     }
     async function checked(snapshot) {
         const subscription = await getSubscription(snapshot.subscriptionId);
         validateSubscription(subscription);
-        if (id(subscription.customer) !== snapshot.customerId) throw error('Application customer changed.', 409, 'PAYMENT_MISMATCH');
+        if (id(subscription.customer) !== snapshot.customerId || terms(subscription).amount !== snapshot.paidAmount) throw error('Application customer changed.', 409, 'PAYMENT_MISMATCH');
         return subscription;
     }
     async function hold(snapshot) {
@@ -123,6 +132,7 @@ function createProviders({ stripe, settings, fetchImpl = globalThis.fetch }) {
     async function approve(snapshot, banner = '') {
         if (banner && bannerUrl(banner, live) !== banner) throw error('Banner needs review.', 409, 'INVALID_BANNER');
         const subscription = await checked(snapshot);
+        const { amount } = terms(subscription);
         if (subscription.status !== 'active') throw error('Subscription is no longer active.', 409, 'SUBSCRIPTION_CHANGED');
         if (profileHash(profileFrom(subscription.metadata)) !== snapshot.profileHash) throw error('The submitted profile changed. Approval was not published.', 409, 'PROFILE_CHANGED');
         validateInvoice(subscription.latest_invoice, subscription);
@@ -137,13 +147,13 @@ function createProviders({ stripe, settings, fetchImpl = globalThis.fetch }) {
         const payment = payments.data?.[0];
         const intent = payment?.payment?.payment_intent;
         if (payments.has_more !== false || payments.data?.length !== 1 || payment.status !== 'paid' || payment.livemode !== live
-            || payment.amount_paid !== 10000 || payment.currency !== 'usd' || id(payment.invoice) !== subscription.latest_invoice.id || payment.payment?.type !== 'payment_intent'
-            || !intent || typeof intent !== 'object' || !id(intent) || intent.livemode !== live || intent.status !== 'succeeded' || intent.amount !== 10000
-            || intent.amount_received !== 10000 || intent.currency !== 'usd' || id(intent.customer) !== snapshot.customerId || !id(intent.latest_charge)
+            || payment.amount_paid !== amount || payment.currency !== 'usd' || id(payment.invoice) !== subscription.latest_invoice.id || payment.payment?.type !== 'payment_intent'
+            || !intent || typeof intent !== 'object' || !id(intent) || intent.livemode !== live || intent.status !== 'succeeded' || intent.amount !== amount
+            || intent.amount_received !== amount || intent.currency !== 'usd' || id(intent.customer) !== snapshot.customerId || !id(intent.latest_charge)
             || (subscription.latest_invoice.id === snapshot.initialInvoiceId && intent.id !== snapshot.paymentIntentId)) throw error('Current payment needs review.', 409, 'PAYMENT_MISMATCH');
         const charge = await stripe.charges.retrieve(id(intent.latest_charge));
         if (!charge || charge.id !== id(intent.latest_charge) || charge.livemode !== live || id(charge.payment_intent) !== intent.id || id(charge.customer) !== snapshot.customerId
-            || charge.status !== 'succeeded' || charge.paid !== true || charge.captured !== true || charge.amount !== 10000 || charge.amount_captured !== 10000
+            || charge.status !== 'succeeded' || charge.paid !== true || charge.captured !== true || charge.amount !== amount || charge.amount_captured !== amount
             || charge.currency !== 'usd' || charge.amount_refunded !== 0 || charge.refunded !== false || charge.disputed !== false) throw error('Current charge was reversed or needs review.', 409, 'PAYMENT_REVERSED');
         if (intent.id !== snapshot.paymentIntentId && (await refunds(intent.id)).some(refund => !['failed', 'canceled'].includes(refund.status))) throw error('Current payment was refunded.', 409, 'PAYMENT_REFUNDED');
         if (subscription.metadata.spotlight_review_status === 'approved' && subscription.metadata.spotlight_approved_profile === snapshot.profileHash && !subscription.pause_collection && (subscription.metadata.spotlight_banner_url || '') === banner) return;
@@ -158,6 +168,7 @@ function createProviders({ stripe, settings, fetchImpl = globalThis.fetch }) {
     }
     async function refund(snapshot) {
         const subscription = await checked(snapshot);
+        const { amount } = terms(subscription);
         if (subscription.status !== 'canceled') throw error('Cancel future billing before refunding.', 409, 'CANCELLATION_REQUIRED');
         const invoice = await stripe.invoices.retrieve(snapshot.initialInvoiceId);
         validateInvoice(invoice, subscription, true);
@@ -168,22 +179,22 @@ function createProviders({ stripe, settings, fetchImpl = globalThis.fetch }) {
         let manualRequired = false;
         const failures = history.filter((refund) => ['failed', 'canceled'].includes(refund.status));
         let refundId = history.find((refund) => refund.status === 'succeeded')?.id || '';
-        if (paid === 10000) status = 'succeeded';
-        else if (paid > 10000) throw error('Refund total needs manual review.', 409, 'REFUND_REVIEW');
+        if (paid === amount) status = 'succeeded';
+        else if (paid > amount) throw error('Refund total needs manual review.', 409, 'REFUND_REVIEW');
         else if (history.some((refund) => ['pending', 'requires_action'].includes(refund.status))) { status = 'pending'; refundId = history.find((refund) => ['pending', 'requires_action'].includes(refund.status)).id; requiresAction = history.some((refund) => refund.status === 'requires_action'); }
         else if (failures.length >= 3) { status = 'failed'; manualRequired = true; }
         else {
             const lastFailure = failures.sort((a, b) => b.created - a.created || b.id.localeCompare(a.id))[0];
             const key = `spotlight-decline-${snapshot.subscriptionId}-${paid}-${lastFailure?.id || 'first'}`;
-            const created = await stripe.refunds.create({ payment_intent: snapshot.paymentIntentId, amount: 10000 - paid, metadata: { spotlight: MARKER, spotlight_subscription_id: snapshot.subscriptionId, spotlight_application: snapshot.subscriptionId, spotlight_decision: 'decline' } }, { idempotencyKey: key });
+            const created = await stripe.refunds.create({ payment_intent: snapshot.paymentIntentId, amount: amount - paid, metadata: { spotlight: MARKER, spotlight_subscription_id: snapshot.subscriptionId, spotlight_application: snapshot.subscriptionId, spotlight_decision: 'decline' } }, { idempotencyKey: key });
             validateRefund(created, snapshot.paymentIntentId);
-            if (created.amount !== 10000 - paid) throw error('Refund amount needs manual review.', 409, 'REFUND_REVIEW');
+            if (created.amount !== amount - paid) throw error('Refund amount needs manual review.', 409, 'REFUND_REVIEW');
             refundId = created.id;
             status = created.status === 'succeeded' ? 'succeeded' : ['failed', 'canceled'].includes(created.status) ? 'failed' : 'pending';
             requiresAction = created.status === 'requires_action';
             manualRequired = status === 'failed' && failures.length + 1 >= 3;
             if (created.status === 'succeeded') paid += created.amount;
-            if (status === 'succeeded' && paid !== 10000) throw error('Full refund is not confirmed.', 409, 'REFUND_REVIEW');
+            if (status === 'succeeded' && paid !== amount) throw error('Full refund is not confirmed.', 409, 'REFUND_REVIEW');
         }
         await stripe.subscriptions.update(subscription.id, { metadata: { spotlight_refund_status: status } });
         return { status, refundId, refundedAmount: paid, ...(requiresAction ? { requiresAction: true } : {}), ...(manualRequired ? { manualRequired: true } : {}) };

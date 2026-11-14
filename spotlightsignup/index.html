@@ -5,12 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#0b1118">
     <title>Feature your business — Cerney Selects</title>
-    <meta name="description" content="Add your business to Cerney Selects for $100 a month. Create your profile and subscribe securely through Stripe.">
+    <meta name="description" content="Add your business to Cerney Selects with plans from $100 a month. Create your profile and subscribe securely through Stripe.">
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <link rel="canonical" href="https://cerneyselects.com/apply/">
     <meta property="og:type" content="website">
     <meta property="og:title" content="Feature your business — Cerney Selects">
-    <meta property="og:description" content="Add your business to Cerney Selects for $100 a month. Create your profile and subscribe securely through Stripe.">
+    <meta property="og:description" content="Add your business to Cerney Selects with plans from $100 a month. Create your profile and subscribe securely through Stripe.">
     <meta property="og:url" content="https://cerneyselects.com/apply/">
     <link rel="icon" type="image/svg+xml" href="/localspotlight/favicon.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -50,19 +50,19 @@
         <header class="page-heading signup-heading" id="signupHeading">
             <a class="back-link" href="/">← Cerney Selects</a>
             <h1>Feature your business.</h1>
-            <p><strong>$100 per month.</strong> Your business profile, optional logo, website link, phone, and social links in Cerney Selects.</p>
+            <p><strong>Plans from $100 per month.</strong> Your business profile, optional logo, website link, phone, and social links in Cerney Selects.</p>
             <p class="offer-detail">Approved members are featured in Chris Cerney’s Business Spotlight videos, with occasional advertising placements in lighter, less urgent news reports. Cancel future renewals any time.</p>
         </header>
-        <aside class="review-policy" id="reviewPolicy" aria-labelledby="reviewPolicyTitle"><h2 id="reviewPolicyTitle">Pay, then we review</h2><p>You pay <strong>$100 today</strong>. We review your business within <strong>one business week (5 business days)</strong>. Business days are Monday through Friday, excluding weekends, in Pacific time. Your listing appears only if approved, and we email you the decision.</p><p>If declined, we cancel future billing, refund the full $100, and email you the reason.</p><details class="review-terms"><summary>Renewals &amp; refund timing <span aria-hidden="true">+</span></summary><p>If approved, your subscription renews at $100 per month until canceled. No further monthly payment is collected while your application awaits review. Your bank may take additional time to show a refund.</p></details></aside>
+        <aside class="review-policy" id="reviewPolicy" aria-labelledby="reviewPolicyTitle"><h2 id="reviewPolicyTitle">Pay, then we review</h2><p>You pay <strong>your selected plan’s monthly price today</strong>. We review your business within <strong>one business week (5 business days)</strong>. Business days are Monday through Friday, excluding weekends, in Pacific time. Your listing appears only if approved, and we email you the decision.</p><p>If declined, we cancel future billing, refund the full initial payment, and email you the reason.</p><details class="review-terms"><summary>Renewals &amp; refund timing <span aria-hidden="true">+</span></summary><p>If approved, your subscription renews at your selected monthly price until canceled. No further monthly payment is collected while your application awaits review. Your bank may take additional time to show a refund.</p></details></aside>
         <section class="payment-confirmation" id="paymentConfirmation" aria-labelledby="paymentConfirmationTitle" tabindex="-1" hidden>
             <div class="confirmation-topline"><a class="back-link" href="/">← Cerney Selects</a><span class="confirmation-badge"><span aria-hidden="true">✓</span> Payment confirmed</span></div>
             <h1 id="paymentConfirmationTitle">Payment received — your application is under review.</h1>
-            <p class="confirmation-intro">Thank you for applying to Cerney Selects. We’ve received your <strong>$100 payment</strong> and your business details. There’s nothing else you need to submit right now.</p>
+            <p class="confirmation-intro">Thank you for applying to Cerney Selects. We’ve received your <strong>payment</strong> and your business details. There’s nothing else you need to submit right now.</p>
             <p id="confirmationBusiness" class="confirmation-business" hidden></p>
             <div class="confirmation-next"><h2>What happens next</h2><ol>
                 <li><span class="confirmation-step" aria-hidden="true">1</span><div><h3>We review your business</h3><p>Your application stays private. Your business will appear in the directory only after approval.</p></div></li>
-                <li><span class="confirmation-step" aria-hidden="true">2</span><div><h3>You hear from us within one business week (5 business days) of payment</h3><p>We’ll send the decision to your billing email. If approved, your listing goes live and your $100 monthly subscription continues.</p></div></li>
-                <li><span class="confirmation-step" aria-hidden="true">3</span><div><h3>If your application isn’t approved</h3><p>We’ll email you the reason, cancel future billing, and refund your full $100 payment. Your bank may take additional time to show the refund.</p></div></li>
+                <li><span class="confirmation-step" aria-hidden="true">2</span><div><h3>You hear from us within one business week (5 business days) of payment</h3><p>We’ll send the decision to your billing email. If approved, your listing goes live and your selected monthly subscription continues.</p></div></li>
+                <li><span class="confirmation-step" aria-hidden="true">3</span><div><h3>If your application isn’t approved</h3><p>We’ll email you the reason, cancel future billing, and refund your full initial payment. Your bank may take additional time to show the refund.</p></div></li>
             </ol></div>
             <p class="confirmation-billing-note">No additional monthly payment is collected while your application awaits review.</p>
             <div class="confirmation-actions"><a class="button button-primary" href="#manage">View application &amp; billing</a><a class="text-link" href="/">Browse Cerney Selects <span aria-hidden="true">↗</span></a></div>
@@ -73,7 +73,11 @@
                 <div class="notice" id="checkoutNotice" role="status" aria-live="polite">Checking availability…</div>
                 <div class="notice" id="returnNotice" role="status" aria-live="polite" tabindex="-1" hidden></div>
                         <form id="signupForm">
-                            <div id="profileFields" class="profile-fields">
+                            <fieldset class="membership-plans"><legend>Choose your membership</legend>
+<label class="membership-plan"><input type="radio" id="planStandard" name="membershipPlan" value="standard" checked><span><strong>Standard · $100/month</strong><small>Your business listing with logo, links, and contact details.</small></span></label>
+<label class="membership-plan membership-plan-featured"><input type="radio" id="planFeatured" name="membershipPlan" value="featured" disabled><span><strong>Featured · $250/month</strong><small>A highlighted listing and increased opportunities to appear in more of Chris Cerney’s videos that include advertising.</small></span></label>
+<p class="field-help">Featured is $250 total per month. Specific video placements and frequency aren’t guaranteed. Category exclusivity is not included.</p><p class="field-help" id="featuredUnavailable">Checking Featured availability…</p></fieldset>
+<div id="profileFields" class="profile-fields">
                                 <div class="field"><label for="businessName">Business name</label><input id="businessName" name="businessName" type="text" required maxlength="100" autocomplete="organization" placeholder="Your business name"></div>
                                 <div class="field-row category-row">
                                     <div class="field"><label for="category">Category</label><select id="category" name="category" required><option value="">Choose a category</option><option value="Food &amp; Restaurants">Food &amp; Drink</option><option value="Shopping &amp; Local Makers">Shopping &amp; Local Goods</option><option value="Family &amp; Community">Things to Do &amp; Community</option><option value="Health &amp; Wellness">Health &amp; Wellness</option><option value="Professional Services">Professional Services</option></select></div>
@@ -101,9 +105,9 @@
                                 </fieldset>
                             </div>
                             <div class="private-fields"><div class="field"><label for="email">Billing email <span class="private-label">Private</span></label><input id="email" name="email" type="email" required maxlength="254" autocomplete="email" placeholder="you@yourbusiness.com"><p class="field-help">For your review decision, receipts, and billing. Never shown in the directory.</p></div></div>
-                            <label class="consent-label" for="consent"><input id="consent" name="consent" type="checkbox" required><span>I agree to <strong>pay $100 now</strong> and wait up to <strong>one business week (5 business days) for approval</strong> before my listing appears. If approved, it renews at <strong>$100 per month</strong> until canceled. If declined, my subscription is canceled and the full initial payment is refunded, with the reason emailed to me. I am authorized to publish this business’s information, logo, and banner image.</span></label>
+                            <label class="consent-label" for="consent"><input id="consent" name="consent" type="checkbox" required><span>I agree to <strong>pay <span data-plan-amount>$100</span> now</strong> and wait up to <strong>one business week (5 business days) for approval</strong> before my listing appears. If approved, it renews at <strong><span data-plan-amount>$100</span> per month</strong> until canceled. If declined, my subscription is canceled and the full initial payment is refunded, with the reason emailed to me. I am authorized to publish this business’s information, logo, and banner image.</span></label>
                             <p class="checkout-note">Video placement and timing are at Chris’s discretion. Advertising is separate from independent reporting: membership does not purchase news coverage or favorable treatment.</p>
-                            <button class="button button-primary checkout-button" id="checkoutButton" type="submit" disabled>Pay $100 &amp; submit for review <span aria-hidden="true">↗</span></button>
+                            <button class="button button-primary checkout-button" id="checkoutButton" type="submit" disabled><span>Pay <span data-plan-amount>$100</span> &amp; submit for review</span> <span aria-hidden="true">↗</span></button>
                             <p class="form-message" id="signupMessage" role="status" aria-live="polite"></p>
                             <p class="checkout-note">Payment does not guarantee approval. Only approved businesses appear in the directory.</p>
                             <p class="checkout-note">Read the <a href="/terms/">listing terms</a> and <a href="/privacy/">privacy notice</a>.</p>

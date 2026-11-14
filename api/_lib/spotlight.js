@@ -59,7 +59,7 @@ function config() {
     const enabled = moderationReady && process.env.SPOTLIGHT_ENABLED === 'true' && Boolean(secret && signingSecret.length >= 32 && /^price_[A-Za-z0-9]+$/.test(priceId) && webhookSecret && /^bpc_[A-Za-z0-9]+$/.test(portalConfigurationId) && siteUrl);
     const memberExtrasEnabled = moderationReady && process.env.SPOTLIGHT_MEMBER_EXTRAS_ENABLED === 'true';
     const memberBillingEnabled = memberExtrasEnabled && process.env.SPOTLIGHT_MEMBER_BILLING_ENABLED === 'true';
-    return { secret, signingSecret, priceId, webhookSecret, portalConfigurationId, siteUrl, portalLoginUrl, enabled, moderationReady, memberExtrasEnabled, memberBillingEnabled, publicDirectory: process.env.CERNEYSELECTS_PUBLIC === 'true', live: /^(?:sk|rk)_live_/.test(secret) };
+    return { secret, signingSecret, priceId, featuredMembershipPriceId: String(process.env.SPOTLIGHT_FEATURED_MEMBERSHIP_PRICE_ID || ''), webhookSecret, portalConfigurationId, siteUrl, portalLoginUrl, enabled, moderationReady, memberExtrasEnabled, memberBillingEnabled, publicDirectory: process.env.CERNEYSELECTS_PUBLIC === 'true', live: /^(?:sk|rk)_live_/.test(secret) };
 }
 
 function safeStripeUrl(value, hostname) {
@@ -341,15 +341,20 @@ function createService(stripe, settings = config(), moderation = callModeration)
             }));
         }
         listings.push(...complimentaryListings(settings, validateProfile, listings));
-        return { listings: listings.sort((a, b) => Number(!!b.featured) - Number(!!a.featured) || a.businessName.localeCompare(b.businessName)), checkoutEnabled: settings.enabled, price: PRICE, portalLoginUrl: settings.portalLoginUrl };
+        return { listings: listings.sort((a, b) => Number(!!b.featured) - Number(!!a.featured) || a.businessName.localeCompare(b.businessName)), checkoutEnabled: settings.enabled, featuredCheckoutEnabled: settings.enabled && /^price_[A-Za-z0-9]+$/.test(settings.featuredMembershipPriceId || ''), price: PRICE, portalLoginUrl: settings.portalLoginUrl };
     }
 
     async function checkout(request, response, body) {
         if (!settings.enabled) throw new SpotlightError('Spotlight sign-ups are not available yet.', 503, 'CHECKOUT_DISABLED');
         if (body.consent !== true) throw new SpotlightError('Agree to the monthly subscription terms before continuing.');
         if (typeof body.requestId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.requestId)) throw new SpotlightError('Refresh the page and try again.');
+        const plan = body.plan === undefined ? 'standard' : body.plan;
+        if (!['standard', 'featured'].includes(plan)) throw new SpotlightError('Choose a valid membership plan.');
+        const selectedPriceId = plan === 'featured' ? settings.featuredMembershipPriceId : settings.priceId;
+        const amount = plan === 'featured' ? 25000 : 10000;
+        if (!selectedPriceId) throw new SpotlightError('This plan is not available yet.', 503, 'INVALID_CONFIGURATION');
         const profile = validateProfile(body.profile, true);
-        const profileHash = crypto.createHash('sha256').update(JSON.stringify(profile)).digest('hex');
+        const profileHash = crypto.createHash('sha256').update(JSON.stringify({ profile, plan })).digest('hex');
         const existing = await owner(request);
         if (existing?.subscription && !['canceled', 'incomplete_expired'].includes(existing.subscription.status)) throw new SpotlightError('You already have a Spotlight subscription. Manage your existing spot below.', 409, 'EXISTING_SUBSCRIPTION');
         if (existing?.session.status === 'open') {
@@ -359,24 +364,24 @@ function createService(stripe, settings = config(), moderation = callModeration)
             }
             await stripe.checkout.sessions.expire(existing.session.id);
         }
-        const price = await stripe.prices.retrieve(settings.priceId);
-        if (!price.active || !validPrice(price, settings) || price.livemode !== settings.live) throw new SpotlightError('Spotlight billing is not available yet.', 503, 'INVALID_CONFIGURATION');
+        const price = await stripe.prices.retrieve(selectedPriceId);
+        if (!price.active || !validPrice(price, { ...settings, priceId: selectedPriceId }, amount) || price.livemode !== settings.live) throw new SpotlightError('Spotlight billing is not available yet.', 503, 'INVALID_CONFIGURATION');
         // A signed previous session scopes a new attempt after expiry/cancellation.
         // Retrying a lost response with the same previous cookie remains idempotent,
         // while a completed/expired Checkout can never be resurrected for 24 hours.
         const previousSession = existing?.session.id || 'initial';
-        const ownerKey = hmac(`checkout:${body.requestId.toLowerCase()}:${previousSession}`, settings);
-        const metadata = { spotlight: MARKER, spotlight_review_status: 'pending', owner_key: ownerKey, profile_hash: profileHash, ...profileMetadata(profile) };
+        const ownerKey = hmac(`checkout:${body.requestId.toLowerCase()}:${previousSession}:${plan}`, settings);
+        const metadata = { spotlight: MARKER, spotlight_plan: plan, spotlight_review_status: 'pending', owner_key: ownerKey, profile_hash: profileHash, ...profileMetadata(profile) };
         const session = await stripe.checkout.sessions.create({
             mode: 'subscription', integration_identifier: 'spotlight_qcnrhwka',
-            line_items: [{ price: settings.priceId, quantity: 1 }],
+            line_items: [{ price: selectedPriceId, quantity: 1 }],
             customer_email: profile.email,
             metadata,
             subscription_data: { metadata, billing_mode: { type: 'flexible' } },
             success_url: `${settings.siteUrl}/apply/?checkout=success`,
             cancel_url: `${settings.siteUrl}/apply/?checkout=canceled`,
             billing_address_collection: 'auto',
-            custom_text: { submit: { message: 'You pay $100 now. Your listing is reviewed within one business week (5 business days) and appears only if approved. If declined, we cancel the subscription, refund your payment, and email you the reason. Approved listings renew at $100/month until canceled.' } },
+            custom_text: { submit: { message: `You pay $${amount / 100} now. Your listing is reviewed within one business week (5 business days) and appears only if approved. If declined, we cancel the subscription, refund your payment, and email you the reason. Approved listings renew at $${amount / 100}/month until canceled.` } },
         }, { idempotencyKey: `spotlight-checkout-${ownerKey}` });
         const url = safeStripeUrl(session.url, 'checkout.stripe.com');
         if (!url || !/^cs_(?:live|test)_[A-Za-z0-9]+$/.test(session.id)) throw new Error('Stripe did not return a Checkout URL');

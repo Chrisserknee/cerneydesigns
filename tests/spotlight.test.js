@@ -697,3 +697,27 @@ test('upgraded first month remains eligible on exact initial invoice and period 
   inv.id='in_not_initial';assert.equal(validPaidSubscription(sub,{...settings,live:true}),false);
  } finally {process.env.SPOTLIGHT_CUSTOM_PLANS_JSON=original;}
 });
+
+test('featured checkout charges only the configured $250 monthly price and rejects forged plans', async () => {
+ const {stripe,state}=mockStripe(); const cfg={featuredMembershipPriceId:'price_featured'};
+ state.price={...price(),id:'price_featured',unit_amount:25000};
+ const body={op:'checkout',plan:'featured',profile,consent:true,requestId:crypto.randomUUID(),amount:1,priceId:settings.priceId};
+ const response=await post(stripe,body,'',cfg); assert.equal(response.statusCode,200);
+ assert.deepEqual(state.checkouts[0].params.line_items,[{price:'price_featured',quantity:1}]);
+ assert.match(state.checkouts[0].params.custom_text.submit.message,/\$250\/month/);
+ assert.equal(state.checkouts[0].params.subscription_data.metadata.spotlight_plan,'featured');
+ assert.equal((await post(stripe,{...body,plan:'fake'},'',cfg)).statusCode,400);
+ assert.equal((await post(stripe,body)).statusCode,503);
+ state.price.unit_amount=10000;
+ assert.equal((await post(stripe,body,'',cfg)).statusCode,503);
+});
+test('featured billing requires its configured price and canonical $250 invoice; metadata alone gives no badge', () => {
+ const sub=subscription(); const cfg={...settings,featuredMembershipPriceId:'price_featured'};
+ sub.items.data[0].price={...price(),id:'price_featured',unit_amount:25000};
+ const inv=sub.latest_invoice;inv.amount_paid=inv.amount_due=inv.total=inv.lines.data[0].amount=25000;
+ inv.lines.data[0].pricing.price_details.price='price_featured';
+ assert.equal(validPaidSubscription(sub,cfg),true);
+ const {membershipBadge}=require('../api/_lib/spotlight-badges');assert.equal(membershipBadge(sub,cfg),'featured-partner');
+ inv.amount_paid=10000;assert.equal(validPaidSubscription(sub,cfg),false);
+ const standard=subscription();standard.metadata.spotlight_plan='featured';assert.equal(membershipBadge(standard,cfg),'');
+});

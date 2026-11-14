@@ -11,7 +11,9 @@ function customPlan(sub, settings) {
 }
 function billingTerms(sub, settings) {
   const plan = customPlan(sub, settings);
-  return plan ? {priceId:plan.price,amount:plan.amount} : {priceId:settings.priceId,amount:10000};
+  if (plan) return {priceId:plan.price,amount:plan.amount};
+  if (settings.featuredMembershipPriceId && id(sub?.items?.data?.[0]?.price) === settings.featuredMembershipPriceId) return {priceId:settings.featuredMembershipPriceId,amount:25000};
+  return {priceId:settings.priceId,amount:10000};
 }
 function invoiceTerms(sub, settings) {
   const plan = customPlan(sub, settings);

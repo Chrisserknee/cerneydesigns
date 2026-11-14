@@ -97,6 +97,8 @@
         const name = safe.businessName || (preview ? 'Your business name' : 'Local business');
         const initials = name.split(/\s+/).slice(0, 2).map((word) => Array.from(word)[0] || '').join('').toUpperCase();
         const card = node('article', 'business-card');
+        const featuredPreview = preview && selectedPlan() === 'featured';
+        if (featuredPreview) card.classList.add('featured-preview-card');
         const top = node('div', 'card-top');
         const chosenBanner = websiteUrl(safe.bannerSourceUrl);
         if (chosenBanner) {
@@ -115,7 +117,7 @@
             img.addEventListener('error', () => mark.replaceChildren(document.createTextNode(initials || 'CC')), { once: true });
             mark.replaceChildren(img);
         }
-        top.append(mark, node('span', 'advertising-tag', 'Paid listing'));
+        top.append(mark, node('span', 'advertising-tag', featuredPreview ? 'Featured business' : 'Paid listing'));
         card.append(top);
         card.append(node('p', 'business-category', window.CerneySelectsCategories.display(safe.category) || 'Your category'));
         card.append(node('h3', '', name));
@@ -311,11 +313,21 @@
         byId('logoFile').focus();
     });
 
+    function selectedPlan() { return byId('planFeatured').checked && !byId('planFeatured').disabled ? 'featured' : 'standard'; }
+    function updatePlan() {
+        const amount = selectedPlan() === 'featured' ? 250 : 100;
+        document.querySelectorAll('[data-plan-amount]').forEach(node => { node.textContent = '$' + amount; });
+        byId('consent').checked = false;
+    }
+    document.querySelectorAll('input[name="membershipPlan"]').forEach(input => input.addEventListener('change', updatePlan));
     async function loadConfiguration() {
         try {
             const data = await request();
             const priceMatches = data.price?.amount === 10000 && data.price?.currency === 'usd' && data.price?.interval === 'month';
             checkoutEnabled = data.checkoutEnabled === true && priceMatches;
+            byId('planFeatured').disabled = !checkoutEnabled || data.featuredCheckoutEnabled !== true;
+            byId('featuredUnavailable').hidden = !byId('planFeatured').disabled;
+            byId('featuredUnavailable').textContent = 'Featured signup is temporarily unavailable. Please contact us.';
             const portalLogin = stripeUrl(data.portalLoginUrl, 'portal');
             byId('portalLogin').hidden = !portalLogin;
             if (portalLogin) byId('portalLogin').href = portalLogin;
@@ -366,7 +378,7 @@
             description = 'Your listing is saved, and payment has not been confirmed yet. If you finished checkout, refresh your status in a moment.';
         } else if (reviewDeclining) {
             label = data.refundStatus === 'succeeded' ? 'Declined · refunded' : 'Declined · refund processing';
-            description = `Your application was declined. ${data.declineReason || 'Your review decision will arrive by email.'} ${data.refundStatus === 'succeeded' ? 'Your full $100 refund has been issued. Your bank may take additional time to show it.' : 'Your listing stays hidden while we complete cancellation and your full $100 refund. We will email you when it has been issued.'}`;
+            description = `Your application was declined. ${data.declineReason || 'Your review decision will arrive by email.'} ${data.refundStatus === 'succeeded' ? 'Your full initial-payment refund has been issued. Your bank may take additional time to show it.' : 'Your listing stays hidden while we complete cancellation and your full initial-payment refund. We will email you when it has been issued.'}`;
         } else if (data.reviewStatus === 'needs_attention') {
             label = 'Review needs attention';
             description = 'Your listing is not published. Chris is checking your application and payment. Contact us if you need an update.';
@@ -477,7 +489,7 @@
     }
 
     function checkoutRequestId(profile) {
-        const fingerprint = JSON.stringify(profile);
+        const fingerprint = JSON.stringify({ profile, plan: selectedPlan() });
         const saved = stored(REQUEST_KEY);
         if (saved?.fingerprint === fingerprint && typeof saved.id === 'string') return saved.id;
         const id = uuid();
@@ -517,7 +529,7 @@
         refreshCheckout();
         message('signupMessage', 'Opening secure checkout…', true);
         try {
-            const data = await request({ op: 'checkout', profile, requestId: checkoutRequestId(profile), consent: true });
+            const data = await request({ op: 'checkout', plan: selectedPlan(), profile, requestId: checkoutRequestId(profile), consent: true });
             const url = stripeUrl(data.url, 'checkout');
             if (!url) throw new Error('We couldn’t open secure checkout. Please try again.');
             window.location.assign(url);

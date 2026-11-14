@@ -262,3 +262,39 @@ test('live moderation validates live payments and rejects cross-mode objects and
     await assert.rejects(f.providers.inspectInitial('sub_test'), { code: 'PAYMENT_MISMATCH' });
     assert.throws(() => createProviders({ stripe: {}, settings: { live: true, stripeKey: 'rk_test_wrong' } }), { code: 'MODE_MISMATCH' });
 });
+
+function featuredFixture() {
+ const f = fixture(); f.settings.featuredMembershipPriceId = 'price_featured';
+ f.subscription.items.data[0].price.id = 'price_featured'; f.subscription.items.data[0].price.unit_amount = 25000;
+ for (const invoice of [f.invoice, f.subscription.latest_invoice]) {
+  invoice.amount_paid = invoice.amount_due = invoice.total = invoice.lines.data[0].amount = 25000;
+  invoice.lines.data[0].pricing.price_details.price = 'price_featured';
+ }
+ f.intent.amount = f.intent.amount_received = f.payment.amount_paid = f.charge.amount = f.charge.amount_captured = f.snapshot.paidAmount = 25000;
+ return f;
+}
+test('featured membership verifies $250, holds billing and approves the canonical paid listing', async () => {
+ const f = featuredFixture(); const snapshot = await f.providers.inspectInitial('sub_test');
+ assert.equal(snapshot.paidAmount,25000); await f.providers.hold(snapshot); await f.providers.approve(snapshot);
+ assert.equal(f.subscription.metadata.spotlight_review_status,'approved');
+ assert.equal(f.subscription.pause_collection,null);
+});
+test('featured decline refunds all $250 once, and completes a prior partial $100 refund', async () => {
+ for (const partial of [false,true]) {
+  const f = featuredFixture(); if (partial) f.addRefund({amount:10000});
+  await f.providers.cancel(f.snapshot,'Not a fit');
+  const result = await f.providers.refund(f.snapshot);
+  assert.equal(result.refundedAmount,25000); assert.equal(result.status,'succeeded');
+  assert.equal(f.calls.refunds[0].params.amount,partial?15000:25000);
+  await f.providers.refund(f.snapshot); assert.equal(f.calls.refunds.length,1);
+ }
+});
+test('featured metadata cannot grant a different price or bypass $250 payment checks', async () => {
+ const f=featuredFixture(); f.intent.amount_received=10000;
+ await assert.rejects(f.providers.inspectInitial('sub_test'),{code:'PAYMENT_MISMATCH'});
+ f.intent.amount_received=25000; f.subscription.items.data[0].price.id='price_unapproved';
+ f.subscription.metadata.spotlight_plan='featured';
+ await assert.rejects(f.providers.inspectInitial('sub_test'),{code:'PAYMENT_MISMATCH'});
+ const g=featuredFixture(); g.snapshot.paidAmount=10000;
+ await assert.rejects(g.providers.hold(g.snapshot),{code:'PAYMENT_MISMATCH'});
+});

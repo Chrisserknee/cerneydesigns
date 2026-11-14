@@ -24,8 +24,8 @@
         const decline = selected() === 'decline';
         $('reasonField').hidden = !decline; $('reason').required = decline;
         $('confirmed').checked = false;
-        $('submitDecision').textContent = decline ? 'Confirm decline & refund $100' : selected() === 'approve' ? 'Confirm approval & publish' : 'Confirm decision';
-        $('confirmationText').textContent = decline ? 'I confirm this decline, cancellation, and full $100 refund. My reason will be emailed to the applicant.' : 'I have reviewed this business and approve this profile for publication.';
+        $('submitDecision').textContent = decline ? 'Confirm decline & refund payment' : selected() === 'approve' ? 'Confirm approval & publish' : 'Confirm decision';
+        $('confirmationText').textContent = decline ? 'I confirm this decline, cancellation, and full initial-payment refund. My reason will be emailed to the applicant.' : 'I have reviewed this business and approve this profile for publication.';
     }
     async function request(payload) {
         const response = await fetch('/api/spotlight-review', { method: 'POST', credentials: 'same-origin', cache: 'no-store', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ ...payload, token }), signal: AbortSignal.timeout(30000) });
@@ -96,7 +96,7 @@
         let summary = '';
         if (data.status === 'approved') summary = 'Approved. This reviewed profile is eligible for the directory while its subscription remains paid and active. The applicant’s confirmation email is queued or sent.';
         else if (data.status === 'approving') summary = 'Your approval has been saved. Publication and the confirmation email are being processed. Do not submit a different decision.';
-        else if (['declining', 'declined'].includes(data.status)) summary = `Decline saved. ${data.refundStatus === 'succeeded' ? 'The full $100 refund has been issued and future billing is canceled. Your reason is included in the applicant’s email.' : data.refundNeedsAttention ? 'The refund needs your attention in Stripe. Check the owner notification email for instructions. Future billing is canceled; the applicant’s refund confirmation waits for Stripe to confirm success.' : 'Cancellation and the full $100 refund are being processed. We send the refund confirmation once Stripe confirms it succeeded.'}${data.reason ? `\n\nYour reason: ${data.reason}` : ''}`;
+        else if (['declining', 'declined'].includes(data.status)) summary = `Decline saved. ${data.refundStatus === 'succeeded' ? 'The full initial-payment refund has been issued and future billing is canceled. Your reason is included in the applicant’s email.' : data.refundNeedsAttention ? 'The refund needs your attention in Stripe. Check the owner notification email for instructions. Future billing is canceled; the applicant’s refund confirmation waits for Stripe to confirm success.' : 'Cancellation and the full initial-payment refund are being processed. We send the refund confirmation once Stripe confirms it succeeded.'}${data.reason ? `\n\nYour reason: ${data.reason}` : ''}`;
         else if (data.status === 'needs_attention') summary = 'Automatic processing has stopped for this application. A listing or payment change may already have completed. Check the recorded decision, the directory, and Stripe before taking further action. Do not issue a separate refund without checking the existing payment.';
         $('decisionSummary').textContent = summary; $('decisionSummary').hidden = !summary;
         notice(data.decisionAllowed ? 'Payment received. The business is hidden until you approve it.' : 'Your latest review status is shown below.');

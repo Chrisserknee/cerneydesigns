@@ -145,7 +145,7 @@ function createModeration({ store, providers, settings, banners, now = Date.now 
                 record = await owned(); if (!record) return store.read(applicationId);
                 if (record.refund?.status !== 'succeeded') {
                     const refund = await providers.refund(record.snapshot);
-                    if (!['pending', 'failed', 'succeeded'].includes(refund?.status) || (refund.status === 'succeeded' && refund.refundedAmount !== 10000)) throw attention('A full refund has not been confirmed.');
+                    if (!['pending', 'failed', 'succeeded'].includes(refund?.status) || (refund.status === 'succeeded' && refund.refundedAmount !== record.snapshot.paidAmount)) throw attention('A full refund has not been confirmed.');
                     if (!await checkpoint((current) => { current.refund = refund; if (refund.status === 'succeeded') current.status = 'declined'; })) return store.read(applicationId);
                 }
                 record = await owned(); if (!record) return store.read(applicationId);
@@ -183,7 +183,7 @@ function createModeration({ store, providers, settings, banners, now = Date.now 
             // Unpaid/canceled/foreign events without an existing application are
             // acknowledged, never converted into new paid applications.
             if (!snapshot) return { ignored: true, reviewStatus: 'not_applicable' };
-            if (snapshot.subscriptionId !== subscriptionId || snapshot.paidAmount !== 10000 || snapshot.currency !== 'usd' || snapshot.profileHash !== profileHash(snapshot.profile)) fail('Payment does not match the application.', 409, 'PAYMENT_MISMATCH');
+            if (snapshot.subscriptionId !== subscriptionId || ![10000, 25000].includes(snapshot.paidAmount) || snapshot.currency !== 'usd' || snapshot.profileHash !== profileHash(snapshot.profile)) fail('Payment does not match the application.', 409, 'PAYMENT_MISMATCH');
             const timestamp = now();
             const paidAt = Number.isSafeInteger(snapshot.paidAt) && snapshot.paidAt > 0 && snapshot.paidAt <= timestamp ? snapshot.paidAt : timestamp;
             const fresh = { id: subscriptionId, revision: 1, snapshot, createdAt: timestamp, updatedAt: timestamp, status: 'pending', decision: null, reason: '', reviewDueAt: reviewDeadline(paidAt), reviewPolicy: REVIEW_POLICY, tokenNonce: crypto.randomBytes(24).toString('base64url'), tokenExpiresAt: timestamp + tokenTtl, effects: { held: false, approved: false, canceled: false }, refund: { status: 'not_requested', refundedAmount: 0 }, emails: {}, work: { state: 'queued', nextAttemptAt: timestamp, leaseUntil: 0, leaseOwner: '', attempts: 0 } };

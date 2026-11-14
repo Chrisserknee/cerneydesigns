@@ -18,6 +18,7 @@ const liveProxy = defineSecret('CERNEYSELECTS_MODERATION_PROXY_SECRET');
 const liveReview = defineSecret('CERNEYSELECTS_REVIEW_SECRET');
 const liveStripe = defineSecret('CERNEYSELECTS_STRIPE_SECRET_KEY');
 const livePrice = defineString('CERNEYSELECTS_PRICE_ID', { default: '' });
+const featuredMembershipPrice = defineString('CERNEYSELECTS_FEATURED_MEMBERSHIP_PRICE_ID', { default: '' });
 const liveEmail = defineBoolean('CERNEYSELECTS_EMAIL_ENABLED', { default: false });
 const liveBilling = defineBoolean('CERNEYSELECTS_MEMBER_BILLING_ENABLED', { default: false });
 const featuredPrice = defineString('CERNEYSELECTS_FEATURED_PRICE_ID', { default: '' });
@@ -27,7 +28,7 @@ const liveSecrets = [liveReview, liveStripe, resendKey];
 
 function liveSettings() {
     return {
-        live: true, stripeKey: liveStripe.value(), priceId: livePrice.value(),
+        live: true, stripeKey: liveStripe.value(), priceId: livePrice.value(), featuredMembershipPriceId: featuredMembershipPrice.value(),
         siteUrl: 'https://cerneyselects.com', reviewSecret: liveReview.value(),
         resendKey: resendKey.value(), emailEnabled: liveEmail.value(),
         ownerEmail: 'cerneymedia@gmail.com', billingEnabled: liveBilling.value(),
