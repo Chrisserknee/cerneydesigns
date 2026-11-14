@@ -10,6 +10,7 @@ const { billingTerms, invoiceTerms } = require('./spotlight-custom-plans');
 
 const { reconcileCustomBilling } = require('./spotlight-custom-billing');
 const { membershipBadge } = require('./spotlight-badges');
+const { complimentaryListings } = require('./spotlight-complimentary');
 
 const MARKER = 'local_spotlight_v1';
 const API_VERSION = '2026-08-26.dahlia';
@@ -339,6 +340,7 @@ function createService(stripe, settings = config(), moderation = callModeration)
                 }
             }));
         }
+        listings.push(...complimentaryListings(settings, validateProfile, listings));
         return { listings: listings.sort((a, b) => Number(!!b.featured) - Number(!!a.featured) || a.businessName.localeCompare(b.businessName)), checkoutEnabled: settings.enabled, price: PRICE, portalLoginUrl: settings.portalLoginUrl };
     }
 

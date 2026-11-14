@@ -1,0 +1,22 @@
+[
+  {
+    "id": "complimentary-underground-forrest",
+    "status": "approved",
+    "hidden": false,
+    "billing": "complimentary",
+    "approvedAt": "2026-11-14",
+    "approvalNote": "Chris explicitly approved a free listing. No subscription or invoice.",
+    "bannerUrl": "/localspotlight/banners/underground-forrest.webp",
+    "profile": {
+      "businessName": "The Underground Forrest",
+      "category": "Shopping & Local Makers",
+      "city": "Seaside",
+      "description": "A creative collective and art shop in Seaside bringing together local artists, screen printing, embroidery, streetwear, skate and surf goods. Explore locally made pieces, limited merch drops, live music and community pop-up events.",
+      "address": "656 Broadway Ave, Seaside, CA",
+      "website": "https://theundergroundforrest.square.site/",
+      "instagramUrl": "https://www.instagram.com/theundergroundforrest_/",
+      "phone": "",
+      "logoUrl": "https://cerneyselects.com/localspotlight/logos/underground-forrest.webp"
+    }
+  }
+]

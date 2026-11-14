@@ -157,3 +157,12 @@ test('initial cards enter with a short stagger and reduced motion skips animatio
     const reduced = await browser(records, '', true);
     assert.ok(byClass(reduced.elements.businessGrid, 'business-tile').every(tile => !tile.animation));
 });
+
+test('complimentary detail label is accurate and resets for paid listings', async () => {
+    const page = await browser([{ ...listing(0), listingType: 'complimentary' }, listing(1)]);
+    const tiles = byClass(page.elements.businessGrid, 'business-tile');
+    tiles.find(t => t.attrs['aria-label'].includes('Business 0')).events.click();
+    assert.equal(page.elements.businessListingType.textContent, 'Complimentary business listing');
+    tiles.find(t => t.attrs['aria-label'].includes('Business 1')).events.click();
+    assert.equal(page.elements.businessListingType.textContent, 'Paid business listing');
+});

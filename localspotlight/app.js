@@ -78,6 +78,7 @@
         const source = profile && typeof profile === 'object' ? profile : {};
         return {
             id: string(source.id, 100),
+            listingType: source.listingType === 'complimentary' ? 'complimentary' : 'paid',
             membershipBadge: ['exclusive-construction', 'featured-partner'].includes(source.membershipBadge) ? source.membershipBadge : '',
             businessName: string(source.businessName, 100), category: isPreview ? string(source.category, 100) : window.CerneySelectsCategories.display(string(source.category, 100)),
             city: string(source.city, 80), address: string(source.address, 200), description: string(source.description, 1000),
@@ -222,6 +223,7 @@
     }
     function openBusiness(profile, index) {
         byId('businessDialogTitle').textContent = profile.businessName;
+        if (byId('businessListingType')) byId('businessListingType').textContent = profile.listingType === 'complimentary' ? 'Complimentary business listing' : 'Paid business listing';
         byId('businessDialogContent').replaceChildren(businessCard(profile, index));
         businessDialog.showModal();
         businessDialog.scrollTop = 0;
