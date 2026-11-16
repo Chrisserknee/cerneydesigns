@@ -436,3 +436,6 @@ Object.assign(exports, require('./news-video'));
 Object.assign(exports, require('./story-request-functions'));
 
 Object.assign(exports, require('./research-alert-functions'));
+
+// Official-source Watch ingest from the Mac collector; isolated from tips and paid queues.
+Object.assign(exports, require('./watch-functions'));

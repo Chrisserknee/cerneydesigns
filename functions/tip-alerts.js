@@ -307,6 +307,8 @@ async function handleApi(req, res) {
             catch(e){const known=[400,401,409,429,503].includes(e.code);return res.status(known?e.code:503).json({error:known?e.message:'Native alerts could not connect. Please try again.'});}
         }
         if(body.op==='scanner')return res.json(require('./scanner-feed').scannerFeed((await read('scanner/feed.json'))?.data));
+        // Read-only: Watch is written only by watchIngestApi, never by device tokens.
+        if(body.op==='watch')return res.json(require('./watch-record').watchView((await read('watch/state.json'))?.data));
         if(String(body.op||'').startsWith('tracker-'))return res.json(await tracker.handle(body));
         if(body.op==='producer-mac-ticket')return res.json(await macTicket(device));
         if(String(body.op||'').startsWith('producer-'))return res.json(await producerHandler(body,device));
