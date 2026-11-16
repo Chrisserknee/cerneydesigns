@@ -142,3 +142,8 @@ test('native alerts require a paired same-origin session and ignore injected cre
  assert(!JSON.stringify(p.logs).includes('SECRET'));
  const foreign=proxy();await foreign.run(req({op:'native-test'},{origin:'https://evil.test',cookie:'cc_tip_device='+'x'.repeat(43)}),foreign.res);assert.equal(foreign.res.code,403);
 });
+test('watch reads forward only the device token, never caller-supplied writes',async()=>{
+ const p=proxy(false,{version:1,events:[]});await p.run(req({op:'watch',upserts:[{id:'x'}],seq:9,token:'attacker'},{cookie:'cc_tip_device='+'x'.repeat(43)}),p.res);
+ assert.equal(JSON.stringify(p.calls[0].body),JSON.stringify({op:'watch',token:'x'.repeat(43)}));
+ const denied=proxy();await denied.run(req({op:'watch'}),denied.res);assert.equal(denied.res.code,401);assert.equal(denied.calls.length,0);
+});

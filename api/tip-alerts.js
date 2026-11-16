@@ -17,6 +17,7 @@ module.exports = async (request, response) => {
     catch { return sendJson(response,400,{error:'Invalid request.'}); }
     const ops = ['pair','status','subscribe','unsubscribe','logout','list','tip','test','devices','revoke-device','thumbnail','tip-media','newsroom','scanner','scanner-audio','field-save','field-get','field-audio-part','field-audio-finish','field-audio-read','producer-catalog','producer-list','producer-get','producer-send','producer-cancel','producer-media-part','producer-media-finish','producer-media-status','producer-mac-ticket','producer-artifact'];
     ops.push('native-status','native-register','native-unregister','native-test');
+    ops.push('watch');
     ops.push('facebook-media-list','facebook-media-read','tracker-list','tracker-get','tracker-status','tracker-separate','tracker-edit','tracker-pin','producer-media-read');
     if (!ops.includes(body?.op)) return sendJson(response,400,{error:'Unknown request.'});
     let payload;
