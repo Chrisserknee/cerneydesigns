@@ -38,7 +38,7 @@ class Element {
 }
 const descendants = element => element.children.flatMap(child => [child, ...descendants(child)]);
 const byClass = (element, name) => descendants(element).filter(child => child.classList.contains(name));
-async function browser(listings, hash = '', reduceMotion = true) {
+async function browser(listings, hash = '', reduceMotion = true, extraGlobals = {}) {
     const elements = Object.fromEntries([...html.matchAll(/id="([^"]+)"/g)].map(([, id]) => [id, new Element()]));
     const body = new Element('body'); body.className = 'directory-first category-showcase';
     const events = {}, intervals = [], calls = [];
@@ -55,7 +55,7 @@ async function browser(listings, hash = '', reduceMotion = true) {
         CerneySelectsPhone: phone => ({ href: 'tel:' + phone, display: phone }),
     };
     const context = vm.createContext({
-        window, document: { body, getElementById: id => elements[id] || null, createElement: tag => new Element(tag), querySelectorAll: () => [], addEventListener() {} },
+        ...extraGlobals, window, document: { body, getElementById: id => elements[id] || null, createElement: tag => new Element(tag), querySelectorAll: () => [], addEventListener() {} },
         URL, AbortController, setTimeout: () => 1, clearTimeout() {}, setInterval: fn => intervals.push(fn),
         fetch: async (url, options) => { calls.push({ url, options }); return { ok: response.ok, json: async () => ({ listings: response.listings }) }; },
     });
@@ -149,7 +149,7 @@ test('initial cards enter with a short stagger and reduced motion skips animatio
     const tiles = byClass(page.elements.businessGrid, 'business-tile');
     assert.equal(tiles.filter(tile => tile.animation).length, 8);
     assert.equal(tiles[0].animation.options.duration, 360);
-    assert.equal(tiles[1].animation.options.delay, 35);
+    assert.equal(tiles[1].animation.options.delay, 24);
     assert.equal(tiles[0].animation.frames[1].opacity, 1);
     const previous = tiles[0].animation;
     page.navigate('#category/professional-services');
@@ -165,4 +165,30 @@ test('complimentary detail label is accurate and resets for paid listings', asyn
     assert.equal(page.elements.businessListingType.textContent, 'Complimentary business listing');
     tiles.find(t => t.attrs['aria-label'].includes('Business 1')).events.click();
     assert.equal(page.elements.businessListingType.textContent, 'Paid business listing');
+});
+
+
+test('scroll reveals observe offscreen cards once and disconnect on category changes', async () => {
+    const observers = [];
+    class Observer {
+        constructor(callback) { this.callback = callback; this.targets = new Set(); observers.push(this); }
+        observe(target) { this.targets.add(target); }
+        unobserve(target) { this.targets.delete(target); }
+        disconnect() { this.disconnected = true; this.targets.clear(); }
+    }
+    const bounds = Element.prototype.getBoundingClientRect;
+    Element.prototype.getBoundingClientRect = () => ({ top: 1000, bottom: 1200 });
+    try {
+        const page = await browser([listing(0),listing(1)], '', false, { IntersectionObserver: Observer });
+        const observer = observers[0];
+        assert.equal(observer.targets.size, 2);
+        const tile = [...observer.targets][0];
+        assert.equal(tile.animation, undefined);
+        observer.callback([{target:tile,isIntersecting:true}]);
+        assert.equal(tile.animation.options.duration,420);
+        assert.equal(observer.targets.has(tile),false);
+        page.navigate('#category/professional-services');
+        assert.equal(observer.disconnected,true);
+        assert.equal(tile.animation.canceled,true);
+    } finally { Element.prototype.getBoundingClientRect = bounds; }
 });

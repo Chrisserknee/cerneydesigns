@@ -79,12 +79,12 @@ body:has(.business-dialog[open]) { overflow: hidden; }
 
 /* Short, gentle modal transitions; native dialog still owns focus and Escape. */
 @media (prefers-reduced-motion: no-preference) {
- .business-dialog[open] { animation: business-dialog-in 240ms cubic-bezier(.2,.8,.2,1) both; }
- .business-dialog[open]::backdrop { animation: business-backdrop-in 240ms ease-out both; }
- .business-dialog[open].is-closing { animation: business-dialog-out 160ms ease-in both; }
- .business-dialog[open].is-closing::backdrop { animation: business-backdrop-out 160ms ease-in both; }
+ .business-dialog[open] { animation: business-dialog-in 320ms cubic-bezier(.16,1,.3,1) both; }
+ .business-dialog[open]::backdrop { animation: business-backdrop-in 280ms ease-out both; }
+ .business-dialog[open].is-closing { animation: business-dialog-out 190ms ease-in both; }
+ .business-dialog[open].is-closing::backdrop { animation: business-backdrop-out 190ms ease-in both; }
 }
-@keyframes business-dialog-in { from { opacity: 0; transform: translateY(14px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes business-dialog-in { from { opacity: 0; transform: translateY(18px) scale(.975); } to { opacity: 1; transform: translateY(0) scale(1); } }
 @keyframes business-dialog-out { from { opacity: 1; transform: translateY(0) scale(1); } to { opacity: 0; transform: translateY(8px) scale(.99); } }
 @keyframes business-backdrop-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes business-backdrop-out { from { opacity: 1; } to { opacity: 0; } }

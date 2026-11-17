@@ -18,8 +18,11 @@
     let filteredCount = 0;
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     let categoryAnimations = [];
+    let revealObserver;
 
     function stopCategoryAnimations() {
+        revealObserver?.disconnect();
+        revealObserver = null;
         categoryAnimations.forEach(animation => animation.cancel());
         categoryAnimations = [];
     }
@@ -31,17 +34,35 @@
         const items = byId('directoryEmpty').hidden
             ? Array.from(showcaseDirectory ? grid.querySelectorAll('.business-tile') : grid.children)
             : [byId('directoryEmpty')];
-        // Animate only the first visible cards, so long directories stay light.
-        items.filter(item => {
-            const bounds = item.getBoundingClientRect();
-            return bounds.top < window.innerHeight && bounds.bottom > 0;
-        }).slice(0, 8).forEach((item, index) => {
+        // Leave every card visible by default; movement never gates browsing.
+        function reveal(item, index, duration = 360) {
             if (typeof item.animate !== 'function') return;
-            categoryAnimations.push(item.animate([
-                { opacity: 0, transform: 'translateY(10px)' },
-                { opacity: 1, transform: 'translateY(0)' },
-            ], { duration: 360, delay: index * 35, easing: 'cubic-bezier(.2,.7,.2,1)', fill: 'backwards' }));
+            const animation = item.animate([
+                { opacity: .25, transform: 'translateY(9px) scale(.992)' },
+                { opacity: 1, transform: 'translateY(0) scale(1)' },
+            ], { duration, delay: Math.min(index, 5) * 24, easing: 'cubic-bezier(.16,1,.3,1)', fill: 'backwards' });
+            categoryAnimations.push(animation);
+            animation.onfinish = () => { categoryAnimations = categoryAnimations.filter(active => active !== animation); };
+        }
+        const visible = [];
+        const below = [];
+        items.forEach(item => {
+            const bounds = item.getBoundingClientRect();
+            if (bounds.top < window.innerHeight && bounds.bottom > 0) visible.push(item);
+            else if (bounds.top >= window.innerHeight) below.push(item);
         });
+        visible.slice(0, 8).forEach((item, index) => reveal(item, index));
+        if (typeof IntersectionObserver !== 'function' || !below.length) return;
+        revealObserver?.disconnect();
+        revealObserver = new IntersectionObserver(entries => {
+            let index = 0;
+            entries.forEach(entry => {
+                if (!entry.isIntersecting) return;
+                revealObserver?.unobserve(entry.target);
+                if (!reducedMotion.matches) reveal(entry.target, index++, 420);
+            });
+        }, { threshold: .08 });
+        below.forEach(item => revealObserver.observe(item));
     }
 
     function string(value, max = 400) {
@@ -220,7 +241,7 @@
         if (reducedMotion.matches) { businessDialog.close(); return; }
         businessDialog.classList.add('is-closing');
         // Keep the modal and focus trap active until its exit transition finishes.
-        dialogCloseTimer = setTimeout(() => businessDialog.close(), 180);
+        dialogCloseTimer = setTimeout(() => businessDialog.close(), 210);
     }
     function openBusiness(profile, index) {
         byId('businessDialogTitle').textContent = profile.businessName;
