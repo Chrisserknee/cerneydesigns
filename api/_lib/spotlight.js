@@ -5,7 +5,7 @@ const Stripe = require('stripe');
 const socials = require('../../localspotlight/social-links');
 const { bannerUrl } = require('./spotlight-banner-url');
 const { moderationConfig, callModeration } = require('./spotlight-moderation');
-const { currentPaymentIsValid } = require('./spotlight-payment');
+const { currentPaymentIsValid, invoicePaymentIsValid } = require('./spotlight-payment');
 const { billingTerms, invoiceTerms } = require('./spotlight-custom-plans');
 
 const { reconcileCustomBilling } = require('./spotlight-custom-billing');
@@ -205,8 +205,30 @@ function publicListing(subscription) {
     return { id: listingId, ...profile, ...(description ? { description } : {}), ...(address ? { address } : {}), ...(logo ? { logoUrl: logo } : {}), ...(image ? { bannerUrl: image } : {}) };
 }
 
+// The Dunnion package was paid separately. Its monthly subscription must stay paused.
+function prepaidPartner(sub) {
+    return sub?.livemode && sub.id === 'sub_1UcW2APiCHIUlVvne1lvzP5W'
+        && id(sub.customer) === 'cus_VdndcSOPZZFxcl'
+        && sub.metadata?.spotlight_partnership === 'dunnion-three-month-202611';
+}
+
 function createService(stripe, settings = config(), moderation = callModeration) {
     async function isPublished(subscription) {
+        if (prepaidPartner(subscription)) {
+            const meta = subscription.metadata;
+            const profile = readProfile(meta);
+            if (!settings.live || !profile || subscription.status !== 'active' || meta.spotlight_hidden === 'true'
+                || subscription.pause_collection?.behavior !== 'void' || subscription.pause_collection.resumes_at
+                || meta.spotlight_review_status !== 'approved' || meta.spotlight_approved_profile !== publicProfileHash(profile)
+                || !/^in_[a-zA-Z0-9]+$/.test(meta.spotlight_paid_invoice || '')
+                || (meta.spotlight_partnership_end && !(Number(meta.spotlight_partnership_end) > Date.now() / 1000))) return false;
+            const customer = id(subscription.customer);
+            const payments = await Promise.all([
+                invoicePaymentIsValid(stripe, meta.spotlight_paid_invoice, customer, 10000, settings),
+                invoicePaymentIsValid(stripe, 'in_1Udz8UPiCHIUlVvnvSQS7GNc', customer, 140000, settings),
+            ]);
+            return payments.every(Boolean);
+        }
         if (!published(subscription, settings)) return false;
         // Canonical negative results omit the listing. Provider failures instead
         // reach the API's generic 502, never masquerading as an empty directory.
@@ -327,11 +349,12 @@ function createService(stripe, settings = config(), moderation = callModeration)
         const states = await publicationStates(subscriptions);
         const members = subscriptions.filter((_, index) => states[index]);
         const listings = members.map(sub => {
-            const badge = membershipBadge(sub, settings);
+            const badge = prepaidPartner(sub) ? 'featured-partner' : membershipBadge(sub, settings);
             return { ...publicListing(sub), ...(badge ? { membershipBadge: badge } : {}) };
         });
         if (settings.memberBillingEnabled) {
             for (let start = 0; start < members.length; start += 4) await Promise.all(members.slice(start, start + 4).map(async (sub, offset) => {
+                if (prepaidPartner(sub)) return;
                 const featured = await moderation('member-entitlement', { subscriptionId: sub.id });
                 if (featured?.specialty && featured.area === 'Monterey County') {
                     listings[start + offset].featured = { specialty: featured.specialty, area: featured.area };
