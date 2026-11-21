@@ -42,3 +42,24 @@ test('empty, singleton and duplicate names remain deterministic', () => {
     const sameNames = [{ id: 'b', businessName: 'Same name' }, { id: 'a', businessName: 'Same name' }];
     assert.deepEqual(ids(order(sameNames)), ids(order([...sameNames].reverse())));
 });
+
+test('Dunnion and Hare trade first and third, with an unrestricted turn every third day', () => {
+    const partners = [
+        { id: '44400b425cc8748c860f', businessName: 'Dunnion Law', membershipBadge: 'featured-partner' },
+        { id: 'b9be0d16321a03694019', businessName: 'Hare Construction Inc.', membershipBadge: 'exclusive-construction' },
+    ];
+    const rows = [...businesses, ...partners];
+    const normalLeads = new Set();
+    for (let i = 0; i < rows.length * 3; i++) {
+        const date = new Date(Date.UTC(2026, 10, 20 + i, 20));
+        const ranked = order(rows, date);
+        assert.deepEqual(ids(ranked).sort(), ids(rows).sort());
+        const slot = dayNumber(date) % 3;
+        if (slot === 2) normalLeads.add(ranked[0].id);
+        else {
+            assert.equal(ranked[0], partners[slot]);
+            assert.equal(ranked[2], partners[1 - slot]);
+        }
+    }
+    assert.equal(normalLeads.size, rows.length);
+});
