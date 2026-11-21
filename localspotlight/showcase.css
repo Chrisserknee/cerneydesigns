@@ -85,10 +85,10 @@ body.category-showcase { background: radial-gradient(ellipse at 12% 0%,#24465f 0
 .membership-badge-exclusive { border-color: #c3edff; border-left-color: #e2f7ff; background: linear-gradient(115deg,#174a70,#307fa5); box-shadow: 0 0 0 1px #77d2ff26,0 0 12px #69caff60,0 0 23px #40b5ef26,0 3px 12px #04142050,inset 0 1px #e9faff55; }
 .membership-badge-exclusive .membership-badge-eyebrow { color: #def5ff; text-shadow: 0 0 7px #a8e7ff55; }
 
-.category-showcase .business-tile.exclusive-partner-card { border-color: #f4d795; box-shadow: 0 0 0 1px #eec66b70,0 0 17px #e8b64f60,0 0 32px #dba33026,0 8px 25px #06152650,inset 0 0 16px #f3d38b25; }
-.category-showcase .business-tile.exclusive-partner-card:hover,
-.category-showcase .business-tile.exclusive-partner-card:focus-visible { box-shadow: 0 0 0 1px #ffe3a399,0 0 20px #f3c56580,0 0 36px #dba33038,0 8px 25px #06152650,inset 0 0 18px #f3d38b30; }
-.business-dialog .directory-card.exclusive-partner-card { border-color: #efd18e; box-shadow: 0 0 16px #e8b64f40,inset 0 0 14px #f3d38b18; }
+.category-showcase .business-tile.gold-partner-card { border-color: #f4d795; box-shadow: 0 0 0 1px #eec66b70,0 0 17px #e8b64f60,0 0 32px #dba33026,0 8px 25px #06152650,inset 0 0 16px #f3d38b25; }
+.category-showcase .business-tile.gold-partner-card:hover,
+.category-showcase .business-tile.gold-partner-card:focus-visible { box-shadow: 0 0 0 1px #ffe3a399,0 0 20px #f3c56580,0 0 36px #dba33038,0 8px 25px #06152650,inset 0 0 18px #f3d38b30; }
+.business-dialog .directory-card.gold-partner-card { border-color: #efd18e; box-shadow: 0 0 16px #e8b64f40,inset 0 0 14px #f3d38b18; }
 
 .featured-partner-card{border-color:#98d3ff!important;box-shadow:0 0 0 1px #98d3ff66,0 0 20px #55afff45,inset 0 0 14px #55afff22!important}
 

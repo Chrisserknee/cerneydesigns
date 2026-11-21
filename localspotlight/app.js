@@ -160,6 +160,12 @@
         return mark;
     }
 
+    function partnerCardClass(profile) {
+        const dunnionPartnership = profile.id === '44400b425cc8748c860f' && profile.membershipBadge === 'featured-partner';
+        if (dunnionPartnership || profile.membershipBadge === 'exclusive-construction') return 'gold-partner-card';
+        return 'featured-partner-card';
+    }
+
     function partnerBadge(profile) {
         if (!profile.membershipBadge) return null;
         const badge = node('span', 'membership-badge');
@@ -202,9 +208,10 @@
         }
         const body = node('div', 'directory-card-body');
         const badge = partnerBadge(profile);
-        if (badge) body.append(badge);
-        if (profile.membershipBadge === 'exclusive-construction') card.classList.add('exclusive-partner-card');
-        else if (profile.membershipBadge === 'featured-partner') card.classList.add('featured-partner-card');
+        if (badge) {
+            card.classList.add(partnerCardClass(profile));
+            body.append(badge);
+        }
         body.append(node('p', 'directory-card-category', profile.category || 'Local business'), businessName(profile), node('p', 'directory-city', profile.city));
         if (profile.description) body.append(node('p', 'directory-description', profile.description));
         if (profile.address) {
@@ -304,8 +311,7 @@
         const badge = partnerBadge(profile);
         if (badge) {
             tile.classList.add('has-membership-badge');
-            if (profile.membershipBadge === 'exclusive-construction') tile.classList.add('exclusive-partner-card');
-            else if (profile.membershipBadge === 'featured-partner') tile.classList.add('featured-partner-card');
+            tile.classList.add(partnerCardClass(profile));
             tile.append(badge);
             tile.setAttribute('aria-label', `View ${profile.businessName} details, ${profile.membershipBadge === 'exclusive-construction' ? 'Exclusive Construction Partner' : 'Featured Business Partner'}`);
         }
