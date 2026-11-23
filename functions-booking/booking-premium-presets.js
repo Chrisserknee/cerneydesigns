@@ -22,6 +22,6 @@ const premiumTerms = require('node:fs').readFileSync(
     require('node:path').join(__dirname, 'booking-premium-terms.txt'), 'utf8'
 ).trim();
 const draft={...structuredClone(legacy),enabled:false,package:null,packages,
-    terms:{...legacy.terms,text:premiumTerms,exclusiveText:'',version:'video-event-2026-11-22-v3',approved:false},
+    terms:{...legacy.terms,text:premiumTerms,exclusiveText:'',version:'video-event-2026-11-23-v4',approved:false},
     availabilityMode:'dates',bookingHorizonDays:180,weeklyWindows:[],windows:[]};
 module.exports={draft,packages};
