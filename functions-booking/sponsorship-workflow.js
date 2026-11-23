@@ -123,12 +123,9 @@ function createWorkflow({store,calendar,payments,now=Date.now,ready=()=>true,rec
         if(invoice.status==='paid'){await paymentReceived(invoice);return {paid:true};}
         return deliverInvoice(orderFor(await store.read(),r.id),invoice);
     }
-    function premiumInvoice(order) {
-        return order.package.billing === 'once' && ['promotional-video', 'event-coverage'].includes(order.package.id);
-    }
     async function deliverInvoice(order, invoice) {
         const link = paymentLink(order, invoice);
-        if (premiumInvoice(order)) await store.change(state => {
+        if (core.usesBookingInvoice(order)) await store.change(state => {
             const current = orderFor(state, order.id);
             if (current.status === 'signed') queue(state, {...current, invoiceUrl:link.url}, 'invoice', now());
         });
@@ -218,8 +215,8 @@ function createWorkflow({store,calendar,payments,now=Date.now,ready=()=>true,rec
         if(b.op==='sign'){
             await store.change(s=>{const r=authenticate(s,b);s.orders[b.id]=core.sign(r,b,now());});
             const signed = orderFor(await store.read(),b.id);
-            if (premiumInvoice(signed)) await pay(b);
-            return core.publicRecord(orderFor(await store.read(),b.id));
+            const payment = core.usesBookingInvoice(signed) ? await pay(b) : null;
+            return {...core.publicRecord(orderFor(await store.read(), b.id)), ...(b.acceptanceMethod === 'typed' && payment ? {payment} : {})};
         }
         if(b.op==='checkout')return pay(b);
         if(b.op==='billing-invoice'){

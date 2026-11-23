@@ -33,7 +33,19 @@ test('approval quote must meet starting price and freezes in agreement and invoi
  const approved=await h.workflow.handle({op:'approve',id,quoteAmount:125000,approvedScope:'One edited promotional video. Two hours filming. Agreed delivery.'});assert.equal(approved.agreement.document.package.amount,125000);assert.equal(approved.package.priceType,'fixed');assert.match(approved.package.billingDescription,/1,250.00 once/);
  await h.workflow.handle({op:'approve',id,quoteAmount:200000});assert.equal((await h.store.read()).orders[id].package.amount,125000);
  assert.equal(h.metrics.issues,0);
- await h.sign(id);
+ const acceptance={op:'sign',id,token:'a'.repeat(64),agreementHash:approved.agreement.hash,
+     signerName:'Test Client',signerTitle:'Owner',acceptanceMethod:'typed',
+     electronicConsent:true,authorized:true,clientKey:'e'.repeat(64)};
+ await assert.rejects(h.workflow.handle({...acceptance,electronicConsent:false}),/Confirm consent/);
+ await assert.rejects(h.workflow.handle({...acceptance,agreementHash:'wrong'}),/agreement changed/);
+ assert.equal(h.metrics.issues,0);
+ const signed=await h.workflow.handle(acceptance);
+ assert.match(signed.payment.url,/^https:\/\/invoice\.stripe\.com\//);
+ assert.equal(signed.signature.agreementHash,approved.agreement.hash);
+ assert.equal(signed.signature.drawing,null);
+ const repeated=await h.workflow.handle(acceptance);
+ assert.equal(repeated.payment.url,signed.payment.url);
+ assert.equal(repeated.signature.signedAt,signed.signature.signedAt);
  const invoiceMail=(await h.store.read()).outbox[id+'-invoice-client'];
  assert.equal(invoiceMail.to,(await h.store.read()).orders[id].email);
  assert.match(invoiceMail.text,/https:\/\/invoice\.stripe\.com\//);

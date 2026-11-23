@@ -74,16 +74,22 @@ function signatureDrawing(value){
     if(count<4||length<0.06||maxX-minX<0.03||maxY-minY<0.01)fail('Draw your full signature, then try again.');
     return {version:1,strokes};
 }
+function usesBookingInvoice(order) {
+    return order.package.billing === 'once' && ['promotional-video', 'event-coverage'].includes(order.package.id);
+}
+
 function sign(order,b,now){
     if(!['approved','signed'].includes(order.status))fail('This request is not ready for signing.',409);
     if(b.agreementHash!==order.agreement.hash)fail('The agreement changed. Reload it before signing.',409);
     if(b.electronicConsent!==true||b.authorized!==true)fail('Confirm consent to sign electronically and authority to sign for the business.');
     if(order.package.billing!=='once'&&order.package.billing&&b.recurringConsent!==true)fail('Confirm the amount, recurring billing, commitment, and cancellation terms.');
     const name=field(b.signerName,'signature name',120),title=field(b.signerTitle,'role at the business',120);
-    const drawing=signatureDrawing(b.signatureDrawing),drawingHash=hash(JSON.stringify(drawing));
-    if(order.signature){if(order.signature.name!==name||order.signature.title!==title||order.signature.drawingHash!==drawingHash)fail('This agreement has already been signed.',409);return order;}
+    const typed = b.acceptanceMethod === 'typed' && usesBookingInvoice(order);
+    const drawing = typed ? null : signatureDrawing(b.signatureDrawing);
+    const drawingHash = drawing ? hash(JSON.stringify(drawing)) : null;
+    if(order.signature){if(order.signature.name!==name||order.signature.title!==title||(order.signature.drawingHash||null)!==drawingHash)fail('This agreement has already been signed.',409);return order;}
     return {...order,status:'signed',signature:{name,title,signedAt:now,agreementHash:order.agreement.hash,
-        drawing,drawingHash,electronicConsent:true,authorized:true,recurringConsent:b.recurringConsent===true,billingDescription:billingDescription(order.package),clientKey:b.clientKey,userAgent:String(b.userAgent||'').slice(0,500)}};
+        acceptanceMethod:typed?'typed':'drawn',drawing,drawingHash,electronicConsent:true,authorized:true,recurringConsent:b.recurringConsent===true,billingDescription:billingDescription(order.package),clientKey:b.clientKey,userAgent:String(b.userAgent||'').slice(0,500)}};
 }
 function paidRecord(order,invoice,now){
     if(order.package.billing&&order.package.billing!=='once'){
@@ -115,7 +121,7 @@ function paidRecord(order,invoice,now){
 }
 function publicRecord(r){
     return {id:r.id,status:r.status,business:r.business,package:r.package,videoStyle:r.videoStyle,slot:r.slot,location:r.location,brief:r.brief,declineReason:r.declineReason,exclusivity:r.exclusivity,
-        agreement:r.agreement,signature:r.signature?{name:r.signature.name,title:r.signature.title,signedAt:r.signature.signedAt,agreementHash:r.signature.agreementHash,drawing:r.signature.drawing,drawingHash:r.signature.drawingHash}:null,
+        typedAcceptance:usesBookingInvoice(r),agreement:r.agreement,signature:r.signature?{name:r.signature.name,title:r.signature.title,signedAt:r.signature.signedAt,agreementHash:r.signature.agreementHash,drawing:r.signature.drawing,drawingHash:r.signature.drawingHash}:null,
         invoice:r.invoice?{number:r.invoice.number}:null,billing:r.billing,payments:r.payments?.map(({id,...p})=>p),calendarConfirmed:r.calendarConfirmed,createdAt:r.createdAt};
 }
-module.exports={fail,field,hash,validToken,intake,packageConfig,billingDescription,agreement,signatureDrawing,sign,paidRecord,publicRecord};
+module.exports={fail,field,hash,validToken,intake,packageConfig,billingDescription,agreement,signatureDrawing,usesBookingInvoice,sign,paidRecord,publicRecord};
