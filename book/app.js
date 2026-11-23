@@ -1,6 +1,7 @@
 'use strict';
 (()=>{
-const $=id=>document.getElementById(id),form=$('requestForm');let offer,selected,order,access,busy=false,availabilityVersion=0;let strokes=[],stroke;
+const $=id=>document.getElementById(id),form=$('requestForm');
+const dateInput=form.elements.namedItem('date'),timeInput=form.elements.namedItem('slotStart');let offer,selected,order,access,busy=false,availabilityVersion=0;let strokes=[],stroke;
 const text=(tag,value,className)=>{const e=document.createElement(tag);e.textContent=value;if(className)e.className=className;return e;};
 const money=c=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(c/100);
 const when=(value,zone)=>new Intl.DateTimeFormat('en-US',{dateStyle:'full',timeStyle:'short',timeZone:zone||'America/Los_Angeles'}).format(new Date(value));
@@ -58,8 +59,123 @@ $('backToServices').onclick = () => {
     notice('');
     $('bookingTitle').focus();
 };
-function choose(p){availabilityVersion++;selected=p;$('videoStyleOptions').replaceChildren();$('videoStyles').hidden=!p.videoStyles?.length;for(const style of p.videoStyles||[]){const label=text('label','','video-style'),input=document.createElement('input');input.type='radio';input.name='videoStyleId';input.value=style.id;input.required=true;const copy=text('span','');copy.append(text('strong',style.title),text('span',style.description));label.append(input,copy);$('videoStyleOptions').append(label);}$('availability').textContent='';notice('');$('intro').hidden=true;$('packages').hidden=true;$('requestPanel').hidden=false;$('selectedTitle').textContent=p.title;$('selectedTerms').textContent=p.billingDescription;form.date.replaceChildren(new Option('Choose a date',''));for(const date of (offer.datesByPackage?.[p.id]||offer.dates))form.date.add(new Option(date,date));form.slotStart.replaceChildren(new Option('Choose a date first',''));if(form.date.options.length===1)$('availability').textContent='No dates are currently open for this service. Please check back or contact Chris.';$('selectedTitle').focus({preventScroll:true});window.scrollTo(0,0);}
-form.date.addEventListener('change',async()=>{const seq=++availabilityVersion;if(!form.date.value){form.slotStart.replaceChildren(new Option('Choose a date first',''));$('availability').textContent='';return;}form.slotStart.replaceChildren(new Option('Loading…',''));$('availability').textContent='Checking Chris’s calendar…';try{const d=await api({op:'availability',date:form.date.value,packageId:selected.id});if(seq!==availabilityVersion)return;form.slotStart.replaceChildren(new Option('Choose a time',''));for(const s of d.slots)form.slotStart.add(new Option(when(s.start,s.timeZone),s.start));$('availability').textContent=d.slots.length?'Allow up to '+(selected.durationMinutes/60)+' hours on location. Times are Pacific Time.':'No filming times available that day. Choose another date.';}catch(e){if(seq===availabilityVersion){form.slotStart.replaceChildren(new Option('Choose another date',''));$('availability').textContent=e.message;}}});
+const calendarMonthFormat = new Intl.DateTimeFormat('en-US', {
+    month: 'long', year: 'numeric', timeZone: 'UTC'
+});
+const calendarDateFormat = new Intl.DateTimeFormat('en-US', {
+    dateStyle: 'full', timeZone: 'UTC'
+});
+const startTimeFormat = new Intl.DateTimeFormat('en-US', {
+    timeStyle: 'short', timeZone: 'America/Los_Angeles'
+});
+const monthKey = value => value.slice(0, 7);
+const calendarDate = value => new Date(value + 'T12:00:00Z');
+const monthAfter = (month, offset) => {
+    const date = calendarDate(month + '-01');
+    date.setUTCMonth(date.getUTCMonth() + offset);
+    return monthKey(date.toISOString());
+};
+let offeredDays = new Set(), displayedMonth = '', firstMonth = '', lastMonth = '';
+
+function setUnavailable(button, unavailable) {
+    button.disabled = unavailable || busy;
+    button.dataset.unavailable = String(unavailable);
+}
+
+function showMonth(month) {
+    if (month < firstMonth || month > lastMonth) return;
+    displayedMonth = month;
+    const firstDay = calendarDate(month + '-01');
+    $('calendarMonth').textContent = calendarMonthFormat.format(firstDay);
+    setUnavailable($('previousMonth'), month === firstMonth);
+    setUnavailable($('nextMonth'), month === lastMonth);
+    const days = $('calendarDays');
+    days.replaceChildren();
+    for (let blank = 0; blank < firstDay.getUTCDay(); blank++) {
+        const placeholder = document.createElement('span');
+        placeholder.setAttribute('aria-hidden', 'true');
+        days.append(placeholder);
+    }
+    let availableThisMonth = false;
+    for (const day = new Date(firstDay); monthKey(day.toISOString()) === month; day.setUTCDate(day.getUTCDate() + 1)) {
+        const iso = day.toISOString().slice(0, 10);
+        const available = offeredDays.has(iso);
+        availableThisMonth ||= available;
+        const button = text('button', day.getUTCDate(), 'secondary calendar-day');
+        button.type = 'button';
+        button.setAttribute('aria-label', calendarDateFormat.format(day) + (available ? '' : ', unavailable'));
+        button.setAttribute('aria-pressed', String(dateInput.value === iso));
+        setUnavailable(button, !available);
+        if (available) button.addEventListener('click', () => chooseDate(iso, button));
+        days.append(button);
+    }
+    $('calendarEmpty').hidden = availableThisMonth;
+}
+
+$('previousMonth').onclick = () => showMonth(monthAfter(displayedMonth, -1));
+$('nextMonth').onclick = () => showMonth(monthAfter(displayedMonth, 1));
+
+async function chooseDate(date, button) {
+    const sequence = ++availabilityVersion;
+    dateInput.value = date;
+    const active = $('calendarDays').querySelector('[aria-pressed="true"]');
+    if (active) active.setAttribute('aria-pressed', 'false');
+    button.setAttribute('aria-pressed', 'true');
+    $('selectedDate').textContent = calendarDateFormat.format(calendarDate(date));
+    timeInput.replaceChildren(new Option('Checking availability…', ''));
+    $('availability').textContent = '';
+    try {
+        const {slots} = await api({op:'availability', date, packageId:selected.id});
+        if (sequence !== availabilityVersion) return;
+        timeInput.replaceChildren(new Option(slots.length ? 'Choose a time' : 'No times available', ''));
+        for (const slot of slots) {
+            timeInput.add(new Option(startTimeFormat.format(new Date(slot.start)), slot.start));
+        }
+        $('availability').textContent = slots.length ? '' : 'Choose another day to see more times.';
+    } catch (error) {
+        if (sequence !== availabilityVersion) return;
+        timeInput.replaceChildren(new Option('Choose a date again', ''));
+        $('availability').textContent = error.message;
+    }
+}
+
+function choose(service) {
+    availabilityVersion++;
+    selected = service;
+    const styles = service.videoStyles || [];
+    $('videoStyleOptions').replaceChildren();
+    $('videoStyles').hidden = !styles.length;
+    for (const style of styles) {
+        const label = text('label', '', 'video-style');
+        const input = document.createElement('input');
+        input.type = 'radio';
+        input.name = 'videoStyleId';
+        input.value = style.id;
+        input.required = true;
+        const copy = text('span', '');
+        copy.append(text('strong', style.title), text('span', style.description));
+        label.append(input, copy);
+        $('videoStyleOptions').append(label);
+    }
+    const dates = offer.datesByPackage?.[service.id] || offer.dates;
+    offeredDays = new Set(dates);
+    const fallbackMonth = monthKey(new Date().toISOString());
+    firstMonth = dates.length ? monthKey(dates[0]) : fallbackMonth;
+    lastMonth = dates.length ? monthKey(dates.at(-1)) : fallbackMonth;
+    dateInput.value = '';
+    timeInput.replaceChildren(new Option('Choose a date first', ''));
+    $('selectedDate').textContent = 'Choose a filming date';
+    $('availability').textContent = '';
+    showMonth(firstMonth);
+    notice('');
+    $('intro').hidden = true;
+    $('packages').hidden = true;
+    $('requestPanel').hidden = false;
+    $('selectedTitle').textContent = service.title;
+    $('selectedTerms').textContent = service.billingDescription;
+    $('selectedTitle').focus({preventScroll:true});
+    window.scrollTo(0, 0);
+}
 form.addEventListener('submit',e=>{e.preventDefault();action(async()=>{const payload=Object.fromEntries(new FormData(form));let pending;try{pending=JSON.parse(sessionStorage.getItem('cs_booking_pending'));}catch{}const fingerprint=JSON.stringify(payload);if(!pending||pending.fingerprint!==fingerprint){pending={fingerprint,token:Array.from(crypto.getRandomValues(new Uint8Array(32)),n=>n.toString(16).padStart(2,'0')).join('')};sessionStorage.setItem('cs_booking_pending',JSON.stringify(pending));}const r=await api({...payload,op:'submit',packageId:selected.id,offerRevision:offer.revision,token:pending.token,requestAcknowledged:form.requestAcknowledged.checked});saveAccess({id:r.id,token:pending.token});sessionStorage.removeItem('cs_booking_pending');await loadOrder();notice('Request saved. No payment has been taken.');});});
 function agreementText(){const d=order.agreement.document;return [d.provider,d.customer,order.package.title,order.package.billingDescription,order.package.includes,order.videoStyle?'Video style: '+order.videoStyle.title+' — '+order.videoStyle.description:'',order.package.videoLengthNote||'','Posting channels: '+order.package.channels,'Turnaround: '+order.package.turnaround,'Revisions: '+order.package.revisions,'Content usage: '+order.package.usageRights,order.package.priceNote,order.paymentDueAt?'Payment deadline: '+when(order.paymentDueAt,order.slot.timeZone):'','Agreement version: '+d.version,'Filming: '+when(order.slot.start,order.slot.timeZone),'Location: '+order.location,'Video idea: '+order.brief,d.terms,d.exclusivityTerms||'',order.exclusivity?'Category: '+order.exclusivity.category+' · Market: '+order.exclusivity.market+' · Exceptions: '+order.exclusivity.exceptions:'',order.signature?'Signed by '+order.signature.name+' · '+order.signature.title+' · '+when(order.signature.signedAt,order.slot.timeZone):'','Agreement reference: '+order.agreement.hash].join('\n\n');}
 async function loadOrder(){order=await api({op:'status',...access});$('packages').hidden=true;$('requestPanel').hidden=true;$('intro').hidden=true;$('orderPanel').hidden=false;$('status').textContent={pending:'Awaiting Chris’s review',accepting:'Approval processing',approved:'Ready to sign',signed:'Ready for payment',paid:'Payment received',declined:'Request declined'}[order.status]||order.status;$('orderTitle').textContent=order.business+' · '+order.package.title;$('orderDetails').textContent=when(order.slot.start,order.slot.timeZone)+' · '+order.location+' · '+order.package.billingDescription+(order.videoStyle?' · '+order.videoStyle.title:'')+(order.paymentDueAt?' · Pay by '+when(order.paymentDueAt,order.slot.timeZone):'');$('orderMessage').textContent=order.status==='paid'?(order.latePayment?'Payment received. Chris will review the deadline and contact you.':order.calendarConfirmed?'Your filming appointment is confirmed. Chris will coordinate the details with you.':'Payment received. Chris is checking the calendar confirmation; do not pay again.'):order.status==='pending'?'Chris will review your idea and filming time. No agreement has been signed and no payment has been taken.':order.status==='declined'?(order.declineReason||'Chris cannot accept this request. No payment has been taken.'):'Review the agreed scope below before continuing.';const link=location.origin+'/book/#'+new URLSearchParams(access);$('privateLink').href=link;$('privateLink').textContent=link;$('agreementPanel').hidden=!order.agreement;if(order.agreement)$('agreement').textContent=agreementText();const deadlinePassed = order.paymentDueAt && Date.now() >= order.paymentDueAt;

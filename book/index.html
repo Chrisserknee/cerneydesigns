@@ -38,16 +38,29 @@ CERNEY <span>SELECTS</span>
 <div id="videoStyleOptions" class="video-style-options">
 </div>
 </fieldset>
-<div class="two">
-<label>Filming date<select name="date" required>
-</select>
-</label>
-<label>Start time<select name="slotStart" required>
-<option value="">Choose a date first</option>
-</select>
-</label>
+<div class="filming-schedule">
+  <div class="filming-calendar" role="group" aria-label="Filming date">
+    <div class="calendar-header">
+      <button type="button" class="secondary" id="previousMonth" aria-label="Previous month">‹</button>
+      <h3 id="calendarMonth" aria-live="polite" aria-atomic="true"></h3>
+      <button type="button" class="secondary" id="nextMonth" aria-label="Next month">›</button>
+    </div>
+    <div class="calendar-week" aria-hidden="true">
+      <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
+    </div>
+    <div id="calendarDays" class="calendar-days"></div>
+    <p id="calendarEmpty" class="calendar-empty" hidden>No filming dates this month.</p>
+  </div>
+  <div class="filming-time">
+    <input type="hidden" name="date">
+    <p id="selectedDate" class="selected-date" aria-live="polite">Choose a filming date</p>
+    <label for="slotStart">Start time <span>(Pacific)</span></label>
+    <select id="slotStart" name="slotStart" required>
+      <option value="">Choose a date first</option>
+    </select>
+    <p id="availability" role="status"></p>
+  </div>
 </div>
-<p id="availability" role="status"></p>
 <div class="two">
 <label>Business or event name<input name="business" maxlength="160" required autocomplete="organization">
 </label>
@@ -150,7 +163,6 @@ CERNEY <span>SELECTS</span>
 <footer class="booking-footer">
   <a href="mailto:cerneymedia@gmail.com">Questions or a date in mind? Email Chris <span aria-hidden="true">↗</span>
 </a>
-  <a href="/book/manage/">Owner access</a>
 </footer>
 </body>
 </html>

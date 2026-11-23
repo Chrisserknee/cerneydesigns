@@ -245,3 +245,106 @@
     .booking-page main { padding-bottom: 27px; }
     .booking-page .panel { margin-top: 22px; }
 }
+
+.booking-page .filming-schedule {
+    display: grid;
+    grid-template-columns: minmax(245px, 340px) minmax(0, 1fr);
+    gap: clamp(18px, 4vw, 34px);
+    align-items: start;
+    margin-bottom: 25px;
+}
+
+.booking-page .filming-calendar {
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: #101d28;
+}
+
+.booking-page .calendar-header {
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr) 40px;
+    align-items: center;
+    text-align: center;
+    gap: 4px;
+    margin-bottom: 8px;
+}
+
+.booking-page .calendar-header h3 {
+    margin: 0;
+    font-size: 16px;
+    line-height: 1.3;
+}
+
+.booking-page .calendar-header button {
+    min-height: 40px;
+    padding: 0;
+    border-radius: 7px;
+    color: var(--blue);
+    font-size: 24px;
+    line-height: 1;
+}
+
+.booking-page .calendar-header button:disabled,
+.booking-page .calendar-day:disabled { cursor: default; }
+
+.booking-page .calendar-week,
+.booking-page .calendar-days {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 3px;
+    text-align: center;
+}
+
+.booking-page .calendar-week {
+    color: var(--muted);
+    font-size: 11px;
+    margin-bottom: 6px;
+}
+
+.booking-page .calendar-day {
+    padding: 0;
+    min-height: 40px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    font-size: 14px;
+    line-height: 1;
+}
+
+.booking-page .calendar-day:not(:disabled) {
+    border-color: #54758d;
+    background: #253d50;
+    color: var(--ink);
+}
+
+.booking-page .calendar-day:not(:disabled):hover,
+.booking-page .calendar-header button:not(:disabled):hover { background: #395a72; }
+
+.booking-page .calendar-day[aria-pressed="true"] {
+    background: var(--blue);
+    border-color: var(--blue);
+    color: #102332;
+}
+
+.booking-page .calendar-day[aria-pressed="true"]:hover { background: #d0ecff; }
+
+.booking-page .calendar-empty {
+    text-align: center;
+    color: var(--muted);
+    margin: 8px 0 0;
+    font-size: 13px;
+}
+
+.booking-page .selected-date {
+    font-weight: 600;
+    color: var(--blue);
+    margin: 4px 0 14px;
+}
+
+.booking-page .filming-time label span,
+.booking-page #availability { font-size: 13px; color: var(--muted); }
+
+@media (max-width: 620px) {
+    .booking-page .filming-schedule { grid-template-columns: minmax(0, 1fr); gap: 15px; }
+    .booking-page .calendar-day { min-height: 36px; }
+}
