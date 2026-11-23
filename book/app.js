@@ -9,8 +9,56 @@ async function api(body){const r=await fetch('/api/booking',{method:'POST',crede
 async function action(fn){if(busy)return;busy=true;document.querySelectorAll('button').forEach(b=>b.disabled=true);try{await fn();}catch(e){notice(e.message,true);}finally{busy=false;document.querySelectorAll('button').forEach(b=>b.disabled=b.dataset.unavailable==='true');}}
 function saveAccess(a){access=a;sessionStorage.setItem('cs_booking_request',JSON.stringify(a));}
 try{const h=new URLSearchParams(location.hash.slice(1));if(/^[a-f0-9]{32}$/.test(h.get('id'))&&/^[a-f0-9]{64}$/.test(h.get('token'))){saveAccess({id:h.get('id'),token:h.get('token')});history.replaceState(null,'',location.pathname);}else access=JSON.parse(sessionStorage.getItem('cs_booking_request')||'null');}catch{access=null;}
-async function loadPackages(){offer=await api({op:'offer'});$('packages').replaceChildren();if(!offer.open){notice('Booking requests are currently paused. You can review the packages below.');}for(const p of offer.packages){const card=text('article','', 'card');card.append(text('h2',p.title+(p.billing==='three_month'?' · 3 months':'')),text('p',(p.priceType==='from'?'From ':'')+money(p.amount)+(p.billing==='once'?'':' / month'),'price'),text('p',p.includes));if(p.videoStyles?.length){const choices=text('div','','style-summary');choices.append(text('h3','Two ways to tell your story'));for(const style of p.videoStyles){choices.append(text('h4',style.title),text('p',style.description));}card.append(choices);}const ul=document.createElement('ul');for(const s of [p.videoLengthNote,p.channels,p.turnaround,p.billingDescription].filter(Boolean))ul.append(text('li',s));card.append(text('p',(p.durationMinutes/60)+' hours on location · '+(p.billing==='once'?'One-time booking':'Monthly plan'),'duration'),ul);const details=document.createElement('details');details.append(text('summary','What’s included & usage'),text('p',p.revisions),text('p',p.usageRights),text('p',p.priceNote));card.append(details);const b=text('button',offer.open?'Choose package →':'Requests paused');b.disabled=!offer.open;b.dataset.unavailable=String(!offer.open);b.addEventListener('click',()=>choose(p));card.append(b);$('packages').append(card);}}
-function choose(p){availabilityVersion++;selected=p;$('videoStyleOptions').replaceChildren();$('videoStyles').hidden=!p.videoStyles?.length;for(const style of p.videoStyles||[]){const label=text('label','','video-style'),input=document.createElement('input');input.type='radio';input.name='videoStyleId';input.value=style.id;input.required=true;const copy=text('span','');copy.append(text('strong',style.title),text('span',style.description));label.append(input,copy);$('videoStyleOptions').append(label);}$('availability').textContent='';$('requestPanel').hidden=false;$('selectedTitle').textContent=p.title;$('selectedTerms').textContent=p.billingDescription+' Filming times are shown in '+offer.timeZone+'.';form.date.replaceChildren(new Option('Choose a date',''));for(const date of (offer.datesByPackage?.[p.id]||offer.dates))form.date.add(new Option(date,date));form.slotStart.replaceChildren(new Option('Choose a date first',''));if(form.date.options.length===1)$('availability').textContent='No dates are currently open for this service. Please check back or contact Chris.';$('requestPanel').scrollIntoView({behavior:'smooth',block:'start'});}
+const packageDescriptions = {
+    'promotional-video': 'Introduce your business with a showcase or a hands-on video with Chris.',
+    'event-coverage': 'Capture the people and highlights of your event in one edited recap.'
+};
+async function loadPackages() {
+    offer = await api({op: 'offer'});
+    const packages = $('packages');
+    packages.replaceChildren();
+    for (const service of offer.packages) {
+        const description = packageDescriptions[service.id];
+        const card = text('article', '', 'card booking-card');
+
+        const content = text('div', '', 'service-content');
+        const heading = text('div', '', 'service-heading');
+        const price = text('p', '', 'service-price');
+        if (service.priceType === 'from') price.append(text('small', 'From '));
+        price.append(document.createTextNode(money(service.amount)));
+        if (service.billing !== 'once') price.append(text('small', ' / month'));
+        heading.append(text('h2', service.title + (service.billing === 'three_month' ? ' · 3 months' : '')), price);
+        const filmingHours = service.durationMinutes / 60;
+        const filming = Number.isInteger(filmingHours)
+            ? 'Up to ' + filmingHours + (filmingHours === 1 ? ' hour' : ' hours') + ' filming'
+            : 'Up to ' + service.durationMinutes + ' min filming';
+        const videos = service.videoCount || 1;
+        const deliverables = text('p', (videos === 1 ? '1 finished video' : videos + ' finished videos') + ' · ' + filming, 'service-facts');
+        const button = text('button', offer.open ? 'Choose package →' : 'Requests paused');
+        button.disabled = !offer.open;
+        button.dataset.unavailable = String(!offer.open);
+        button.addEventListener('click', () => choose(service));
+        content.append(heading, text('p', description || service.includes, 'service-description'), deliverables);
+        if (!description) {
+            const details = document.createElement('details');
+            details.append(text('summary', 'Package details'), text('p', service.billingDescription),
+                text('p', service.channels), text('p', service.turnaround), text('p', service.usageRights));
+            content.append(details);
+        }
+        content.append(button);
+        card.append(content);
+        packages.append(card);
+    }
+}
+$('backToServices').onclick = () => {
+    availabilityVersion++;
+    $('requestPanel').hidden = true;
+    $('intro').hidden = false;
+    $('packages').hidden = false;
+    notice('');
+    $('bookingTitle').focus();
+};
+function choose(p){availabilityVersion++;selected=p;$('videoStyleOptions').replaceChildren();$('videoStyles').hidden=!p.videoStyles?.length;for(const style of p.videoStyles||[]){const label=text('label','','video-style'),input=document.createElement('input');input.type='radio';input.name='videoStyleId';input.value=style.id;input.required=true;const copy=text('span','');copy.append(text('strong',style.title),text('span',style.description));label.append(input,copy);$('videoStyleOptions').append(label);}$('availability').textContent='';notice('');$('intro').hidden=true;$('packages').hidden=true;$('requestPanel').hidden=false;$('selectedTitle').textContent=p.title;$('selectedTerms').textContent=p.billingDescription;form.date.replaceChildren(new Option('Choose a date',''));for(const date of (offer.datesByPackage?.[p.id]||offer.dates))form.date.add(new Option(date,date));form.slotStart.replaceChildren(new Option('Choose a date first',''));if(form.date.options.length===1)$('availability').textContent='No dates are currently open for this service. Please check back or contact Chris.';$('selectedTitle').focus({preventScroll:true});window.scrollTo(0,0);}
 form.date.addEventListener('change',async()=>{const seq=++availabilityVersion;if(!form.date.value){form.slotStart.replaceChildren(new Option('Choose a date first',''));$('availability').textContent='';return;}form.slotStart.replaceChildren(new Option('Loading…',''));$('availability').textContent='Checking Chris’s calendar…';try{const d=await api({op:'availability',date:form.date.value,packageId:selected.id});if(seq!==availabilityVersion)return;form.slotStart.replaceChildren(new Option('Choose a time',''));for(const s of d.slots)form.slotStart.add(new Option(when(s.start,s.timeZone),s.start));$('availability').textContent=d.slots.length?'Allow up to '+(selected.durationMinutes/60)+' hours on location. Times are Pacific Time.':'No filming times available that day. Choose another date.';}catch(e){if(seq===availabilityVersion){form.slotStart.replaceChildren(new Option('Choose another date',''));$('availability').textContent=e.message;}}});
 form.addEventListener('submit',e=>{e.preventDefault();action(async()=>{const payload=Object.fromEntries(new FormData(form));let pending;try{pending=JSON.parse(sessionStorage.getItem('cs_booking_pending'));}catch{}const fingerprint=JSON.stringify(payload);if(!pending||pending.fingerprint!==fingerprint){pending={fingerprint,token:Array.from(crypto.getRandomValues(new Uint8Array(32)),n=>n.toString(16).padStart(2,'0')).join('')};sessionStorage.setItem('cs_booking_pending',JSON.stringify(pending));}const r=await api({...payload,op:'submit',packageId:selected.id,offerRevision:offer.revision,token:pending.token,requestAcknowledged:form.requestAcknowledged.checked});saveAccess({id:r.id,token:pending.token});sessionStorage.removeItem('cs_booking_pending');await loadOrder();notice('Request saved. No payment has been taken.');});});
 function agreementText(){const d=order.agreement.document;return [d.provider,d.customer,order.package.title,order.package.billingDescription,order.package.includes,order.videoStyle?'Video style: '+order.videoStyle.title+' — '+order.videoStyle.description:'',order.package.videoLengthNote||'','Posting channels: '+order.package.channels,'Turnaround: '+order.package.turnaround,'Revisions: '+order.package.revisions,'Content usage: '+order.package.usageRights,order.package.priceNote,order.paymentDueAt?'Payment deadline: '+when(order.paymentDueAt,order.slot.timeZone):'','Agreement version: '+d.version,'Filming: '+when(order.slot.start,order.slot.timeZone),'Location: '+order.location,'Video idea: '+order.brief,d.terms,d.exclusivityTerms||'',order.exclusivity?'Category: '+order.exclusivity.category+' · Market: '+order.exclusivity.market+' · Exceptions: '+order.exclusivity.exceptions:'',order.signature?'Signed by '+order.signature.name+' · '+order.signature.title+' · '+when(order.signature.signedAt,order.slot.timeZone):'','Agreement reference: '+order.agreement.hash].join('\n\n');}
