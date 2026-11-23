@@ -110,6 +110,7 @@ function showMonth(month) {
         days.append(button);
     }
     $('calendarEmpty').hidden = availableThisMonth;
+    $('calendarLegend').hidden = !availableThisMonth;
 }
 
 $('previousMonth').onclick = () => showMonth(monthAfter(displayedMonth, -1));
