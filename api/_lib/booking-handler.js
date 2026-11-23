@@ -7,7 +7,7 @@ const {bodyIsTooLarge,parseBody,sendJson}=require('./http');
 module.exports=async(req,res)=>{
     if(req.method!=='POST')return sendJson(res,405,{error:'POST required.'});
     const host = req.headers.host;
-    if (!['www.chriscerney.org', 'cerneyselects.com'].includes(host)) {
+    if (host !== 'www.chriscerney.org') {
         return sendJson(res, 404, { error: 'Not found.' });
     }
     if (req.headers.origin !== `https://${host}`) {

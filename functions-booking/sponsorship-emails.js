@@ -1,5 +1,5 @@
 'use strict';
-const SITE='https://cerneyselects.com';
+const SITE='https://www.chriscerney.org';
 function emailJobs(r,type,now){
     const formatter = new Intl.DateTimeFormat('en-US',{timeZone:r.slot.timeZone,dateStyle:'full',timeStyle:'short'});
     const when = formatter.format(new Date(r.slot.start))+' ('+r.slot.timeZone+')';
@@ -13,7 +13,7 @@ function emailJobs(r,type,now){
     if(type==='requested')return [job('request-owner','cerneymedia@gmail.com',`${r.business} requested a booking`,`${details}\n\nReview and accept or decline:\n${ownerLink}\n\nThe requested time is not reserved until you accept.`),
         job('request-client',r.email,'Your video / event coverage request',`Hi ${r.name},\n\nYour request for ${r.business} is in. I’ll review your idea and the filming time: ${when}.\n\nNo agreement has been signed and no payment has been taken.\n\nKeep this private link to view your request:\n${privateLink}\n\nChris`)];
     if(type==='approved')return [job('approved-client',r.email,'Your filming time is approved — agreement and invoice',`Hi ${r.name},\n\nI’ve approved your video / event coverage for ${r.business} and reserved ${when}.\n\n${summary}${due}\n\nReview and accept the full agreement here, then complete payment through Stripe:\n${privateLink}\n\nYour booking is complete once the agreement is signed and the initial payment is received.\n\nChris`)];
-    if(type==='invoice')return [job('invoice-client',r.email,'Your Cerney Selects booking invoice',
+    if(type==='invoice')return [job('invoice-client',r.email,'Your Chris Cerney booking invoice',
         `Hi ${r.name},\n\nChris approved the filming request for ${r.business}, and we received your signed agreement. Your invoice for ${money} is ready.${due}\n\nPay securely through Stripe:\n${r.invoiceUrl}\n\nReview your booking details:\n${privateLink}\n\nCerney Media Team`)];
     if(type==='declined')return [job('declined-client',r.email,'An update on your video / event coverage request',`Hi ${r.name},\n\nI’m unable to accept this request for ${r.business}.${r.declineReason?'\n\n'+r.declineReason:''}\n\nNo payment has been taken.\n\nChris`)];
     if (type === 'late-payment') return [job('late-payment-owner', 'cerneymedia@gmail.com',

@@ -1,7 +1,7 @@
 'use strict';
 const core=require('./sponsorship-core');
 const {slotInterval,localTimeToUtc,overlaps}=require('./sponsorship-schedule');
-const SITE='https://cerneyselects.com';
+const SITE='https://www.chriscerney.org';
 function createCalendar({auth,fetchImpl=fetch}){
     async function request(path,{method='GET',body}={}){
         const client=await auth.getClient(),token=await client.getAccessToken();

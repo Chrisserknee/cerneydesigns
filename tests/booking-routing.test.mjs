@@ -14,4 +14,34 @@ test('public visitors can see the packages while the owner screen and scripts st
         assert.equal((await middleware(new Request('https://www.chriscerney.org'+path))).status,401);
     }
 });
-test('booking is unavailable through alternate hosts or encoded paths',async()=>{for(const host of ['preview.cerneyselects.com','example.vercel.app'])for(const path of ['/book/','/book/app.js','/api/booking','/api/booking/'])assert.equal((await middleware(new Request('https://'+host+path))).status,404);for(const path of ['/%62ook/','/book%2findex.html','/api/%62ooking'])assert.equal((await middleware(new Request('https://cerneyselects.com'+path))).status,400);});
+test('legacy booking links forward to ChrisCerney.org, preserving owner request queries', async () => {
+    for (const host of ['cerneyselects.com', 'www.cerneyselects.com']) {
+        for (const [path, destination] of [
+            ['/book', '/book/'],
+            ['/book/index.html', '/book/'],
+            ['/book/manage/?request=fixture', '/book/manage/?request=fixture'],
+        ]) {
+            const response = await middleware(new Request(`https://${host}${path}`));
+            assert.equal(response.status, 307);
+            assert.equal(response.headers.get('location'), `https://www.chriscerney.org${destination}`);
+            assert.match(response.headers.get('cache-control'), /no-store/);
+        }
+        assert.equal((await middleware(new Request(`https://${host}/book/`, { method: 'POST' }))).status, 404);
+        for (const path of ['/book/app.js', '/book/manage.js', '/api/booking']) {
+            assert.equal((await middleware(new Request(`https://${host}${path}`))).status, 404);
+        }
+    }
+});
+
+test('booking is unavailable through preview or encoded paths', async () => {
+    for (const host of ['preview.cerneyselects.com', 'example.vercel.app']) {
+        for (const path of ['/book/', '/book/app.js', '/api/booking', '/api/booking/']) {
+            assert.equal((await middleware(new Request(`https://${host}${path}`))).status, 404);
+        }
+    }
+    for (const host of ['cerneyselects.com', 'www.chriscerney.org']) {
+        for (const path of ['/%62ook/', '/book%2findex.html', '/api/%62ooking']) {
+            assert.equal((await middleware(new Request(`https://${host}${path}`))).status, 400);
+        }
+    }
+});
