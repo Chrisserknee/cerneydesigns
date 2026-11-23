@@ -35,6 +35,7 @@ function packageConfig(p){
         includes:field(p.includes,'package inclusions',3000),channels:field(p.channels,'posting channels',500),turnaround:field(p.turnaround,'turnaround',500),
         revisions:field(p.revisions,'revisions',500),priceNote:field(p.priceNote||'','price details',500,false),
         usageRights:field(p.usageRights||'Published on Chris’s channels only. No website use, reposting, footage delivery, or repurposing without a separate written agreement.','content rights',1000)};
+    if (id === 'event-coverage' && p.windowEndIsLatestStart === true) result.windowEndIsLatestStart = true;
     if(p.maxVideoSeconds!=null){if(!Number.isInteger(p.maxVideoSeconds)||p.maxVideoSeconds<1||p.maxVideoSeconds>3600)fail('Set a valid finished video length.');result.maxVideoSeconds=p.maxVideoSeconds;}
     if(p.videoLengthNote)result.videoLengthNote=field(p.videoLengthNote,'finished video length details',500);
     if(p.videoStyles!=null){

@@ -7,6 +7,9 @@ window.BookingScheduleEditor=class {
  render(c){
   this.root.replaceChildren();this.root.className='schedule-editor';
   this.root.append(this.node('h3','Your available filming dates'),this.node('p','Only the hours you open can be requested. Busy times on connected Google calendars and approved booking holds are removed automatically. All times use '+c.timeZone+'.'));
+  if ((c.packages?.length ? c.packages : [c.package]).some(p => p?.windowEndIsLatestStart)) {
+   this.root.append(this.node('p','For event coverage, the end of each filming window is the latest start time. Allow up to three more hours for filming.'));
+  }
   const modeLabel=this.node('label','Availability'),mode=this.node('select');mode.id='availabilityMode';
   for(const [value,label] of [['dates','Only dates I choose'],['weekly','Repeat my weekly hours']])mode.add(new Option(label,value));mode.value=c.availabilityMode||'weekly';modeLabel.append(mode);this.mode=mode;this.root.append(modeLabel);
   this.weekly=this.node('div');this.weekly.className='weekly-hours';this.days=[];

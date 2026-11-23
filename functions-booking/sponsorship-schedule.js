@@ -44,15 +44,18 @@ function windowsFor(config,date){
     const day=new Date(date+'T12:00:00Z').getUTCDay();
     return (config.weeklyWindows||[]).filter(w=>w.day===day).map(w=>({...w,date}));
 }
+function latestStart(windowEnd, videoPackage) {
+    return videoPackage.windowEndIsLatestStart ? windowEnd : windowEnd - videoPackage.durationMinutes * MINUTE;
+}
 function offeredDates(config,now){
     const first=localDate(now,config.timeZone),dates=[];
-    const durations=(config.packages?.length?config.packages:[config.package]).filter(Boolean).map(p=>p.durationMinutes);
-    const duration=Math.min(...durations,480)*MINUTE;
+    const packages=(config.packages?.length?config.packages:[config.package]).filter(Boolean);
+    const earliest=now+config.leadHours*3600000;
     for(let i=0;i<(config.bookingHorizonDays||60);i++){
         const date=new Date(Date.parse(first+'T12:00:00Z')+i*86400000).toISOString().slice(0,10);
         if(windowsFor(config,date).some(w=>{
             const start=localTimeToUtc(date,w.start,config.timeZone),end=localTimeToUtc(date,w.end,config.timeZone);
-            return end-start>=duration&&end-duration>=now+config.leadHours*3600000;
+            return packages.some(pack => latestStart(end, pack) >= Math.max(start, earliest));
         }))dates.push(date);
     }
     return dates;
@@ -64,7 +67,8 @@ function buildSlots(config,date,busy,holds,now=Date.now(),ignoreId=''){
     const duration=config.package.durationMinutes,slots=[];
     for(const window of windowsFor(config,date)){
         const start=localTimeToUtc(date,window.start,config.timeZone),end=localTimeToUtc(date,window.end,config.timeZone);
-        for(let at=start;at+duration*MINUTE<=end;at+=30*MINUTE){
+        const cutoff = latestStart(end, config.package);
+        for(let at=start;at<=cutoff;at+=30*MINUTE){
             if(at<now+config.leadHours*3600000)continue;
             const slot={start:new Date(at).toISOString(),end:new Date(at+duration*MINUTE).toISOString(),timeZone:config.timeZone,bufferBefore:config.bufferBefore,bufferAfter:config.bufferAfter};
             const range=slotInterval(slot);

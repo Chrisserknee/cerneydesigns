@@ -15,8 +15,8 @@ test('selected dates never fall back to weekly hours; closed-only dates cannot o
  assert.deepEqual(windowsFor(c,'2026-10-27'),[]);assert.deepEqual(offeredDates(c,fixedNow),[]);
  assert.throws(()=>validateConfig({...c,enabled:true,terms:{...c.terms,approved:true}},{revision:1}),/filming hours/);
 });
-test('each package has dates long enough for filming; paused offers reveal none',async()=>{
- const h=await setup();await h.store.change(s=>{s.config.windows=[{date:'2026-10-20',start:'09:00',end:'11:00'}];});
+test('finish-by packages need a full filming window; paused offers reveal no dates',async()=>{
+ const h=await setup();await h.store.change(s=>{s.config.windows=[{date:'2026-10-20',start:'09:00',end:'11:00'}];delete s.config.packages[1].windowEndIsLatestStart;});
  let offer=await h.workflow.handle({op:'offer'});assert.deepEqual(offer.datesByPackage['promotional-video'],['2026-10-20']);assert.deepEqual(offer.datesByPackage['event-coverage'],[]);
  await h.store.change(s=>s.config.enabled=false);offer=await h.workflow.handle({op:'offer'});assert.deepEqual(offer.dates,[]);assert.ok(Object.values(offer.datesByPackage).every(d=>!d.length));
 });
@@ -104,4 +104,23 @@ test('booking deadline matches the agreement and invoice, and late payments need
  assert.equal(h.metrics.confirmations,0);
  assert.ok(state.outbox[id+'-late-payment-owner']);
  assert.equal(state.outbox[id+'-paid-client'],undefined);
+});
+
+test('event requests can start at the 6 p.m. cutoff and reserve three hours', async () => {
+ const h=await setup(), date='2026-10-20', packageId='event-coverage';
+ await h.store.change(s=>{s.config.windows=[{date,start:'12:00',end:'18:00'}];});
+ const lateStart='2026-10-21T01:00:00.000Z', lateEnd='2026-10-21T04:00:00.000Z';
+ const availability=()=>h.workflow.handle({op:'availability',date,packageId});
+ assert.equal((await availability()).slots.at(-1).start,lateStart);
+ assert.equal((await availability()).slots.at(-1).end,lateEnd);
+ const promo=await h.workflow.handle({op:'availability',date,packageId:'promotional-video'});
+ assert.equal(promo.slots.at(-1).start,'2026-10-20T23:00:00.000Z');
+ h.calendar.external=[{start:Date.parse(lateEnd),end:Date.parse(lateEnd)+600000}];
+ assert.equal((await availability()).slots.some(slot=>slot.start===lateStart),false);
+ h.calendar.external=[];
+ const {id}=await h.submit(undefined,{packageId,slotStart:lateStart,category:'Event',market:'Test city'});
+ const approved=await h.workflow.handle({op:'approve',id});
+ assert.equal(approved.slot.start,lateStart);
+ assert.equal(approved.slot.end,lateEnd);
+ assert.equal(h.metrics.holds,1);
 });

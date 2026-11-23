@@ -14,7 +14,7 @@ const packages=[
     {...common,id:'promotional-video',title:'Promotional video',amount:100000,priceType:'from',durationMinutes:120,videoStyles,videoLengthNote:'Usually a shorter, focused video. Finished video: up to 2 minutes 59 seconds.',
         includes:'Choose a business showcase or a fun, hands-on video with Chris Cerney. Includes one finished video and up to two hours of filming. Chris confirms the concept and final price before you sign.',
         priceNote:'Starts at $1,000. Chris confirms the final price and scope when approving your request. No payment is taken when you request a date.'},
-    {...common,id:'event-coverage',title:'Event coverage',amount:175000,priceType:'fixed',durationMinutes:180,videoLengthNote:'Usually a longer recap than a promotional video. Finished video: up to 2 minutes 59 seconds.',
+    {...common,id:'event-coverage',title:'Event coverage',amount:175000,priceType:'fixed',durationMinutes:180,windowEndIsLatestStart:true,videoLengthNote:'Usually a longer recap than a promotional video. Finished video: up to 2 minutes 59 seconds.',
         includes:'Capture the atmosphere, people, and highlights of your event with Chris Cerney. Includes one finished recap video and up to three hours of filming on location. Chris confirms the coverage plan before you sign.',
         priceNote:'$1,750 for up to three hours of event coverage. Longer events or additional work need a separate agreement.'}
 ];
