@@ -16,7 +16,28 @@ function localTimeToUtc(date,time,timeZone){
     return result;
 }
 const overlaps=(a,b)=>a.start<b.end&&a.end>b.start;
+// Input is the filming date in the booking calendar's time zone.
+function isFilmingHoliday(date) {
+    const noon = Date.parse(date + 'T12:00:00Z');
+    const day = new Date(noon).getUTCDay();
+    const fixedDates = ['01-01', '06-19', '07-04', '11-11', '12-25'];
+    const monthDay = date.slice(5);
+    if (fixedDates.includes(monthDay)) return true;
+    // Friday observes a Saturday holiday, Monday observes a Sunday holiday.
+    const offset = day === 5 ? 1 : day === 1 ? -1 : 0;
+    if (offset && fixedDates.includes(new Date(noon + offset * 86400000).toISOString().slice(5, 10))) return true;
+    const month = Number(date.slice(5, 7));
+    const dom = Number(date.slice(8));
+    const week = Math.ceil(dom / 7);
+    if (day === 4 && month === 11 && week === 4) return true; // Thanksgiving
+    if (day !== 1) return false;
+    return ((month === 1 || month === 2) && week === 3)
+        || (month === 5 && dom >= 25)
+        || (month === 9 && week === 1)
+        || (month === 10 && week === 2);
+}
 function windowsFor(config,date){
+    if (isFilmingHoliday(date)) return [];
     const override=config.windows.find(w=>w.date===date);
     if(override)return override.closed?[]:[override];
     if(config.availabilityMode==='dates')return [];
