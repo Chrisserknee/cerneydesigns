@@ -7,29 +7,30 @@
 
 /* Public booking. These styles are scoped away from the owner screens. */
 .booking-page {
-    --bg: #101418;
-    --panel: #181f25;
-    --line: #39434a;
-    --ink: #f5f1e9;
-    --muted: #b9c0c4;
-    --blue: #e3c69b;
-    font-family: "DM Sans", system-ui, sans-serif;
-    background: radial-gradient(ellipse at 78% 4%, #1c2934 0, transparent 52%), var(--bg);
+    --bg: #111f2c;
+    --panel: #162635;
+    --line: #3d5770;
+    --ink: #eff8ff;
+    --muted: #bdcfdd;
+    --blue: #b9def5;
+    font-family: Inter, system-ui, sans-serif;
+    background: radial-gradient(ellipse at 12% 0%, #24465f 0, transparent 56%), var(--bg);
     min-height: 100vh;
 }
 
 .booking-page header {
-    padding: 16px max(24px, calc((100% - 1100px) / 2));
-    border-color: #ffffff1f;
+    padding: 11px max(24px, calc((100% - 1100px) / 2));
+    border-color: #a3c8e34d;
+    background: linear-gradient(110deg, #2c668d, #24465f);
+    box-shadow: 0 5px 30px #07172433;
 }
 
 .booking-page .brand {
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: .12em;
+    font: 700 22px/1 "Barlow Condensed", "Arial Narrow", sans-serif;
+    letter-spacing: .04em;
 }
 
-.booking-page .brand span { color: #bccbd6; }
+.booking-page .brand span { color: var(--blue); }
 
 .booking-page header > .secondary,
 .booking-page #backToServices {
@@ -40,6 +41,17 @@
     font-size: 14px;
     font-weight: 500;
 }
+
+.booking-page header > .secondary {
+    border: 1px solid #a3c8e36b;
+    border-radius: 5px;
+    padding: 6px 11px;
+    color: var(--ink);
+    font-size: 12px;
+    text-decoration: none;
+}
+
+.booking-page header > .secondary:hover { background: #ffffff12; }
 
 .booking-page header > .secondary:hover,
 .booking-page #backToServices:hover { color: var(--ink); }
@@ -82,15 +94,16 @@
 
 .booking-page .booking-card {
     padding: 0;
-    border: 1px solid #4a514f;
+    border: 1px solid #61829d;
     border-radius: 15px;
-    background: linear-gradient(148deg, #25313a 0%, #1b232a 62%, #171d23 100%);
+    background: linear-gradient(148deg, #29455c 0%, #203447 59%, #182a3a 100%);
+    box-shadow: inset 0 1px #e0f1ff12, 0 12px 30px #0a172640;
     overflow: clip;
     min-width: 0;
 }
 
 .booking-page .booking-card:nth-child(2) {
-    background: linear-gradient(148deg, #292d30 0%, #1f262d 60%, #181e23 100%);
+    background: linear-gradient(148deg, #304b60 0%, #253a4a 59%, #1b2d3c 100%);
 }
 
 .booking-page .service-content {
@@ -107,7 +120,8 @@
 
 .booking-page .service-heading h2 {
     margin: 0;
-    font: 400 clamp(38px, 4.1vw, 52px)/1.05 "Instrument Serif", Georgia, serif;
+    font: 700 clamp(26px, 3.1vw, 38px)/1.1 Inter, system-ui, sans-serif;
+    letter-spacing: -.045em;
 }
 
 .booking-page .service-price {
@@ -145,7 +159,7 @@
 .booking-page button:not(.secondary) {
     background: var(--blue);
     border: 1px solid var(--blue);
-    color: #22190f;
+    color: #102332;
     border-radius: 7px;
     font-weight: 700;
     font-size: 15px;
@@ -154,8 +168,8 @@
 }
 
 .booking-page button:not(.secondary):not(:disabled):hover {
-    background: #f0d8b3;
-    border-color: #f0d8b3;
+    background: #d0ecff;
+    border-color: #d0ecff;
 }
 
 .booking-page .booking-card button {
@@ -166,8 +180,8 @@
 
 .booking-page .booking-card button:disabled {
     color: var(--muted);
-    background: #ffffff08;
-    border-color: #ffffff24;
+    background: #c7e5fd0b;
+    border-color: #c7e5fd3b;
     opacity: 1;
 }
 
@@ -190,8 +204,8 @@
 .booking-page textarea,
 .booking-page select,
 .booking-page .terms {
-    background: #11171e;
-    border-color: #56616a;
+    background: #101c27;
+    border-color: #47647c;
 }
 
 .booking-page textarea { min-height: 104px; }
@@ -219,6 +233,7 @@
 
 @media (max-width: 680px) {
     .booking-page header { padding-inline: 18px; }
+    .booking-page .brand { font-size: 20px; }
     .booking-page main,
     .booking-page .booking-footer { width: calc(100% - 36px); }
     .booking-page .booking-intro { margin: 38px 0 26px; }
