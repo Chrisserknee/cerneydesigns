@@ -40,8 +40,15 @@ export default async function middleware(request: Request) {
     const bookingPath = /^\/book(?:\/|$)/.test(url.pathname);
     const bookingApi = /^\/api\/booking\/?$/.test(url.pathname);
     if (bookingPath || bookingApi) {
-        if (!selects || staging || path.encoded) return new Response('Not found.', {status:404, headers:previewHeaders});
-        if (url.hostname !== 'cerneyselects.com') {url.hostname='cerneyselects.com';return Response.redirect(url,308);}
+        const bookingHost = 'www.chriscerney.org';
+        const legacyBookingHost = 'cerneyselects.com';
+        if (![bookingHost, legacyBookingHost, 'chriscerney.org', 'www.cerneyselects.com'].includes(url.hostname)) {
+            return new Response('Not found.', { status: 404, headers: previewHeaders });
+        }
+        if (url.hostname === 'chriscerney.org' || url.hostname === 'www.cerneyselects.com') {
+            url.hostname = url.hostname === 'chriscerney.org' ? bookingHost : legacyBookingHost;
+            return Response.redirect(url, 308);
+        }
         if (bookingApi) return next({headers:previewHeaders});
         const publicBookingPage = ['/book','/book/','/book/index.html','/book/app.js','/book/style.css','/book/login.js'].includes(url.pathname);
         if (!publicBookingPage && !bookingAccess.authenticated(request.headers.get('cookie'))) {

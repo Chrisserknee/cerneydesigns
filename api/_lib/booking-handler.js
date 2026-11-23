@@ -6,8 +6,13 @@ const {isAuthenticated}=require('./admin-auth');
 const {bodyIsTooLarge,parseBody,sendJson}=require('./http');
 module.exports=async(req,res)=>{
     if(req.method!=='POST')return sendJson(res,405,{error:'POST required.'});
-    const origin='https://cerneyselects.com';
-    if(req.headers.origin!==new URL(origin).origin)return sendJson(res,403,{error:'Request origin is not allowed.'});
+    const host = req.headers.host;
+    if (!['www.chriscerney.org', 'cerneyselects.com'].includes(host)) {
+        return sendJson(res, 404, { error: 'Not found.' });
+    }
+    if (req.headers.origin !== `https://${host}`) {
+        return sendJson(res, 403, { error: 'Request origin is not allowed.' });
+    }
     if(!String(req.headers['content-type']||'').startsWith('application/json'))return sendJson(res,415,{error:'JSON required.'});
     if(bodyIsTooLarge(req,50000))return sendJson(res,413,{error:'Request is too large.'});
     let body;try{body=parseBody(req);}catch{return sendJson(res,400,{error:'Invalid JSON.'});}

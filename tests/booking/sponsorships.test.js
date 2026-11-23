@@ -34,8 +34,10 @@ test('gateway checks origin, closed booking and admin authentication before back
     const invoke=async(op,headers)=>{const r={setHeader(){},status(code){this.code=code;return this;},json(data){this.data=data;return this;}};await handler({method:'POST',headers,body:{op}},r);return r;};
     try{
         const access=require('../../api/_lib/booking-auth');process.env.BOOKING_SESSION_SECRET='fixture'.repeat(10);process.env.BOOKING_PASSWORD_HASH='scrypt:fixture:fixture';
-        const headers={cookie:access.issue().split(';')[0],origin:'https://cerneyselects.com','content-type':'application/json'};
+        const headers={cookie:access.issue().split(';')[0],host:'www.chriscerney.org',origin:'https://www.chriscerney.org','content-type':'application/json'};
         assert.equal((await invoke('offer',{...headers,cookie:''})).code,503);assert.equal((await invoke('offer',headers)).code,503);assert.equal((await invoke('offer',{...headers,origin:'https://attacker.test'})).code,403);
+        assert.equal((await invoke('offer',{...headers,host:'cerneyselects.com'})).code,403);
+        assert.equal((await invoke('offer',{...headers,host:'preview.cerneyselects.com'})).code,404);
         for(const op of ['list','approve','decline','settings','save-settings'])assert.equal((await invoke(op,headers)).code,401);
     }finally{if(old===undefined)delete process.env.BOOKING_ENABLED;else process.env.BOOKING_ENABLED=old;}
 });
