@@ -43,8 +43,8 @@ export default async function middleware(request: Request) {
         if (!selects || staging || path.encoded) return new Response('Not found.', {status:404, headers:previewHeaders});
         if (url.hostname !== 'cerneyselects.com') {url.hostname='cerneyselects.com';return Response.redirect(url,308);}
         if (bookingApi) return next({headers:previewHeaders});
-        const loginAsset = ['/book/style.css','/book/login.js'].includes(url.pathname);
-        if (!loginAsset && !bookingAccess.authenticated(request.headers.get('cookie'))) {
+        const publicBookingPage = ['/book','/book/','/book/index.html','/book/app.js','/book/style.css','/book/login.js'].includes(url.pathname);
+        if (!publicBookingPage && !bookingAccess.authenticated(request.headers.get('cookie'))) {
             if (!['/book','/book/','/book/index.html','/book/manage','/book/manage/','/book/manage.html'].includes(url.pathname)) return new Response('Sign in at /book.', {status:401,headers:previewHeaders});
             url.pathname='/book/login.html';
             return rewrite(url,{headers:{...previewHeaders,'Content-Security-Policy':directoryCsp,'Referrer-Policy':'no-referrer'}});

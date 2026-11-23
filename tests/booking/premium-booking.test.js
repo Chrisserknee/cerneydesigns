@@ -32,7 +32,13 @@ test('approval quote must meet starting price and freezes in agreement and invoi
  assert.equal(h.metrics.holds,0);
  const approved=await h.workflow.handle({op:'approve',id,quoteAmount:125000,approvedScope:'One edited promotional video. Two hours filming. Agreed delivery.'});assert.equal(approved.agreement.document.package.amount,125000);assert.equal(approved.package.priceType,'fixed');assert.match(approved.package.billingDescription,/1,250.00 once/);
  await h.workflow.handle({op:'approve',id,quoteAmount:200000});assert.equal((await h.store.read()).orders[id].package.amount,125000);
- await h.sign(id);await h.workflow.handle({op:'checkout',id,token:'a'.repeat(64)});assert.equal([...h.invoices.values()][0].total,125000);assert.equal(h.metrics.issues,1);
+ assert.equal(h.metrics.issues,0);
+ await h.sign(id);
+ const invoiceMail=(await h.store.read()).outbox[id+'-invoice-client'];
+ assert.equal(invoiceMail.to,(await h.store.read()).orders[id].email);
+ assert.match(invoiceMail.text,/https:\/\/invoice\.stripe\.com\//);
+ assert.equal(h.metrics.issues,1);
+ await h.workflow.handle({op:'checkout',id,token:'a'.repeat(64)});assert.equal([...h.invoices.values()][0].total,125000);assert.equal(h.metrics.issues,1);
  const invoice=[...h.invoices.values()][0];invoice.status='paid';invoice.amount_paid=125000;await h.workflow.paymentReceived(invoice);await h.workflow.paymentReceived(invoice);assert.equal((await h.store.read()).orders[id].calendarConfirmed,true);assert.equal(h.metrics.confirmations,1);
 });
 test('fixed event stays $1750 and three hours through approval and payment; decline never bills',async()=>{

@@ -108,7 +108,7 @@ function createWorkflow({store,calendar,payments,now=Date.now,ready=()=>true,rec
             if(invoice.status==='paid'){await paymentReceived(invoice);return {paid:true};}
             if(invoice.status==='open'){
                 if(r.package.billing&&r.package.billing!=='once')await payments.verifyInitialPlan(r);
-                await calendar.verifyHold(r);return paymentLink(r,invoice);
+                await calendar.verifyHold(r);return deliverInvoice(r,invoice);
             }
             if(invoice.status!=='draft')core.fail('This invoice needs Chris’s attention.',409);
         }
@@ -121,7 +121,18 @@ function createWorkflow({store,calendar,payments,now=Date.now,ready=()=>true,rec
         const invoice=await payments.issue(r,save,now());
         await save({invoice:{id:invoice.id,number:invoice.number}});
         if(invoice.status==='paid'){await paymentReceived(invoice);return {paid:true};}
-        return paymentLink(orderFor(await store.read(),r.id),invoice);
+        return deliverInvoice(orderFor(await store.read(),r.id),invoice);
+    }
+    function premiumInvoice(order) {
+        return order.package.billing === 'once' && ['promotional-video', 'event-coverage'].includes(order.package.id);
+    }
+    async function deliverInvoice(order, invoice) {
+        const link = paymentLink(order, invoice);
+        if (premiumInvoice(order)) await store.change(state => {
+            const current = orderFor(state, order.id);
+            if (current.status === 'signed') queue(state, {...current, invoiceUrl:link.url}, 'invoice', now());
+        });
+        return link;
     }
     function paymentLink(r,invoice){
         let url;try{url=new URL(invoice.hosted_invoice_url);}catch{core.fail('The invoice link needs attention.',503);}
@@ -205,7 +216,10 @@ function createWorkflow({store,calendar,payments,now=Date.now,ready=()=>true,rec
         }
         if(b.op==='status')return core.publicRecord(authenticate(await store.read(),b));
         if(b.op==='sign'){
-            await store.change(s=>{const r=authenticate(s,b);s.orders[b.id]=core.sign(r,b,now());});return core.publicRecord(orderFor(await store.read(),b.id));
+            await store.change(s=>{const r=authenticate(s,b);s.orders[b.id]=core.sign(r,b,now());});
+            const signed = orderFor(await store.read(),b.id);
+            if (premiumInvoice(signed)) await pay(b);
+            return core.publicRecord(orderFor(await store.read(),b.id));
         }
         if(b.op==='checkout')return pay(b);
         if(b.op==='billing-invoice'){

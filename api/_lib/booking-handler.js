@@ -17,9 +17,9 @@ module.exports=async(req,res)=>{
         res.setHeader('Set-Cookie',access.issue());return sendJson(res,200,{authenticated:true});
     }
     if(body?.op==='logout'){res.setHeader('Set-Cookie',access.clear);return sendJson(res,200,{authenticated:false});}
-    if(!access.authenticated(req.headers.cookie))return sendJson(res,401,{error:'Enter the booking password to continue.',code:'BOOKING_LOGIN_REQUIRED'});
     if(!body||!['offer','availability','submit','status','sign','checkout','cancel-renewal','billing-invoice','list','approve','decline','settings','save-settings','draft-settings'].includes(body.op))return sendJson(res,400,{error:'Unknown action.'});
     const adminOperation=['list','approve','decline','settings','save-settings','draft-settings'].includes(body.op);
+    if(adminOperation&&!access.authenticated(req.headers.cookie))return sendJson(res,401,{error:'Enter the booking password to continue.',code:'BOOKING_LOGIN_REQUIRED'});
     if(adminOperation&&!isAuthenticated(req))return sendJson(res,401,{error:'Sign in at /book/manage/ first.'});
     if(!adminOperation&&process.env.BOOKING_ENABLED!=='true')return sendJson(res,503,{error:'Online booking is being set up. Contact cerneymedia@gmail.com.'});
     const secret=process.env.BOOKING_PROXY_SECRET||'';
