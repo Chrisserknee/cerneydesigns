@@ -58,3 +58,28 @@ test('custom billing draft is attached only after authenticated Hare review',asy
  assert.equal(result.body.commercialDraft.initialAmount,15000);assert.equal(result.body.commercialDraft.monthlyAmount,25000);
  const other=await invoke(request({op:'review',token}),async()=>({applicationId:'sub_other'}));assert.equal(other.body.commercialDraft,undefined);
 });
+
+test('authenticated listing review returns advisory specialty matches and all reserved specialties', async () => {
+    const { reviewPartnerships } = require('../api/_lib/spotlight-exclusivity');
+    const listings = [
+        { id: 'hvac', businessName: 'HVAC Member', membershipBadge: 'featured-partner' },
+        { id: 'plumber', businessName: 'Plumbing Member', featured: { specialty: 'Plumbing' } },
+    ];
+    const result = { decisionAllowed: true, applicationId: 'sub_test', business: { businessName: 'Peninsula Services',
+        category: 'Professional Services', description: 'We handle design-build and plumbing projects.' } };
+    const handler = createHandler({ call: async () => result, getConfig: () => ({ siteUrl }),
+        partnerships: application => reviewPartnerships(application, listings) });
+    const r = response();
+    await handler(request({ op: 'review', token }), r);
+    assert.equal(r.body.decisionAllowed, true);
+    assert.deepEqual(r.body.exclusivity.partners.filter(p => p.possibleMatch).map(p => p.holder),
+        ['Hare Construction Inc.', 'Plumbing Member']);
+    assert.equal(r.body.exclusivity.partners.length, 3);
+    result.business.description = 'Advice from an auto accident attorney';
+    assert.deepEqual(reviewPartnerships(result, []).partners.filter(p => p.possibleMatch).map(p => p.holder), ['Dunnion Law']);
+    result.business.description = 'Real estate and mortgage lending services';
+    assert.equal(reviewPartnerships(result, []).partners.some(p => p.possibleMatch), false);
+    assert.equal(reviewPartnerships(result, undefined).incomplete, true);
+    const selfId = crypto.createHash('sha256').update('spotlight:sub_test').digest('hex').slice(0, 20);
+    assert.equal(reviewPartnerships(result, [{ ...listings[1], id: selfId }]).partners.length, 2);
+});

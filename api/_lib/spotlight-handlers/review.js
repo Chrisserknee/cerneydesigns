@@ -5,7 +5,9 @@ const { config, sameOrigin } = require('../spotlight');
 const { reviewDraft } = require('../spotlight-custom-plans');
 const { callModeration } = require('../spotlight-moderation');
 
-function createHandler({ call = callModeration, getConfig = config } = {}) {
+const { loadReviewPartnerships } = require('../spotlight-exclusivity');
+
+function createHandler({ partnerships = loadReviewPartnerships, call = callModeration, getConfig = config } = {}) {
     return async (request, response) => {
         if (request.method !== 'POST') {
             response.setHeader('Allow', 'POST');
@@ -23,7 +25,9 @@ function createHandler({ call = callModeration, getConfig = config } = {}) {
             const payload = { token: body.token, ...(body.op === 'decide' ? { decision: body.decision, reason: body.decision === 'decline' ? body.reason.trim() : '', confirmed: true, ...(typeof body.useBanner === 'boolean' ? { useBanner: body.useBanner, bannerVersion: body.bannerVersion } : {}) } : {}), ...(body.op === 'member-quote' ? { decision: body.decision, decisionId: body.decisionId, confirmed: body.confirmed === true, specialty: body.specialty, scope: body.scope, amount: body.amount } : {}) };
             const result = await call(body.op, payload);
             const commercialDraft = body.op === 'review' ? reviewDraft(result.applicationId) : null;
-            return sendJson(response, 200, { ...result, ...(commercialDraft ? { commercialDraft } : {}) });
+            const exclusivity = body.op === 'review' && result.business && result.decisionAllowed
+                ? await partnerships(result) : null;
+            return sendJson(response, 200, { ...result, ...(exclusivity ? { exclusivity } : {}), ...(commercialDraft ? { commercialDraft } : {}) });
         } catch (error) {
             const status = [400, 401, 403, 404, 409, 410, 422, 429, 503].includes(error.status) ? error.status : 502;
             return sendJson(response, status, { error: status === 502 ? 'Review is temporarily unavailable. Please try again.' : error.message, code: error.code || 'REVIEW_UNAVAILABLE' });

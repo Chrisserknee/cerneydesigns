@@ -92,6 +92,25 @@
         $('reviewDue').textContent = Number.isNaN(due.getTime()) ? '' : `Review by ${new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/Los_Angeles', timeZoneName: 'short' }).format(due)}`;
         const labels = { pending: 'Awaiting your review', approving: 'Approval processing', approved: 'Approved', declining: 'Decline processing', declined: 'Declined', needs_attention: 'Needs attention' };
         $('reviewStatus').textContent = labels[data.status] || 'Checking status';
+        const report = data.exclusivity;
+        if (report) {
+            const matches = report.partners.filter(partner => partner.possibleMatch);
+            $('partnershipTitle').textContent = matches.length ? 'Possible overlap with an exclusive partner' : 'Exclusive partnerships to check';
+            $('partnershipReview').classList.toggle('possible-overlap', matches.length > 0 || report.incomplete);
+            $('partnershipNote').textContent = [
+                matches.length ? 'Double-check the services below before approving this application.' : 'Compare the applicant’s services with these reserved specialties before approving.',
+                report.incomplete ? 'Live specialty reservations could not be loaded. Refresh or verify them manually.' : '',
+            ].filter(Boolean).join(' ');
+            const ordered = [...matches, ...report.partners.filter(partner => !partner.possibleMatch)];
+            $('partnershipList').replaceChildren(...ordered.map(partner => {
+                const item = document.createElement('li');
+                const name = document.createElement(partner.possibleMatch ? 'strong' : 'span');
+                name.textContent = partner.holder + ' · ' + partner.specialty;
+                item.append(name);
+                return item;
+            }));
+        }
+        $('partnershipReview').hidden = !report;
         form.hidden = data.decisionAllowed !== true;
         let summary = '';
         if (data.status === 'approved') summary = 'Approved. This reviewed profile is eligible for the directory while its subscription remains paid and active. The applicant’s confirmation email is queued or sent.';
