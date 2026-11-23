@@ -1,7 +1,9 @@
 'use strict';
 const SITE='https://cerneyselects.com';
 function emailJobs(r,type,now){
-    const when=new Intl.DateTimeFormat('en-US',{timeZone:r.slot.timeZone,dateStyle:'full',timeStyle:'short'}).format(new Date(r.slot.start))+' ('+r.slot.timeZone+')';
+    const formatter = new Intl.DateTimeFormat('en-US',{timeZone:r.slot.timeZone,dateStyle:'full',timeStyle:'short'});
+    const when = formatter.format(new Date(r.slot.start))+' ('+r.slot.timeZone+')';
+    const due = r.paymentDueAt ? '\nPayment deadline: '+formatter.format(new Date(r.paymentDueAt))+' ('+r.slot.timeZone+')' : '';
     const money=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(r.package.amount/100);
     const privateLink=SITE+'/book/#'+new URLSearchParams({id:r.id,token:r.token});
     const ownerLink=SITE+'/book/manage/?request='+r.id;
@@ -10,10 +12,13 @@ function emailJobs(r,type,now){
     const job=(suffix,to,subject,text)=>({id:r.id+'-'+suffix,type:suffix,to,subject,text,state:'queued',attempts:0,createdAt:now});
     if(type==='requested')return [job('request-owner','cerneymedia@gmail.com',`${r.business} requested a booking`,`${details}\n\nReview and accept or decline:\n${ownerLink}\n\nThe requested time is not reserved until you accept.`),
         job('request-client',r.email,'Your video / event coverage request',`Hi ${r.name},\n\nYour request for ${r.business} is in. I’ll review your idea and the filming time: ${when}.\n\nNo agreement has been signed and no payment has been taken.\n\nKeep this private link to view your request:\n${privateLink}\n\nChris`)];
-    if(type==='approved')return [job('approved-client',r.email,'Your filming time is approved — agreement and invoice',`Hi ${r.name},\n\nI’ve approved your video / event coverage for ${r.business} and reserved ${when}.\n\n${summary}\n\nReview and accept the full agreement here, then complete payment through Stripe:\n${privateLink}\n\nYour booking is complete once the agreement is signed and the initial payment is received.\n\nChris`)];
+    if(type==='approved')return [job('approved-client',r.email,'Your filming time is approved — agreement and invoice',`Hi ${r.name},\n\nI’ve approved your video / event coverage for ${r.business} and reserved ${when}.\n\n${summary}${due}\n\nReview and accept the full agreement here, then complete payment through Stripe:\n${privateLink}\n\nYour booking is complete once the agreement is signed and the initial payment is received.\n\nChris`)];
     if(type==='invoice')return [job('invoice-client',r.email,'Your Cerney Selects booking invoice',
-        `Hi ${r.name},\n\nChris approved the filming request for ${r.business}, and we received your signed agreement. Your invoice for ${money} is ready.\n\nPay securely through Stripe:\n${r.invoiceUrl}\n\nReview your booking details:\n${privateLink}\n\nCerney Media Team`)];
+        `Hi ${r.name},\n\nChris approved the filming request for ${r.business}, and we received your signed agreement. Your invoice for ${money} is ready.${due}\n\nPay securely through Stripe:\n${r.invoiceUrl}\n\nReview your booking details:\n${privateLink}\n\nCerney Media Team`)];
     if(type==='declined')return [job('declined-client',r.email,'An update on your video / event coverage request',`Hi ${r.name},\n\nI’m unable to accept this request for ${r.business}.${r.declineReason?'\n\n'+r.declineReason:''}\n\nNo payment has been taken.\n\nChris`)];
+    if (type === 'late-payment') return [job('late-payment-owner', 'cerneymedia@gmail.com',
+        `Booking payment needs review: ${r.business}`,
+        `Stripe recorded payment after the deadline or without a verifiable payment time. The booking has not been confirmed. Review the invoice and contact the client.\n${details}${due}\n${ownerLink}`)];
     if(type==='calendar-review')return [job('calendar-review-owner','cerneymedia@gmail.com',`Paid booking needs calendar review: ${r.business}`,`${details}\n\nPayment has been received, but the calendar confirmation could not be completed. Check the reserved event and any conflicts before confirming the shoot.\n${ownerLink}`)];
     if(type==='recovery-review')return [job('recovery-review-owner','cerneymedia@gmail.com',`Booking needs attention: ${r.business}`,`${details}\n\nAutomatic recovery could not finish after repeated attempts. Check this request's Stripe invoice and calendar reservation before making changes. This notice does not confirm that payment was received.\n\nReview the request:\n${ownerLink}`)];
     if(type==='paid')return [job('paid-client',r.email,'Your video shoot is booked',`Hi ${r.name},\n\nYour signed agreement and ${money} payment have been received. Your shoot is booked for ${when}.\n\nLocation: ${r.location}\n\nYour agreement and booking details:\n${privateLink}\n\nChris`),

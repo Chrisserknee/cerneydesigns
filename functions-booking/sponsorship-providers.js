@@ -84,7 +84,8 @@ function createPayments({secret,fetchImpl=fetch}){
         const canCreate=()=>{if(now-r.billingStartedAt>23*3600000)core.fail('Invoice creation needs review before retrying. Please contact Chris.',409);};
         let customer=r.stripeCustomerId,invoice=r.invoice?.id?await request('invoices/'+r.invoice.id):null;
         if(!customer){canCreate();customer=(await request('customers',{email:r.email,name:r.business,'metadata[sponsorshipId]':r.id},r.id+'-customer')).id;await save({stripeCustomerId:customer});}
-        if(!invoice){canCreate();invoice=await request('invoices',{customer,collection_method:'send_invoice',days_until_due:String(r.package.paymentDueDays),auto_advance:'false',
+        if(!invoice){canCreate();invoice=await request('invoices',{customer,collection_method:'send_invoice',auto_advance:'false',
+            ...(r.paymentDueAt ? {due_date:String(r.paymentDueAt / 1000)} : {days_until_due:String(r.package.paymentDueDays)}),
             pending_invoice_items_behavior:'exclude','automatic_tax[enabled]':'false',
             'metadata[sponsorshipId]':r.id,'metadata[agreementHash]':r.agreement.hash,
             description:r.package.title+' · Filming '+r.slot.start,footer:'Signed agreement reference: '+r.agreement.hash},r.id+'-invoice');
@@ -92,6 +93,7 @@ function createPayments({secret,fetchImpl=fetch}){
         }
         const validateIdentity=()=>{
             if(invoice.customer!==customer||invoice.metadata?.sponsorshipId!==r.id||invoice.metadata?.agreementHash!==r.agreement.hash
+                ||(r.paymentDueAt && invoice.due_date !== r.paymentDueAt / 1000)
                 ||invoice.currency!=='usd'||invoice.collection_method!=='send_invoice'||invoice.automatic_tax?.enabled
                 ||invoice.discounts?.length||invoice.default_tax_rates?.length)
                 core.fail('Invoice details changed. Chris needs to review them before payment.',409);

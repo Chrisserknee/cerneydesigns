@@ -2,6 +2,20 @@
 const core=require('./sponsorship-core');
 const schedule=require('./sponsorship-schedule');
 const {emailJobs}=require('./sponsorship-emails');
+const HOUR = 3600000;
+const ADVANCE_PAYMENT_HOURS = 48;
+const BOOKING_PAYMENT_DAYS = 7;
+function customerSchedule(config, selected) {
+    return {...config, package:selected, packages:[selected],
+        leadHours:core.usesBookingInvoice({package:selected})
+            ? Math.max(config.leadHours, ADVANCE_PAYMENT_HOURS)
+            : config.leadHours};
+}
+function requireOpenPaymentWindow(order, time) {
+    if (order.paymentDueAt && time >= order.paymentDueAt) {
+        core.fail('The payment deadline has passed. Contact Chris before paying.', 409);
+    }
+}
 const DEFAULT_CONFIG={enabled:false,timeZone:'America/Los_Angeles',calendarId:'chrisserknee@gmail.com',blockCalendarIds:['chrisserknee@gmail.com'],
     package:null,packages:[],terms:null,windows:[],weeklyWindows:[],availabilityMode:'weekly',bookingHorizonDays:60,bufferBefore:30,bufferAfter:30,leadHours:24,revision:0};
 const freshState=()=>({schema:2,config:{...DEFAULT_CONFIG},orders:{},holds:{},limits:{},outbox:{}});
@@ -39,11 +53,11 @@ function createWorkflow({store,calendar,payments,now=Date.now,ready=()=>true,rec
     async function available(date,ignoreId='',packageId){
         const s=await store.read(),c=s.config;
         if(!c.enabled||!ready())core.fail('Online booking is being set up. Please contact Chris.',503);
-        const selected=choosePackage(c,packageId);
-        if(!schedule.offeredDates(c,now()).includes(date))return {date,timeZone:c.timeZone,slots:[],revision:c.revision};
+        const selected=choosePackage(c,packageId), customerConfig=customerSchedule(c,selected);
+        if(!schedule.offeredDates(customerConfig,now()).includes(date))return {date,timeZone:c.timeZone,slots:[],revision:c.revision};
         const start=schedule.localTimeToUtc(date,'00:00',c.timeZone);
         const busy=await calendar.busy(c,start-86400000,start+172800000,ignoreId);
-        return {date,timeZone:c.timeZone,slots:schedule.buildSlots({...c,package:selected},date,busy,s.holds,now(),ignoreId),revision:c.revision};
+        return {date,timeZone:c.timeZone,slots:schedule.buildSlots(customerConfig,date,busy,s.holds,now(),ignoreId),revision:c.revision};
     }
     async function accept(id,review={}){
         let s=await store.read(),r=orderFor(s,id);
@@ -79,9 +93,17 @@ function createWorkflow({store,calendar,payments,now=Date.now,ready=()=>true,rec
                 if(!slot)core.fail('This time is no longer available in your filming schedule.',409);
                 const approvedPackage={...current.package,priceType:'fixed',amount:current.package.priceType==='from'?review.quoteAmount:current.package.amount,includes:approvedScope};
                 approvedPackage.billingDescription=core.billingDescription(approvedPackage);
+                const acceptedAt = now();
+                const paymentDueAt = core.usesBookingInvoice(current)
+                    ? Math.floor(Math.min(acceptedAt + BOOKING_PAYMENT_DAYS * 24 * HOUR,
+                        Date.parse(slot.start) - ADVANCE_PAYMENT_HOURS * HOUR) / 60000) * 60000
+                    : undefined;
+                const approvedBooking = {...current, package:approvedPackage, slot, exclusivity,
+                    ...(paymentDueAt ? {paymentDueAt} : {})};
+                requireOpenPaymentWindow(approvedBooking, acceptedAt);
                 next.holds[id]=slot;
-                next.orders[id]={...current,package:approvedPackage,requestedPackage:current.package,slot,exclusivity,status:'accepting',calendarId:next.config.calendarId,blockCalendarIds:next.config.blockCalendarIds,
-                    agreement:core.agreement({...current,package:approvedPackage,slot,exclusivity},next.config.terms,now()),acceptedAt:now(),conflictsReviewed:review.conflictsReviewed===true};
+                next.orders[id]={...approvedBooking,requestedPackage:current.package,status:'accepting',calendarId:next.config.calendarId,blockCalendarIds:next.config.blockCalendarIds,
+                    agreement:core.agreement(approvedBooking,next.config.terms,acceptedAt),acceptedAt,conflictsReviewed:review.conflictsReviewed===true};
             });
         }
         s=await store.read();r=orderFor(s,id);
@@ -101,6 +123,7 @@ function createWorkflow({store,calendar,payments,now=Date.now,ready=()=>true,rec
     async function pay(b){
         let r=authenticate(await store.read(),b);
         if(r.status==='paid')return {paid:true};
+        requireOpenPaymentWindow(r, now());
         if(r.status!=='signed'||!r.signature)core.fail('Sign the agreement before opening payment.',409);
         if(r.package.billing!=='once'&&r.package.billing&&!recurringReady())core.fail('Recurring billing is awaiting sandbox verification.',503);
         if(r.invoice){
@@ -118,6 +141,7 @@ function createWorkflow({store,calendar,payments,now=Date.now,ready=()=>true,rec
         await store.change(s=>{const current=orderFor(s,r.id);if(!current.billingStartedAt)current.billingStartedAt=now();});
         r=orderFor(await store.read(),r.id);
         const save=async changes=>store.change(s=>{Object.assign(orderFor(s,r.id),changes);});
+        requireOpenPaymentWindow(r, now());
         const invoice=await payments.issue(r,save,now());
         await save({invoice:{id:invoice.id,number:invoice.number}});
         if(invoice.status==='paid'){await paymentReceived(invoice);return {paid:true};}
@@ -125,6 +149,7 @@ function createWorkflow({store,calendar,payments,now=Date.now,ready=()=>true,rec
     }
     async function deliverInvoice(order, invoice) {
         const link = paymentLink(order, invoice);
+        requireOpenPaymentWindow(order, now());
         if (core.usesBookingInvoice(order)) await store.change(state => {
             const current = orderFor(state, order.id);
             if (current.status === 'signed') queue(state, {...current, invoiceUrl:link.url}, 'invoice', now());
@@ -136,7 +161,7 @@ function createWorkflow({store,calendar,payments,now=Date.now,ready=()=>true,rec
         const identity=r.package.billing&&r.package.billing!=='once'?require('./sponsorship-recurring').invoiceIdentity(invoice):{metadata:invoice.metadata};
         if(r.stripeCustomerId&&invoice.customer!==r.stripeCustomerId)core.fail('Invoice customer needs review before payment.',409);
         if(r.stripeSubscriptionId&&identity.subscriptionId!==r.stripeSubscriptionId)core.fail('Invoice subscription needs review before payment.',409);
-        if(invoice.id!==r.invoice?.id||identity.metadata?.sponsorshipId!==r.id||identity.metadata?.agreementHash!==r.agreement.hash||invoice.currency!=='usd'||invoice.total!==r.package.amount||invoice.status!=='open'||url.protocol!=='https:'||url.hostname!=='invoice.stripe.com')core.fail('This invoice needs review before payment.',409);
+        if(invoice.id!==r.invoice?.id||identity.metadata?.sponsorshipId!==r.id||identity.metadata?.agreementHash!==r.agreement.hash||invoice.currency!=='usd'||invoice.total!==r.package.amount||(r.paymentDueAt && invoice.due_date !== r.paymentDueAt / 1000)||invoice.status!=='open'||url.protocol!=='https:'||url.hostname!=='invoice.stripe.com')core.fail('This invoice needs review before payment.',409);
         return {url:url.href};
     }
     async function paymentReceived(invoice){
@@ -146,11 +171,16 @@ function createWorkflow({store,calendar,payments,now=Date.now,ready=()=>true,rec
             // arrive before checkout saves the public invoice reference.
             const candidate=!r.invoice&&r.stripeInitialInvoiceId===invoice.id?{...r,invoice:{id:invoice.id,number:invoice.number}}:r;
             const updated=core.paidRecord(candidate,invoice,now());delete updated.reconciliationIssue;s.orders[id]=updated;
+            const paidAt = invoice.status_transitions?.paid_at;
+            if (r.paymentDueAt && !r.calendarConfirmed && (!Number.isSafeInteger(paidAt) || paidAt * 1000 >= r.paymentDueAt)) {
+                updated.latePayment = true;
+                queue(s, updated, 'late-payment', now());
+            }
             if(r.payments?.length&&updated.payments?.length>r.payments.length)queue(s,updated,'renewed',now());
             if(updated.exclusivity&&updated.billing?.endsAt)updated.exclusivity.endsAt=updated.billing.endsAt;
         });
         const r=orderFor(await store.read(),id);
-        if(r.calendarConfirmed)return;
+        if(r.calendarConfirmed || r.latePayment)return;
         // If calendar confirmation fails, Stripe retries this webhook. A scheduled
         // reconciler also repairs it; paid status is never reverted or charged again.
         try{await calendar.confirm(r);}catch(e){
@@ -170,7 +200,10 @@ function createWorkflow({store,calendar,payments,now=Date.now,ready=()=>true,rec
         }
         if(b.op==='offer'){
             const c=(await store.read()).config;
-            return {open:c.enabled&&ready(),package:packagesFor(c)[0]||null,packages:packagesFor(c),timeZone:c.timeZone,dates:c.enabled?schedule.offeredDates(c,now()):[],datesByPackage:Object.fromEntries(packagesFor(c).map(p=>[p.id,c.enabled?schedule.offeredDates({...c,package:p,packages:[p]},now()):[]])),revision:c.revision};
+            const packages = packagesFor(c), time = now();
+            const datesByPackage = Object.fromEntries(packages.map(p => [p.id, c.enabled ? schedule.offeredDates(customerSchedule(c,p),time) : []]));
+            const dates = [...new Set(Object.values(datesByPackage).flat())].sort();
+            return {open:c.enabled&&ready(),package:packages[0]||null,packages,timeZone:c.timeZone,dates,datesByPackage,revision:c.revision};
         }
         if(b.op==='availability')return available(b.date,'',b.packageId);
         if(b.op==='submit'){
@@ -213,7 +246,7 @@ function createWorkflow({store,calendar,payments,now=Date.now,ready=()=>true,rec
         }
         if(b.op==='status')return core.publicRecord(authenticate(await store.read(),b));
         if(b.op==='sign'){
-            await store.change(s=>{const r=authenticate(s,b);s.orders[b.id]=core.sign(r,b,now());});
+            await store.change(s=>{const r=authenticate(s,b);requireOpenPaymentWindow(r, now());s.orders[b.id]=core.sign(r,b,now());});
             const signed = orderFor(await store.read(),b.id);
             const payment = core.usesBookingInvoice(signed) ? await pay(b) : null;
             return {...core.publicRecord(orderFor(await store.read(), b.id)), ...(b.acceptanceMethod === 'typed' && payment ? {payment} : {})};
@@ -241,7 +274,7 @@ function createWorkflow({store,calendar,payments,now=Date.now,ready=()=>true,rec
         const s=await store.read(),deadline=Date.now()+45000;
         // Oldest checked first, so a batch of unpaid invoices cannot permanently
         // hide later payments. Never create invoices or charge during recovery.
-        const pending=Object.values(s.orders).filter(r=>r.status==='accepting'||(r.status==='paid'&&!r.calendarConfirmed)
+        const pending=Object.values(s.orders).filter(r=>r.status==='accepting'||(r.status==='paid'&&!r.calendarConfirmed&&!r.latePayment)
             ||(r.status==='signed'&&(r.invoice?.id||r.stripeInitialInvoiceId)))
             .sort((a,b)=>(a.reconciledAt||0)-(b.reconciledAt||0)).slice(0,20);
         for(const r of pending){

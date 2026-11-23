@@ -51,7 +51,7 @@ test('approval quote must meet starting price and freezes in agreement and invoi
  assert.match(invoiceMail.text,/https:\/\/invoice\.stripe\.com\//);
  assert.equal(h.metrics.issues,1);
  await h.workflow.handle({op:'checkout',id,token:'a'.repeat(64)});assert.equal([...h.invoices.values()][0].total,125000);assert.equal(h.metrics.issues,1);
- const invoice=[...h.invoices.values()][0];invoice.status='paid';invoice.amount_paid=125000;await h.workflow.paymentReceived(invoice);await h.workflow.paymentReceived(invoice);assert.equal((await h.store.read()).orders[id].calendarConfirmed,true);assert.equal(h.metrics.confirmations,1);
+ const invoice=[...h.invoices.values()][0];invoice.status='paid';invoice.amount_paid=125000;invoice.status_transitions={paid_at:fixedNow/1000};await h.workflow.paymentReceived(invoice);await h.workflow.paymentReceived(invoice);assert.equal((await h.store.read()).orders[id].calendarConfirmed,true);assert.equal(h.metrics.confirmations,1);
 });
 test('fixed event stays $1750 and three hours through approval and payment; decline never bills',async()=>{
  const h=await setup(),{id}=await h.submit('a'.repeat(64),{...request,packageId:'event-coverage',videoStyleId:undefined});
@@ -81,4 +81,27 @@ test('event coverage has a longer-recap description and the same 179-second cap,
  const h=await setup();await assert.rejects(h.submit('a'.repeat(64),{...request,packageId:'event-coverage'}),/does not offer/);
  const {id}=await h.submit('a'.repeat(64),{...request,packageId:'event-coverage',videoStyleId:undefined});const r=await h.workflow.handle({op:'status',id,token:'a'.repeat(64)});
  assert.equal(r.package.durationMinutes,180);assert.equal(r.package.maxVideoSeconds,179);assert.match(r.package.videoLengthNote,/longer recap/);assert.equal(r.videoStyle,undefined);
+});
+test('booking deadline matches the agreement and invoice, and late payments need owner review', async () => {
+ const h=await setup(), token='a'.repeat(64), {id}=await h.submit(token,request);
+ const approved=await h.workflow.handle({op:'approve',id,quoteAmount:100000});
+ const cutoff=Date.parse('2026-10-18T16:00:00Z');
+ assert.equal(approved.paymentDueAt,cutoff);
+ assert.equal(approved.agreement.document.paymentDueAt,cutoff);
+ assert.match((await h.store.read()).outbox[id+'-approved-client'].text,/Payment deadline:/);
+ await h.sign(id,token);
+ const invoice=[...h.invoices.values()][0];
+ assert.equal(invoice.due_date,cutoff/1000);
+ h.setNow(cutoff);
+ await assert.rejects(h.workflow.handle({op:'checkout',id,token}),/deadline has passed/);
+ invoice.status='paid';
+ invoice.amount_paid=100000;
+ invoice.status_transitions={paid_at:cutoff/1000+1};
+ await h.workflow.paymentReceived(invoice);
+ const state=await h.store.read();
+ assert.equal(state.orders[id].latePayment,true);
+ assert.equal(state.orders[id].calendarConfirmed,false);
+ assert.equal(h.metrics.confirmations,0);
+ assert.ok(state.outbox[id+'-late-payment-owner']);
+ assert.equal(state.outbox[id+'-paid-client'],undefined);
 });

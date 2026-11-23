@@ -21,7 +21,7 @@ function createHarness({recurringReady=true}={}){
         async confirm(r){metrics.confirmations++;if(this.confirmFailure)throw Object.assign(new Error('Calendar down'),{code:503});await this.verifyHold(r);}
     };
     const payments={async retrieve(id){return structuredClone(invoices.get(id));},async issue(r,save){
-        const id='in_'+r.id;if(!invoices.has(id)){metrics.issues++;invoices.set(id,{id,number:'TEST-'+r.id,status:'open',currency:'usd',total:r.package.amount,amount_paid:0,hosted_invoice_url:'https://invoice.stripe.com/i/test_'+r.id,metadata:{sponsorshipId:r.id,agreementHash:r.agreement.hash}});}
+        const id='in_'+r.id;if(!invoices.has(id)){metrics.issues++;invoices.set(id,{id,number:'TEST-'+r.id,status:'open',due_date:r.paymentDueAt?r.paymentDueAt/1000:null,currency:'usd',total:r.package.amount,amount_paid:0,hosted_invoice_url:'https://invoice.stripe.com/i/test_'+r.id,metadata:{sponsorshipId:r.id,agreementHash:r.agreement.hash}});}
         await save({invoice:{id,number:'TEST-'+r.id}});return structuredClone(invoices.get(id));
     }};
     const workflow=createWorkflow({store,calendar,payments,now:()=>clock,ready:()=>ready,recurringReady:()=>recurringReady});

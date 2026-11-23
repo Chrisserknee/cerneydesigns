@@ -55,7 +55,7 @@ function agreement(order,terms,now){
     const document={version:terms.version,provider:terms.provider,customer:order.business,contact:order.name,email:order.email,
         package:order.package,...(order.videoStyle?{videoStyle:order.videoStyle}:{}),filming:order.slot,location:order.location,videoBrief:order.brief,terms:terms.text,issuedAt:now,
         ...(order.exclusivity?{exclusivity:order.exclusivity,exclusivityTerms:terms.exclusiveText}:{}),
-        billingDescription:billingDescription(order.package)};
+        billingDescription:billingDescription(order.package),...(order.paymentDueAt ? {paymentDueAt:order.paymentDueAt} : {})};
     return {document,hash:hash(JSON.stringify(document))};
 }
 function signatureDrawing(value){
@@ -121,7 +121,7 @@ function paidRecord(order,invoice,now){
 }
 function publicRecord(r){
     return {id:r.id,status:r.status,business:r.business,package:r.package,videoStyle:r.videoStyle,slot:r.slot,location:r.location,brief:r.brief,declineReason:r.declineReason,exclusivity:r.exclusivity,
-        typedAcceptance:usesBookingInvoice(r),agreement:r.agreement,signature:r.signature?{name:r.signature.name,title:r.signature.title,signedAt:r.signature.signedAt,agreementHash:r.signature.agreementHash,drawing:r.signature.drawing,drawingHash:r.signature.drawingHash}:null,
+        typedAcceptance:usesBookingInvoice(r),paymentDueAt:r.paymentDueAt,latePayment:r.latePayment,agreement:r.agreement,signature:r.signature?{name:r.signature.name,title:r.signature.title,signedAt:r.signature.signedAt,agreementHash:r.signature.agreementHash,drawing:r.signature.drawing,drawingHash:r.signature.drawingHash}:null,
         invoice:r.invoice?{number:r.invoice.number}:null,billing:r.billing,payments:r.payments?.map(({id,...p})=>p),calendarConfirmed:r.calendarConfirmed,createdAt:r.createdAt};
 }
 module.exports={fail,field,hash,validToken,intake,packageConfig,billingDescription,agreement,signatureDrawing,usesBookingInvoice,sign,paidRecord,publicRecord};
