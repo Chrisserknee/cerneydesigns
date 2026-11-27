@@ -168,3 +168,19 @@ test('an uncertain void keeps the reservation and a racing on-time payment wins'
  assert.equal(state.orders[id].calendarConfirmed,true);
  assert.ok(state.holds[id]);
 });
+
+test('an in-flight invoice creation retains the hold until the issuer finishes',async()=>{
+ const h=await setup(), token='a'.repeat(64), {id}=await h.submit(token,request);
+ const approved=await h.workflow.handle({op:'approve',id,quoteAmount:100000});
+ await h.sign(id,token);
+ const leaseEnd=approved.paymentDueAt+60000;
+ await h.store.change(s=>{s.orders[id].billingLeaseUntil=leaseEnd;delete s.orders[id].invoice;});
+ h.setNow(approved.paymentDueAt);
+ await h.workflow.reconcile();
+ assert.ok((await h.store.read()).holds[id]);
+ const invoice=[...h.invoices.values()][0];
+ await h.store.change(s=>{s.orders[id].invoice={id:invoice.id};});
+ await h.workflow.reconcile();
+ assert.equal(invoice.status,'void');
+ assert.equal((await h.store.read()).orders[id].status,'expired');
+});

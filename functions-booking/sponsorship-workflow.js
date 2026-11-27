@@ -280,12 +280,15 @@ function createWorkflow({store,calendar,payments,now=Date.now,ready=()=>true,rec
         // Signing and the start of invoice creation both check the deadline inside
         // the state transaction. Allow any already-running issuer to finish first.
         const order = orderFor(await store.read(), id);
-        if (!overdue(order) || order.billingLeaseUntil > now()) return;
+        if (!overdue(order)) return;
+        const issuerActive = order.billingLeaseUntil > now();
+        if (!order.invoice?.id && issuerActive) return;
         if (order.invoice?.id) {
             let invoice = await payments.retrieve(order.invoice.id);
             if (invoice.id !== order.invoice.id || invoice.metadata?.sponsorshipId !== id ||
                 invoice.metadata?.agreementHash !== order.agreement?.hash || invoice.customer !== order.stripeCustomerId)
                 core.fail('Invoice ownership needs review.',409);
+            if (invoice.status === 'draft' && issuerActive) return;
             if (invoice.status === 'paid') return paymentReceived(invoice);
             if (invoice.amount_paid !== 0) core.fail('Partial payment needs owner review.',409);
             if (invoice.status === 'open') invoice = await payments.voidInvoice(invoice.id);
