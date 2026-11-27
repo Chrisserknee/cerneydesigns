@@ -75,3 +75,32 @@ test('an unresolved Stripe creation after idempotency expiry stops for review',a
     const p=createPayments({secret:()=> 'sk_test_fixture',fetchImpl:async()=>{calls++;throw new Error('Must not create another invoice');}});
     await assert.rejects(p.issue(r,async()=>{},fixedNow+86400000),e=>e.code===409);assert.equal(calls,0);
 });
+
+test('calendar release checks ownership and uses an event version precondition',async()=>{
+    const r=await order();
+    const event={etag:'"revision"',extendedProperties:{private:{sponsorshipId:r.id}},
+        start:{dateTime:'2026-10-20T15:30:00Z'},end:{dateTime:'2026-10-20T17:30:00Z'}};
+    let deletes=0;
+    const calendar=createCalendar({auth,fetchImpl:async(url,options)=>{
+        if(options.method==='GET') return response(event);
+        assert.equal(options.method,'DELETE');
+        assert.equal(options.headers['If-Match'],event.etag);
+        assert.match(url,/sendUpdates=none/);
+        deletes++;
+        return response(null,204);
+    }});
+    await calendar.release(r);
+    event.extendedProperties.private.sponsorshipId='unrelated';
+    await assert.rejects(calendar.release(r));
+    assert.equal(deletes,1);
+});
+
+test('a Google event disappearing during confirmation fails the confirmation',async()=>{
+    const r=await order();
+    const event={extendedProperties:{private:{sponsorshipId:r.id}},start:{dateTime:'2026-10-20T15:30:00Z'},end:{dateTime:'2026-10-20T17:30:00Z'}};
+    const calendar=createCalendar({auth,fetchImpl:async(url,options)=>{
+        if(options.method==='PATCH')return response(null,404);
+        return response(url.includes('?')?{items:[]}:event);
+    }});
+    await assert.rejects(calendar.confirm(r));
+});

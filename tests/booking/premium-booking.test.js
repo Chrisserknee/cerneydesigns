@@ -124,3 +124,47 @@ test('event requests can start at the 6 p.m. cutoff and reserve three hours', as
  assert.equal(approved.slot.end,lateEnd);
  assert.equal(h.metrics.holds,1);
 });
+
+test('expired bookings release the slot after Stripe closure and survive a calendar retry', async () => {
+ const h=await setup(), token='a'.repeat(64), {id}=await h.submit(token,request);
+ const approved=await h.workflow.handle({op:'approve',id,quoteAmount:100000});
+ await h.sign(id,token);
+ h.setNow(approved.paymentDueAt);
+ const release=h.calendar.release;
+ h.calendar.release=async()=>{throw new Error('Calendar offline');};
+ await h.workflow.reconcile();
+ assert.equal([...h.invoices.values()][0].status,'void');
+ assert.ok((await h.store.read()).holds[id]);
+ h.calendar.release=release;
+ await h.workflow.reconcile();
+ await h.workflow.reconcile();
+ const state=await h.store.read();
+ assert.equal(state.orders[id].status,'expired');
+ assert.equal(state.holds[id],undefined);
+ assert.equal(h.events.size,0);
+});
+
+test('a deadline releases an unsigned approval without contacting Stripe', async () => {
+ const h=await setup(), {id}=await h.submit('a'.repeat(64),request);
+ const approved=await h.workflow.handle({op:'approve',id,quoteAmount:100000});
+ h.setNow(approved.paymentDueAt);
+ await h.workflow.reconcile();
+ assert.equal((await h.store.read()).orders[id].status,'expired');
+ assert.equal(h.invoices.size,0);
+});
+
+test('an uncertain void keeps the reservation and a racing on-time payment wins', async () => {
+ const h=await setup(), token='a'.repeat(64), {id}=await h.submit(token,request);
+ const approved=await h.workflow.handle({op:'approve',id,quoteAmount:100000});
+ await h.sign(id,token);
+ h.setNow(approved.paymentDueAt);
+ h.payments.voidInvoice=async()=>{throw new Error('Concurrent payment');};
+ await h.workflow.reconcile();
+ assert.ok((await h.store.read()).holds[id]);
+ const invoice=[...h.invoices.values()][0];
+ Object.assign(invoice,{status:'paid',amount_paid:invoice.total,status_transitions:{paid_at:approved.paymentDueAt/1000-1}});
+ await h.workflow.reconcile();
+ const state=await h.store.read();
+ assert.equal(state.orders[id].calendarConfirmed,true);
+ assert.ok(state.holds[id]);
+});
