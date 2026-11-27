@@ -18,9 +18,10 @@ function createHarness({recurringReady=true}={}){
         async busy(){if(this.failure)throw this.failure;return [...this.external,...[...events.values()].map(slotInterval)];},
         async hold(r){metrics.holds++;if(this.failure)throw this.failure;if(this.external.some(b=>overlaps(b,slotInterval(r.slot))))throw Object.assign(new Error('Calendar conflict'),{code:409});events.set(r.id,r.slot);},
         async verifyHold(r){if(this.failure)throw this.failure;if(!events.has(r.id)||this.external.some(b=>overlaps(b,slotInterval(r.slot))))throw Object.assign(new Error('Calendar conflict'),{code:409});},
+        async release(r){events.delete(r.id);},
         async confirm(r){metrics.confirmations++;if(this.confirmFailure)throw Object.assign(new Error('Calendar down'),{code:503});await this.verifyHold(r);}
     };
-    const payments={async retrieve(id){return structuredClone(invoices.get(id));},async issue(r,save){
+    const payments={async voidInvoice(id){const invoice=invoices.get(id);invoice.status='void';return structuredClone(invoice);},async retrieve(id){return structuredClone(invoices.get(id));},async issue(r,save){
         const id='in_'+r.id;if(!invoices.has(id)){metrics.issues++;invoices.set(id,{id,number:'TEST-'+r.id,status:'open',due_date:r.paymentDueAt?r.paymentDueAt/1000:null,currency:'usd',total:r.package.amount,amount_paid:0,hosted_invoice_url:'https://invoice.stripe.com/i/test_'+r.id,metadata:{sponsorshipId:r.id,agreementHash:r.agreement.hash}});}
         await save({invoice:{id,number:'TEST-'+r.id}});return structuredClone(invoices.get(id));
     }};

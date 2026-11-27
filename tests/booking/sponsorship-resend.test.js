@@ -60,3 +60,14 @@ test('outbox yields slow batches before the function deadline without claiming t
     await dispatchOutbox(store,mail,()=>clock);
     assert.equal(calls,6);assert.equal(data.outbox['job-6'].state,'queued');assert.equal(data.outbox['job-6'].attempts,0);
 });
+
+test('expired approval and invoice jobs are skipped while owner notices still send',async()=>{
+    const id='sample';
+    const jobs=['approved-client','invoice-client','late-payment-owner'].map(type=>({id:id+'-'+type,type,state:'queued',attempts:0}));
+    const data={orders:{sample:{paymentDueAt:100}},outbox:Object.fromEntries(jobs.map(j=>[j.id,j]))};
+    const sent=[];
+    await dispatchOutbox({read:async()=>data,change:async fn=>fn(data)},
+        {ready:()=>true,send:async j=>{sent.push(j.type);return 'receipt';}},()=>101);
+    assert.deepEqual(sent,['late-payment-owner']);
+    assert.equal(jobs[1].state,'superseded');
+});

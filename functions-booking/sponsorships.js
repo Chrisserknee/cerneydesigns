@@ -81,6 +81,6 @@ exports.cerneyBookingStripeWebhook=onRequest({...options,secrets:[stripeKey,webh
         return res.json({received:true});
     }catch{return res.sendStatus(500);}
 });
-exports.retryCerneyBookingWork=onSchedule({...options,schedule:'every 5 minutes',secrets:[stripeKey,googleCredentials,resendKey]},async()=>{
+exports.retryCerneyBookingWork=onSchedule({...options,schedule:'* * * * *',secrets:[stripeKey,googleCredentials,resendKey]},async()=>{
     await workflow().reconcile();if(emailEnabled.value())await dispatchOutbox(store,notifications);
 });

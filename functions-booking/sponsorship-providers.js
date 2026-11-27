@@ -3,11 +3,11 @@ const core=require('./sponsorship-core');
 const {slotInterval,localTimeToUtc,overlaps}=require('./sponsorship-schedule');
 const SITE='https://www.chriscerney.org';
 function createCalendar({auth,fetchImpl=fetch}){
-    async function request(path,{method='GET',body}={}){
+    async function request(path,{method='GET',body,headers={}}={}){
         const client=await auth.getClient(),token=await client.getAccessToken();
-        const r=await fetchImpl('https://www.googleapis.com/calendar/v3/'+path,{method,headers:{Authorization:'Bearer '+token.token,'Content-Type':'application/json'},
+        const r=await fetchImpl('https://www.googleapis.com/calendar/v3/'+path,{method,headers:{Authorization:'Bearer '+token.token,'Content-Type':'application/json',...headers},
             ...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(15000)});
-        if(r.status===404)return null;
+        if((method==='GET'||method==='DELETE') && (r.status===404||r.status===410))return null;
         if(!r.ok)throw Object.assign(new Error('Calendar connection needs attention.'),{code:r.status===409?409:503});
         return r.status===204?{}:r.json();
     }
@@ -72,7 +72,15 @@ function createCalendar({auth,fetchImpl=fetch}){
         await request(path(r.calendarId)+'/'+eventId(r.id)+'?sendUpdates=none',{method:'PATCH',body:{summary:r.package.title+' — '+r.business,
             description:`Agreement signed. Payment received.\nFilming: ${r.slot.start} to ${r.slot.end}\nCalendar block includes travel buffers.\n${SITE}/book/manage/?request=${r.id}`}});
     }
-    return {busy,hold,verifyHold,confirm};
+    async function release(r) {
+        const eventPath = path(r.calendarId) + '/' + eventId(r.id);
+        const event = await request(eventPath);
+        if (!event || event.status === 'cancelled') return;
+        validateEvent(r, event);
+        if (!event.etag) core.fail('Calendar reservation needs review.', 409);
+        await request(eventPath + '?sendUpdates=none', {method:'DELETE', headers:{'If-Match':event.etag}});
+    }
+    return {busy,hold,verifyHold,confirm,release};
 }
 function createPayments({secret,fetchImpl=fetch}){
     async function request(path,params,key){
@@ -119,6 +127,7 @@ function createPayments({secret,fetchImpl=fetch}){
     }
     const recurring=require('./sponsorship-recurring').createRecurringPayments(request);
     return {issue:(r,save,now)=>r.package.billing&&r.package.billing!=='once'?recurring.issue(r,save,now):issue(r,save,now),retrieve:id=>request('invoices/'+encodeURIComponent(id)),
+        voidInvoice:id=>request('invoices/'+encodeURIComponent(id)+'/void',{},'booking-void-'+id),
         retrieveSubscription:recurring.retrieveSubscription,cancelRenewal:recurring.cancelRenewal,verifyInitialPlan:recurring.verifyInitialPlan};
 }
 module.exports={createCalendar,createPayments};

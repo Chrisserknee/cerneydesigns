@@ -138,7 +138,10 @@ function createWorkflow({store,calendar,payments,now=Date.now,ready=()=>true,rec
         await calendar.verifyHold(r);
         // IDs are saved after each external operation. Refuse to blindly recreate
         // a lost Stripe response after its idempotency retention window.
-        await store.change(s=>{const current=orderFor(s,r.id);if(!current.billingStartedAt)current.billingStartedAt=now();});
+        await store.change(s=>{const current=orderFor(s,r.id);requireOpenPaymentWindow(current, now());
+            if(current.status!=='signed')core.fail('Booking is no longer awaiting payment.',409);
+            if(!current.billingStartedAt)current.billingStartedAt=now();
+            current.billingLeaseUntil=now()+3*60000;});
         r=orderFor(await store.read(),r.id);
         const save=async changes=>store.change(s=>{Object.assign(orderFor(s,r.id),changes);});
         requireOpenPaymentWindow(r, now());
@@ -270,17 +273,52 @@ function createWorkflow({store,calendar,payments,now=Date.now,ready=()=>true,rec
         }
         core.fail('Unknown action.');
     }
+    function overdue(order) {
+        return ['approved','signed'].includes(order.status) && order.paymentDueAt && now() >= order.paymentDueAt;
+    }
+    async function expire(id) {
+        // Signing and the start of invoice creation both check the deadline inside
+        // the state transaction. Allow any already-running issuer to finish first.
+        const order = orderFor(await store.read(), id);
+        if (!overdue(order)) return;
+        const issuerActive = order.billingLeaseUntil > now();
+        if (!order.invoice?.id && issuerActive) return;
+        if (order.invoice?.id) {
+            let invoice = await payments.retrieve(order.invoice.id);
+            if (invoice.id !== order.invoice.id || invoice.metadata?.sponsorshipId !== id ||
+                invoice.metadata?.agreementHash !== order.agreement?.hash || invoice.customer !== order.stripeCustomerId)
+                core.fail('Invoice ownership needs review.',409);
+            if (invoice.status === 'draft' && issuerActive) return;
+            if (invoice.status === 'paid') return paymentReceived(invoice);
+            if (invoice.amount_paid !== 0) core.fail('Partial payment needs owner review.',409);
+            if (invoice.status === 'open') invoice = await payments.voidInvoice(invoice.id);
+            // An unfinished draft with automatic advancement disabled has no
+            // payable link. An ambiguous provider response keeps the hold.
+            const inactiveDraft = invoice.status === 'draft' && invoice.auto_advance === false && !invoice.hosted_invoice_url;
+            if (invoice.id !== order.invoice.id || invoice.amount_paid !== 0 || !(invoice.status === 'void' || inactiveDraft))
+                core.fail('Invoice closure needs review.',409);
+        }
+        await calendar.release(order);
+        await store.change(state => {
+            const current = orderFor(state,id);
+            if (!overdue(current)) return;
+            current.status = 'expired';
+            current.calendarHeld = false;
+            delete state.holds[id];
+        });
+    }
     async function reconcile(){
         const s=await store.read(),deadline=Date.now()+45000;
         // Oldest checked first, so a batch of unpaid invoices cannot permanently
         // hide later payments. Never create invoices or charge during recovery.
-        const pending=Object.values(s.orders).filter(r=>r.status==='accepting'||(r.status==='paid'&&!r.calendarConfirmed&&!r.latePayment)
+        const pending=Object.values(s.orders).filter(r=>overdue(r)||r.status==='accepting'||(r.status==='paid'&&!r.calendarConfirmed&&!r.latePayment)
             ||(r.status==='signed'&&(r.invoice?.id||r.stripeInitialInvoiceId)))
             .sort((a,b)=>(a.reconciledAt||0)-(b.reconciledAt||0)).slice(0,20);
         for(const r of pending){
             if(Date.now()>=deadline)break;
             try{
-                if(r.status==='accepting')await accept(r.id);
+                if(overdue(r))await expire(r.id);
+                else if(r.status==='accepting')await accept(r.id);
                 else{
                     const invoice=await payments.retrieve(r.invoice?.id||r.stripeInitialInvoiceId);
                     const identity=require('./sponsorship-recurring').invoiceIdentity(invoice);
